@@ -4,18 +4,32 @@
 
 这是一个名为ANORA（Anora’s Not Only Recording API）的图形化编程项目的前端，这个项目设计上应该是一个兼容不同后端的通用图形化编程前端，且其节点系统具备高度可扩展性。同时，ANORA会提供一个默认的node后端，提供基于playwright的API调用录制与回放，用于演示其使用场景。
 
-但目前只需要开发前端即可，ANORA项目的优先级没有名为ProxyOS的游戏开发项目高。目前提前启动ANORA也是因为在ProxyOS中需要提供一种可控运行的工作流/逻辑图/流程图（以下统一称为逻辑图），作为一个内置低码玩法和Python编码教学对比。
+当前核心任务是完善 ANORA 前端节点系统设计，暂时不需要主动涉及后端录制功能；
+
+当前技术栈为 TypeScript + Vue + Vue-Flow 。
 
 # 架构
+
+其执行逻辑和数据逻辑分离，执行由专门的Executor控制
+
+- Executor：执行器，决定哪些时候运行哪些节点
 
 其实体从底层到顶层（非严格顺序）为
 
 - Port：相当于入参出参
 - Node：相当于函数
 - Graph：维护不同Node的不同Port之间的连接关系
-- Executor：执行器，决定哪些时候运行哪些节点
 
-接下来的介绍没有按上述顺序进行，而是按概念的理解顺序来的
+```
+Graph
+ └─ Nodes
+      └─ Ports
+Executor
+ ├─ Inspect Graph
+ └─ Manage Context
+```
+
+
 
 ## 可定制的Executor
 
@@ -69,13 +83,23 @@ Port是强类型的，但它们内置数据转换
 
 其支持的基础数据类型对标[OpenAPI 3.0](https://swagger.io/docs/specification/v3_0/data-models/data-types/)，但同样有些修改以适应实际工程
 
-- [`string`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#strings) （这个并没有对file的支持，同样没有二进制支持，二进制的传递需要base64编码解码，毕竟经常搞二进制的场景不适合使用ANORA这种以教育和简化编程为目的设计的前端，复杂内容都需要封装在节点内部）
+- [`string`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#strings) 
+  - 这个并没有对file的支持，同样没有二进制支持，二进制的传递需要base64编码解码，毕竟经常搞二进制的场景不适合使用ANORA这种以教育和简化编程为目的设计的前端，复杂内容都需要封装在节点内部
+
 - [`number`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#numbers)
 - [`integer`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#numbers)
 - [`boolean`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#boolean)
 - [`array`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#arrays)
+  - 当一个port被写入array数据后，array内每个元素都会成为这个port的子port
+
 - [`object`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#objects)
+  - 当一个port被写入object数据后，object内每个键值都会成为这个port的子port
+
 - `null`（port的值为null时视为未填入数据，此时取值也会取到null。如果port把null作为预期类型，那么实际表示可以接受/输出任何类型数据）
+
+每种类型都有自己的Port类型，以此分别重写解析输入数据的方法，可维护地提供不同的解析逻辑
+
+array和object的Port需要使用相同的基类ContainerPort，使用key:number|string获取value、获取key列表之类的方法需要在ContainerPort一层实现
 
 ## 可扩展的Node
 
@@ -83,6 +107,9 @@ Port是强类型的，但它们内置数据转换
 
 ```typescript
 class AnoraNode {
+    id: string
+    label: string
+    
     // 执行Port，用于不需要传递数据但需要顺序执行的情况
     inExecPort: AnoraPort
     outExecPort: AnoraPort
@@ -130,6 +157,7 @@ class AnoraNode {
   - `AnoraBackendNode`：需要调用后端功能的节点，Executor在执行它的时候，它从`executorContext`中获取当前IPC类型，然后使用对应的逻辑使用IPC与后端通信。默认提供的后端节点类型如下
     - API：用于调用Rest API
     - WRY：用于与godot-wry等基于tauri-wry的后端通讯
+  - `SubGraphNode`：一个由逻辑图抽象得到的封装子图节点。它内部可以创建继承自中继节点的节点提供输入输出代理，这些子图输入输出节点会在封装后得到的子图节点上表现为Port。目前子图输入输出节点只需要直接继承中继节点即可，后续可能会扩展一些独有功能。SubGraph 执行必须是 **可暂停、可返回、不破坏外部执行状态** 的。当执行器执行子图节点时，它会使用类似调用栈的方式，暂存外部的执行状态，然后执行子图节点里的图。执行器context在子图内外是共享的。实际上，在实现时，最外面的图就应该是一个没有输入输出代理节点的SubGraphNode，以此保证全局逻辑统一
 
 ## 可序列化的Graph
 
@@ -137,14 +165,15 @@ class AnoraNode {
 
 Executor会频繁问Graph哪个节点的哪个Port另一边是哪个节点的哪个Port，正反查都有可能，所以这里需要注意性能优化
 
-- 录制API调用
-- 将API调用整理为有向图
-  - 每个节点是一个函数调用
-    - 有多个入参（入handle）和单个出参（出handle）
-    - handle如果是复杂对象，可以通过点击handle旁的开关展开，显示代表其属性的子handle
-    - 连接出入handle表示传参
-  - 执行时分多次迭代，每次迭代都会找没有“未满足的入边（即前置节点未执行完）”的节点执行
-- 推测API数据结构并保存为OpenAPI 3.0定义
-- 数据关联分析
-- 中途暂停，修改后续节点后继续执行
-- 导出与导入有向图
+# 细节实现
+
+- 与vue-flow解耦，使用AnoraNode初始化VueFlowNode
+- 图总是从左向右，需要合适的自动排版功能
+- 连线使用贝塞尔曲线
+- ContainerPort可展开收起，以显示表示其内部元素的port
+- 当两个连接的Port都未被折叠导致不可见时，连线是虚线且线段从出port到入port移动，否则是直线且有小圆形周期性从出port沿实线运动到入port（供 UI 实现参考，优先保证逻辑正确性。）
+- SubGraphNodes双击可以展开，将内部图显示给用户，界面上方使用Breadcrumb 显示当前的子图栈
+- 需要在运行时给当前激活的节点外框使用高光描线，并可以设置两个迭代之间的延迟（用于演示/调试）
+- 运行后输出值会留在出Port上，以便用户主动激活其后面的某个节点来从中间继续运行（通常是用于调试）
+- 需要提供从外部使用IPC控制Executor执行、状态快照、加载快照之类的功能（当前使用`window.addEventListener("message"...)`来实现）
+
