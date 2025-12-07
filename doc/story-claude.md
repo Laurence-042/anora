@@ -66,29 +66,29 @@ Executor (执行控制)
 
 数据类型对标 [OpenAPI 3.0](https://swagger.io/docs/specification/v3_0/data-models/data-types/)，但有适应性修改：
 
-| 类型      | 说明                                                                                                     |
-| --------- | -------------------------------------------------------------------------------------------------------- |
-| `string`  | 字符串，不支持二进制（需 base64 编码）。复杂内容应封装在节点内部                                         |
-| `number`  | 浮点数                                                                                                   |
-| `integer` | 整数                                                                                                     |
-| `boolean` | 布尔值                                                                                                   |
-| `array`   | 数组，元素类型可不同。写入后每个元素成为子 Port。默认状态子 Port 为空数组                                |
-| `object`  | 对象，key 必须为 string，value 类型可不同。写入后每个键值成为子 Port。默认状态子 Port 为空 Map           |
-| `null`    | 表示可接受/输出**任意类型**数据。任何 Port 也都可以接受 null 作为输入                                    |
+| 类型      | 说明                                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| `string`  | 字符串，不支持二进制（需 base64 编码）。复杂内容应封装在节点内部                               |
+| `number`  | 浮点数                                                                                         |
+| `integer` | 整数                                                                                           |
+| `boolean` | 布尔值                                                                                         |
+| `array`   | 数组，元素类型可不同。写入后每个元素成为子 Port。默认状态子 Port 为空数组                      |
+| `object`  | 对象，key 必须为 string，value 类型可不同。写入后每个键值成为子 Port。默认状态子 Port 为空 Map |
+| `null`    | 表示可接受/输出**任意类型**数据。任何 Port 也都可以接受 null 作为输入                          |
 
 ### 3.3 类型转换矩阵
 
 行为待写入数据类型，列为 Port 指定类型：
 
-| 写入 ↓ / Port 类型 → | string         | number            | integer         | boolean                       | array         | object   | null     |
-| -------------------- | -------------- | ----------------- | --------------- | ----------------------------- | ------------- | -------- | -------- |
-| **string**           | 直接赋值       | Number.parseFloat | Number.parseInt | str.toLowerCase() === "true"  | str.split("") | ❌不兼容 | 直接赋值 |
-| **number**           | toString       | 直接赋值          | Math.floor      | !!num                         | ❌不兼容      | ❌不兼容 | 直接赋值 |
-| **integer**          | toString       | 直接赋值          | 直接赋值        | !!num                         | ❌不兼容      | ❌不兼容 | 直接赋值 |
-| **boolean**          | toString       | 0/1               | 0/1             | 直接赋值                      | ❌不兼容      | ❌不兼容 | 直接赋值 |
-| **array**            | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                      | 直接赋值      | ❌不兼容 | 直接赋值 |
-| **object**           | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                      | ❌不兼容      | 直接赋值 | 直接赋值 |
-| **null**             | null           | null              | null            | null                          | null          | null     | null     |
+| 写入 ↓ / Port 类型 → | string         | number            | integer         | boolean                      | array         | object   | null     |
+| -------------------- | -------------- | ----------------- | --------------- | ---------------------------- | ------------- | -------- | -------- |
+| **string**           | 直接赋值       | Number.parseFloat | Number.parseInt | str.toLowerCase() === "true" | str.split("") | ❌不兼容 | 直接赋值 |
+| **number**           | toString       | 直接赋值          | Math.floor      | !!num                        | ❌不兼容      | ❌不兼容 | 直接赋值 |
+| **integer**          | toString       | 直接赋值          | 直接赋值        | !!num                        | ❌不兼容      | ❌不兼容 | 直接赋值 |
+| **boolean**          | toString       | 0/1               | 0/1             | 直接赋值                     | ❌不兼容      | ❌不兼容 | 直接赋值 |
+| **array**            | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                     | 直接赋值      | ❌不兼容 | 直接赋值 |
+| **object**           | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                     | ❌不兼容      | 直接赋值 | 直接赋值 |
+| **null**             | null           | null              | null            | null                         | null          | null     | null     |
 
 **转换规则**：
 
@@ -100,9 +100,9 @@ Executor (执行控制)
 
 ```typescript
 class BasePort {
-  id: string                    // UUID
-  parentNode: BaseNode          // 反查所属节点
-  parentPort?: ContainerPort    // 反查父 Port
+  id: string // UUID
+  parentNode: BaseNode // 反查所属节点
+  parentPort?: ContainerPort // 反查父 Port
   keyInParent?: string | number // 在父 Port 中的 key
 }
 ```
@@ -121,14 +121,14 @@ Port ID 通过 UUID 生成。子 Port 并非单独的类型，NumberPort、Array
 
 **为父 Port 赋值时的规则**：
 
-| 情况                       | 处理方式                           |
-| -------------------------- | ---------------------------------- |
-| 相同 key，类型一样         | 直接赋值                           |
-| 相同 key，类型不同但可转换 | 转换后赋值                         |
-| 相同 key，类型不兼容       | **报错**                           |
-| key 不存在                 | 新增自动推断类型的子 Port 并赋值   |
-| 新值中无此 key，有连接     | 将值设为 null                      |
-| 新值中无此 key，无连接     | 删除该 Port                        |
+| 情况                       | 处理方式                         |
+| -------------------------- | -------------------------------- |
+| 相同 key，类型一样         | 直接赋值                         |
+| 相同 key，类型不同但可转换 | 转换后赋值                       |
+| 相同 key，类型不兼容       | **报错**                         |
+| key 不存在                 | 新增自动推断类型的子 Port 并赋值 |
+| 新值中无此 key，有连接     | 将值设为 null                    |
+| 新值中无此 key，无连接     | 删除该 Port                      |
 
 **设为 null 时**：只保留有连接或子孙有连接的 Port
 
@@ -170,7 +170,7 @@ interface SerializedPort {
 ```typescript
 class BaseNode {
   // 标识
-  id: string      // UUID
+  id: string // UUID
   label: string
 
   // 执行 Port：用于不需要传递数据但需要顺序执行的情况，数据类型是 null
@@ -222,13 +222,13 @@ class BaseNode {
 
 节点就像一个**自动加工机**：
 
-| 概念            | 比喻                                                                   |
-| --------------- | ---------------------------------------------------------------------- |
-| inPorts         | 原料入口，默认看到原料足够就开始工作，把成品放到 outPorts              |
-| outPorts        | 成品出口                                                               |
-| inControlPorts  | 模式设置面板，可改变工作模式在多次启动中使用不同逻辑                   |
-| outControlPorts | 状态显示面板，显示当前工作状态/进度                                    |
-| inExecPort      | 电源插座。未接线=内置电源，有原料就加工；接线=外部供电，线没电就不动   |
+| 概念            | 比喻                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| inPorts         | 原料入口，默认看到原料足够就开始工作，把成品放到 outPorts            |
+| outPorts        | 成品出口                                                             |
+| inControlPorts  | 模式设置面板，可改变工作模式在多次启动中使用不同逻辑                 |
+| outControlPorts | 状态显示面板，显示当前工作状态/进度                                  |
+| inExecPort      | 电源插座。未接线=内置电源，有原料就加工；接线=外部供电，线没电就不动 |
 
 ### 4.4 继承体系
 
@@ -258,16 +258,17 @@ BaseNode
 
 接受所有数据类型并**原样输出**，可使用 context 指定"直通"模式：
 
-| 模式   | 行为                                                                                     |
-| ------ | ---------------------------------------------------------------------------------------- |
-| 非直通 | 默认。走正常迭代流程                                                                     |
-| 直通   | 填写入 Port 时立刻执行并填写后面的入 Port，不等迭代                                      |
+| 模式   | 行为                                                |
+| ------ | --------------------------------------------------- |
+| 非直通 | 默认。走正常迭代流程                                |
+| 直通   | 填写入 Port 时立刻执行并填写后面的入 Port，不等迭代 |
 
 **直通机制详解**：
 
 通常一个迭代的流程是：当前节点执行 → 将执行结果填到出 Port → 将出 Port 数据推到下一个节点的入 Port
 
 Executor 在推完数据后，还会检查目标入 Port 是不是直通 Forward 的：
+
 - 如果是，Executor 会**立刻执行**这个直通 Forward
 - 然后再将其出 Port 的数据继续往后推
 - 直到没有任何直通 Forward 的入 Port 被推数据
@@ -301,16 +302,17 @@ Executor 在推完数据后，还会检查目标入 Port 是不是直通 Forward
 - 例：第 x 个迭代用长度为 y 的数组 arr 激活，则第 x+i（i<y）个迭代中总是会激活并输出 arr[i]
 
 **输出期间收到新数组**：丢弃新输入，继续当前输出
+
 - 例：第 x 个迭代用长度为 y 的数组 arr 激活，第 x+y-1 个迭代即使 inPort 被输入新数组，也只会丢掉输入继续输出 arr[y-1]
 
 #### 4.5.4 AggregateNode (聚集)
 
 inPort 接受任意数据，有**两种激活模式**（需要重写 isReadyToActivate）：
 
-| 激活条件                       | 行为                                   |
-| ------------------------------ | -------------------------------------- |
+| 激活条件                         | 行为                                      |
+| -------------------------------- | ----------------------------------------- |
 | inControlPort `aggregate` 被写入 | 将 inPort 数据加进缓存数组（null 也缓存） |
-| inExecPort 被写入              | 输出缓存数组，然后清空缓存             |
+| inExecPort 被写入                | 输出缓存数组，然后清空缓存                |
 
 **特点**：两种激活模式都不是由 inPorts 的数据触发的
 
@@ -421,11 +423,11 @@ Node 和 Port 本身也需要支持序列化/反序列化，避免将所有序�
 ```typescript
 class AnoraGraph {
   // O(1) 查询
-  getNodeByPort(port: BasePort): BaseNode           // Port 所属的 Node
-  getConnectedPorts(port: BasePort): BasePort[]     // 与出/入 Port 连接的另一端的 Port 列表
-  getConnectedPortsIncludingChildren(port: BasePort): BasePort[]  // 包含子 Port
-  getUpstreamNodes(node: BaseNode): BaseNode[]      // 节点入 Port 另一端的节点列表
-  getDownstreamNodes(node: BaseNode): BaseNode[]    // 节点出 Port 另一端的节点列表
+  getNodeByPort(port: BasePort): BaseNode // Port 所属的 Node
+  getConnectedPorts(port: BasePort): BasePort[] // 与出/入 Port 连接的另一端的 Port 列表
+  getConnectedPortsIncludingChildren(port: BasePort): BasePort[] // 包含子 Port
+  getUpstreamNodes(node: BaseNode): BaseNode[] // 节点入 Port 另一端的节点列表
+  getDownstreamNodes(node: BaseNode): BaseNode[] // 节点出 Port 另一端的节点列表
 
   // 边操作
   addEdge(from: BasePort, to: BasePort): void
@@ -466,10 +468,10 @@ ANORA 作为一个**纯前端项目**，它不仅提供展示还会提供计算�
 
 ```typescript
 enum ActivationReadyStatus {
-  NOT_READY,                        // 需要 Executor 下一轮迭代再次询问
+  NOT_READY, // 需要 Executor 下一轮迭代再次询问
   NOT_READY_UNTIL_ANY_PORTS_FILLED, // 至少一个入 Port 被新写入数据后再询问
   NOT_READY_UNTIL_ALL_PORTS_FILLED, // 至少一个入 Port 被写入，且所有有入边的入 Port 都被填写后再询问
-  READY,                            // 已准备好，Executor 下一轮迭代中可执行
+  READY, // 已准备好，Executor 下一轮迭代中可执行
 }
 ```
 
@@ -508,6 +510,7 @@ enum ActivationReadyStatus {
 #### 指定起始节点
 
 用户可以指定从哪个节点启动：
+
 - 相当于 Executor 直接从其入边相连的前置节点重新把值写入它的入 Port
 - 如果之前没有执行过、用户也没设置过前置节点的出 Port 值，节点启动后会因为入参不对报错（不用额外处理）
 - 目的：避免普通程序每次都得完整调试的不便
@@ -525,11 +528,11 @@ enum ActivationReadyStatus {
 
 逻辑图可以同时存在一对多和多对一：
 
-| 情况   | 处理方式                                                     |
-| ------ | ------------------------------------------------------------ |
-| 一对多 | 一个出 Port 的值可以推到所有与其相连的入 Port                |
+| 情况   | 处理方式                                                                                                                                                                                            |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 一对多 | 一个出 Port 的值可以推到所有与其相连的入 Port                                                                                                                                                       |
 | 多对一 | 同一迭代中执行完成的一批节点出 Port 同时连接下一节点的父入 Port 和子入 Port 时，**先给父入 Port 赋值再给子入 Port**，可以用非直通中继节点来保证父子入 Port 相连的出 Port 对应的节点在同一迭代中执行 |
-| 多对一 | 同一迭代中执行完成的一批节点出 Port 同时连接同一个入 Port 时，覆盖顺序**不确定**，报告警 |
+| 多对一 | 同一迭代中执行完成的一批节点出 Port 同时连接同一个入 Port 时，覆盖顺序**不确定**，报告警                                                                                                            |
 
 多对一覆盖警告："这种情况会导致不可确定的覆盖顺序，进而导致逻辑图难以维护，不建议这么做"
 
@@ -541,7 +544,7 @@ ANORA 支持**继承 Executor** 以修改/扩展运行逻辑，实现时需要�
 
 ```typescript
 interface ExecutorBasicContext {
-  ipcTypeId: string  // 后端类型
+  ipcTypeId: string // 后端类型
 }
 
 type ExecutorContext = ExecutorBasicContext & {
@@ -553,10 +556,10 @@ type ExecutorContext = ExecutorBasicContext & {
 
 **Context 与 Executor 解耦**，可单独扩展：
 
-| 扩展场景    | 扩展方式                                                                     |
-| ----------- | ---------------------------------------------------------------------------- |
-| API 录制回放 | 扩展 Context 保存 cookie、persist-header 等信息，不必动 Executor             |
-| API 分析    | 扩展 Executor 记录执行节点的入参和出参，生成 OpenAPI 3.0 文档或翻译成 Python 代码 |
+| 扩展场景     | 扩展方式                                                                          |
+| ------------ | --------------------------------------------------------------------------------- |
+| API 录制回放 | 扩展 Context 保存 cookie、persist-header 等信息，不必动 Executor                  |
+| API 分析     | 扩展 Executor 记录执行节点的入参和出参，生成 OpenAPI 3.0 文档或翻译成 Python 代码 |
 
 ---
 
@@ -690,11 +693,13 @@ window.addEventListener('message', handler)
 ```javascript
 // 前端发送
 function sendToGodot() {
-  ipc.postMessage(JSON.stringify({
-    action: 'update_score',
-    score: 100,
-    player: 'Player1',
-  }))
+  ipc.postMessage(
+    JSON.stringify({
+      action: 'update_score',
+      score: 100,
+      player: 'Player1',
+    }),
+  )
 }
 ```
 
