@@ -19,4 +19,19 @@ export default defineConfigWithVueTs(
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
   skipFormatting,
+
+  // 自定义规则
+  {
+    name: 'app/custom-rules',
+    rules: {
+      // 允许以下划线开头的变量未使用（表示故意忽略的参数）
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
 )
