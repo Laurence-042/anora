@@ -3,6 +3,17 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { DistributeNodePorts } from './PortNames'
 
+/** DistributeNode 入 Port 类型 */
+interface DistributeInput {
+  [DistributeNodePorts.IN.ARRAY]?: unknown[]
+}
+
+/** DistributeNode 出 Port 类型 */
+interface DistributeOutput {
+  [DistributeNodePorts.OUT.ITEM]?: unknown
+  [DistributeNodePorts.OUT.INDEX]?: number
+}
+
 /**
  * DistributeNode - 分配节点 (For-Each)
  * 从一个数组中依次输出每个元素
@@ -13,7 +24,7 @@ import { DistributeNodePorts } from './PortNames'
  *
  * context: { currentIndex: number, total: number }
  */
-export class DistributeNode extends WebNode {
+export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
   static typeId: string = 'core.DistributeNode'
 
   /** 当前正在处理的数组 */
@@ -77,13 +88,13 @@ export class DistributeNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: DistributeInput,
+  ): Promise<DistributeOutput> {
     // 如果有新的数组输入，重新开始
-    if (inData[DistributeNodePorts.IN.ARRAY] !== undefined) {
-      const arr = inData[DistributeNodePorts.IN.ARRAY]
-      if (Array.isArray(arr)) {
-        this.currentArray = arr
+    const inputArray = inData[DistributeNodePorts.IN.ARRAY]
+    if (inputArray !== undefined) {
+      if (Array.isArray(inputArray)) {
+        this.currentArray = inputArray
         this.currentIndex = 0
         this.isCompleted = false
       } else {

@@ -3,6 +3,21 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AggregateNodePorts } from './PortNames'
 
+/** AggregateNode 入 Port 类型 */
+interface AggregateInput {
+  [AggregateNodePorts.IN.ITEM]?: unknown
+}
+
+/** AggregateNode 出 Port 类型 */
+interface AggregateOutput {
+  [AggregateNodePorts.OUT.ARRAY]?: unknown[]
+}
+
+/** AggregateNode 控制 Port 类型 */
+interface AggregateControl {
+  [AggregateNodePorts.IN_CONTROL.AGGREGATE]?: null
+}
+
 /**
  * AggregateNode - 聚集节点
  * 收集多个元素组成数组
@@ -15,7 +30,7 @@ import { AggregateNodePorts } from './PortNames'
  * 1. aggregate 控制 Port 被激活：输出当前收集的数组
  * 2. inExecPort 被激活：添加元素到收集器
  */
-export class AggregateNode extends WebNode {
+export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, AggregateControl> {
   static typeId: string = 'core.AggregateNode'
 
   /** 收集器 */
@@ -72,9 +87,9 @@ export class AggregateNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-    controlData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: AggregateInput,
+    controlData: AggregateControl,
+  ): Promise<AggregateOutput> {
     // 检查是否是聚集触发
     if (controlData[AggregateNodePorts.IN_CONTROL.AGGREGATE] !== undefined) {
       // 输出当前收集的数组
@@ -86,8 +101,9 @@ export class AggregateNode extends WebNode {
     }
 
     // 添加元素到收集器
-    if (inData[AggregateNodePorts.IN.ITEM] !== undefined) {
-      this.collector.push(inData[AggregateNodePorts.IN.ITEM])
+    const item = inData[AggregateNodePorts.IN.ITEM]
+    if (item !== undefined) {
+      this.collector.push(item)
     }
 
     // 不输出任何数据（继续收集）

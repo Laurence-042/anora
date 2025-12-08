@@ -15,15 +15,26 @@ export enum ArithmeticOperation {
   Power = '**',
 }
 
+/** ArithmeticNode 入 Port 类型 */
+interface ArithmeticInput {
+  [ArithmeticNodePorts.IN.LEFT]: number
+  [ArithmeticNodePorts.IN.RIGHT]: number
+}
+
+/** ArithmeticNode 出 Port 类型 */
+interface ArithmeticOutput {
+  [ArithmeticNodePorts.OUT.RESULT]: number
+}
+
 /**
  * ArithmeticNode - 算术节点
  * 执行两个数值的算术运算
  *
- * 入 Port: a (number), b (number)
+ * 入 Port: left (number), right (number)
  * 出 Port: result (number)
  * context: { operation: ArithmeticOperation }
  */
-export class ArithmeticNode extends WebNode {
+export class ArithmeticNode extends WebNode<ArithmeticInput, ArithmeticOutput> {
   static typeId: string = 'core.ArithmeticNode'
 
   constructor(id?: string, label?: string) {
@@ -58,10 +69,10 @@ export class ArithmeticNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const left = Number(inData[ArithmeticNodePorts.IN.LEFT])
-    const right = Number(inData[ArithmeticNodePorts.IN.RIGHT])
+    inData: ArithmeticInput,
+  ): Promise<ArithmeticOutput> {
+    const left = inData[ArithmeticNodePorts.IN.LEFT]
+    const right = inData[ArithmeticNodePorts.IN.RIGHT]
     const operation = this.getOperation()
 
     let result: number

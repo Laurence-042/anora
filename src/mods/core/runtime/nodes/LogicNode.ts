@@ -15,15 +15,26 @@ export enum LogicOperation {
   Nor = 'NOR',
 }
 
+/** LogicNode 入 Port 类型 */
+interface LogicInput {
+  [LogicNodePorts.IN.LEFT]: boolean
+  [LogicNodePorts.IN.RIGHT]: boolean
+}
+
+/** LogicNode 出 Port 类型 */
+interface LogicOutput {
+  [LogicNodePorts.OUT.RESULT]: boolean
+}
+
 /**
  * LogicNode - 逻辑节点
  * 执行逻辑运算
  *
- * 入 Port: a (boolean), b (boolean) - NOT 操作只使用 a
+ * 入 Port: left (boolean), right (boolean) - NOT 操作只使用 left
  * 出 Port: result (boolean)
  * context: { operation: LogicOperation }
  */
-export class LogicNode extends WebNode {
+export class LogicNode extends WebNode<LogicInput, LogicOutput> {
   static typeId: string = 'core.LogicNode'
 
   constructor(id?: string, label?: string) {
@@ -54,12 +65,9 @@ export class LogicNode extends WebNode {
     return (this.context as { operation: LogicOperation })?.operation ?? LogicOperation.And
   }
 
-  async activateCore(
-    _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const left = Boolean(inData[LogicNodePorts.IN.LEFT])
-    const right = Boolean(inData[LogicNodePorts.IN.RIGHT])
+  async activateCore(_executorContext: ExecutorContext, inData: LogicInput): Promise<LogicOutput> {
+    const left = inData[LogicNodePorts.IN.LEFT]
+    const right = inData[LogicNodePorts.IN.RIGHT]
     const operation = this.getOperation()
 
     let result: boolean

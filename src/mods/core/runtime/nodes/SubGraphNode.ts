@@ -4,6 +4,8 @@ import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraGraph } from '../../../../base/runtime/graph'
 import { BasicExecutor } from '../../../../base/runtime/executor'
 
+import type { NodeInput, NodeOutput } from '../../../../base/runtime/nodes'
+
 /**
  * SubGraphNode - 子图节点
  * 将一个完整的图作为一个节点执行
@@ -13,7 +15,7 @@ import { BasicExecutor } from '../../../../base/runtime/executor'
  *
  * context: { graph: AnoraGraph }
  */
-export class SubGraphNode extends WebNode {
+export class SubGraphNode extends WebNode<NodeInput, NodeOutput> {
   static typeId: string = 'core.SubGraphNode'
 
   /** 内部图 */
@@ -111,10 +113,7 @@ export class SubGraphNode extends WebNode {
     }
   }
 
-  async activateCore(
-    executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+  async activateCore(executorContext: ExecutorContext, inData: NodeInput): Promise<NodeOutput> {
     if (!this._graph || !this._executor) {
       throw new Error('SubGraph not initialized')
     }
@@ -174,11 +173,16 @@ export class SubGraphNode extends WebNode {
   }
 }
 
+/** SubGraphEntryNode 入出 Port 类型 */
+interface EntryExitPorts {
+  value: unknown
+}
+
 /**
  * SubGraphEntryNode - 子图入口节点
  * 用于标记子图的输入点
  */
-export class SubGraphEntryNode extends WebNode {
+export class SubGraphEntryNode extends WebNode<EntryExitPorts, EntryExitPorts> {
   static typeId: string = 'core.SubGraphEntryNode'
 
   constructor(id?: string, label?: string) {
@@ -202,8 +206,8 @@ export class SubGraphEntryNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: EntryExitPorts,
+  ): Promise<EntryExitPorts> {
     // 直接传递数据
     return { value: inData.value }
   }
@@ -213,7 +217,7 @@ export class SubGraphEntryNode extends WebNode {
  * SubGraphExitNode - 子图出口节点
  * 用于标记子图的输出点
  */
-export class SubGraphExitNode extends WebNode {
+export class SubGraphExitNode extends WebNode<EntryExitPorts, EntryExitPorts> {
   static typeId: string = 'core.SubGraphExitNode'
 
   constructor(id?: string, label?: string) {
@@ -237,8 +241,8 @@ export class SubGraphExitNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: EntryExitPorts,
+  ): Promise<EntryExitPorts> {
     // 直接传递数据
     return { value: inData.value }
   }

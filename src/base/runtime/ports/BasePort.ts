@@ -2,8 +2,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { DataType, TYPE_COMPATIBILITY_MATRIX } from '../types'
 import type { RealDataType, SerializedPort, ConversionResult } from '../types'
 
-// 前向声明类型
+// 前向声明类型 - 使用 any 泛型以避免循环依赖问题
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import type { BaseNode } from '../nodes/BaseNode'
+
+/** Port 可以关联的节点类型 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyNode = BaseNode<any, any, any>
 
 /**
  * Port 基类
@@ -14,7 +19,7 @@ export abstract class BasePort {
   readonly id: string
 
   /** 反查所属节点 */
-  parentNode: BaseNode
+  parentNode: AnyNode
 
   /** 反查父 Port（如果是 ContainerPort 的子 Port） */
   parentPort?: ContainerPort
@@ -28,7 +33,7 @@ export abstract class BasePort {
   /** 是否已被写入数据（用于判断是否为脏数据） */
   protected _hasData: boolean = false
 
-  constructor(parentNode: BaseNode, parentPort?: ContainerPort, keyInParent?: string | number) {
+  constructor(parentNode: AnyNode, parentPort?: ContainerPort, keyInParent?: string | number) {
     this.id = uuidv4()
     this.parentNode = parentNode
     this.parentPort = parentPort

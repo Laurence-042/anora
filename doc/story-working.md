@@ -168,7 +168,13 @@ interface SerializedPort {
 ### 4.2 基类结构
 
 ```typescript
-class BaseNode {
+// 节点输入/输出/控制数据类型
+type NodeInput = { [key: string]: unknown }
+type NodeOutput = { [key: string]: unknown }
+type NodeControl = { [key: string]: unknown }
+
+// 泛型基类，通过类型参数约束 activateCore 的输入输出
+abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = NodeControl> {
   // 标识
   id: string // UUID
   label: string
@@ -210,11 +216,12 @@ class BaseNode {
   async activate(executorContext: ExecutorContext): void
 
   // 节点激活核心逻辑，可理解为节点实际包装的函数
-  // 子类通常会重写它的类型，保证开发中的类型安全
-  async activateCore(
+  // 通过泛型参数获得类型安全，子类定义具体的输入输出类型
+  abstract activateCore(
     executorContext: ExecutorContext,
-    ...args: any[]
-  ): { [outPortName: string]: any }
+    inData: TInput,
+    controlData: TControl,
+  ): Promise<TOutput>
 }
 ```
 
@@ -401,8 +408,8 @@ import.meta.glob('./nodes/**/*.ts', { eager: true })
 const CommonPorts = {
   VALUE: 'value',
   RESULT: 'result',
-  A: 'a',
-  B: 'b',
+  LEFT: 'left',
+  RIGHT: 'right',
 } as const
 
 // 节点特定 Port 名称（支持继承）
@@ -417,17 +424,47 @@ const DistributeNodePorts = {
   OUT_CONTROL: { DONE: 'done' },
 } as const
 
-// 使用示例
-class ForwardNode extends WebNode {
+// 节点输入输出类型定义
+interface ForwardInput {
+  [ForwardNodePorts.IN.VALUE]: unknown
+}
+
+interface ForwardOutput {
+  [ForwardNodePorts.OUT.VALUE]: unknown
+}
+
+// 使用示例：泛型节点类
+class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
   constructor() {
+    super()
     this.addInPort(ForwardNodePorts.IN.VALUE, DataType.STRING)
     this.addOutPort(ForwardNodePorts.OUT.VALUE, DataType.STRING)
   }
 
-  async activateCore(ctx, inData) {
+  async activateCore(ctx, inData: ForwardInput): Promise<ForwardOutput> {
+    // inData[ForwardNodePorts.IN.VALUE] 类型安全
     return {
       [ForwardNodePorts.OUT.VALUE]: inData[ForwardNodePorts.IN.VALUE],
     }
+  }
+}
+
+// 更复杂的示例：算术节点
+interface ArithmeticInput {
+  [ArithmeticNodePorts.IN.LEFT]: number
+  [ArithmeticNodePorts.IN.RIGHT]: number
+}
+
+interface ArithmeticOutput {
+  [ArithmeticNodePorts.OUT.RESULT]: number
+}
+
+class ArithmeticNode extends WebNode<ArithmeticInput, ArithmeticOutput> {
+  async activateCore(ctx, inData: ArithmeticInput): Promise<ArithmeticOutput> {
+    // inData.left 和 inData.right 已经是 number 类型，无需手动转换
+    const left = inData[ArithmeticNodePorts.IN.LEFT]
+    const right = inData[ArithmeticNodePorts.IN.RIGHT]
+    return { [ArithmeticNodePorts.OUT.RESULT]: left + right }
   }
 }
 ```
@@ -438,6 +475,7 @@ class ForwardNode extends WebNode {
 - 通用名称（如 `value`, `result`）定义在 `CommonPorts` 中复用
 - 节点特定的 Port 名称按 `IN`/`OUT`/`IN_CONTROL`/`OUT_CONTROL` 分组
 - 子类可继承父类的 Port 名称常量
+- **使用泛型参数约束 `activateCore` 的输入输出类型**，避免冗余的类型检查和转换
 
 ---
 

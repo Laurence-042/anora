@@ -3,6 +3,16 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { ForwardNodePorts } from './PortNames'
 
+/** ForwardNode 入 Port 类型 */
+interface ForwardInput {
+  [ForwardNodePorts.IN.VALUE]: unknown
+}
+
+/** ForwardNode 出 Port 类型 */
+interface ForwardOutput {
+  [ForwardNodePorts.OUT.VALUE]: unknown
+}
+
 /**
  * ForwardNode - 中继节点
  * 用于转换数据类型，本质上是一个通透节点
@@ -12,7 +22,7 @@ import { ForwardNodePorts } from './PortNames'
  *
  * 支持直通模式：当入 Port 有数据时立即传播到出 Port
  */
-export class ForwardNode extends WebNode {
+export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
   static typeId: string = 'core.ForwardNode'
 
   /** 是否启用直通模式 */
@@ -62,8 +72,8 @@ export class ForwardNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: ForwardInput,
+  ): Promise<ForwardOutput> {
     // 直接传递数据
     return {
       [ForwardNodePorts.OUT.VALUE]: inData[ForwardNodePorts.IN.VALUE],

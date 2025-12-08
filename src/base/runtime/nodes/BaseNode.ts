@@ -4,10 +4,29 @@ import type { ExecutorContext, SerializedNode, RealDataType } from '../types'
 import { BasePort, NullPort, createPort } from '../ports'
 
 /**
+ * 节点输入数据类型
+ */
+export type NodeInput = { [key: string]: unknown }
+
+/**
+ * 节点输出数据类型
+ */
+export type NodeOutput = { [key: string]: unknown }
+
+/**
+ * 节点控制数据类型
+ */
+export type NodeControl = { [key: string]: unknown }
+
+/**
  * 节点基类
  * 节点本质上是函数的抽象
+ *
+ * @template TInput 入 Port 数据类型，键为 Port 名称
+ * @template TOutput 出 Port 数据类型，键为 Port 名称
+ * @template TControl 控制 Port 数据类型，键为 Port 名称
  */
-export abstract class BaseNode {
+export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = NodeControl> {
   /** 节点类型标识（子类需要覆盖） */
   static typeId: string = 'BaseNode'
 
@@ -207,11 +226,15 @@ export abstract class BaseNode {
         controlData[name] = port.peek() // 控制 Port 只 peek 不 read
       }
 
-      // 执行核心逻辑
-      const outData = await this.activateCore(executorContext, inData, controlData)
+      // 执行核心逻辑（类型断言：运行时数据会匹配泛型约束）
+      const outData = await this.activateCore(
+        executorContext,
+        inData as TInput,
+        controlData as TControl,
+      )
 
       // 填充出 Port
-      for (const [name, value] of Object.entries(outData)) {
+      for (const [name, value] of Object.entries(outData as Record<string, unknown>)) {
         const port = this.outPorts.get(name)
         if (port) {
           const result = port.write(value as RealDataType)
@@ -234,12 +257,16 @@ export abstract class BaseNode {
 
   /**
    * 节点激活核心逻辑（子类需要实现）
+   * @param executorContext 执行器上下文
+   * @param inData 入 Port 数据，类型由泛型 TInput 约束
+   * @param controlData 控制 Port 数据，类型由泛型 TControl 约束
+   * @returns 出 Port 数据，类型由泛型 TOutput 约束
    */
   abstract activateCore(
     executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-    controlData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>>
+    inData: TInput,
+    controlData: TControl,
+  ): Promise<TOutput>
 
   /**
    * 清空所有入 Port

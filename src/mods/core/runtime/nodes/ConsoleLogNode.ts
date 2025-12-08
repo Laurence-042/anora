@@ -3,6 +3,11 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { ConsoleLogNodePorts } from './PortNames'
 
+/** ConsoleLogNode 入 Port 类型 */
+interface ConsoleLogInput {
+  [ConsoleLogNodePorts.IN.MESSAGE]: string
+}
+
 /**
  * ConsoleLogNode - 控制台日志节点
  * 将输入数据输出到控制台
@@ -10,7 +15,7 @@ import { ConsoleLogNodePorts } from './PortNames'
  * 入 Port: message (string)
  * context: { prefix: string }
  */
-export class ConsoleLogNode extends WebNode {
+export class ConsoleLogNode extends WebNode<ConsoleLogInput, Record<string, never>> {
   static typeId: string = 'core.ConsoleLogNode'
 
   constructor(id?: string, label?: string) {
@@ -39,9 +44,9 @@ export class ConsoleLogNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const message = String(inData[ConsoleLogNodePorts.IN.MESSAGE] ?? '')
+    inData: ConsoleLogInput,
+  ): Promise<Record<string, never>> {
+    const message = inData[ConsoleLogNodePorts.IN.MESSAGE] ?? ''
     const prefix = this.getPrefix()
 
     console.log(`${prefix} ${message}`)

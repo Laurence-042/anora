@@ -1,11 +1,16 @@
 import { BaseNode } from './BaseNode'
+import type { NodeInput, NodeOutput, NodeControl } from './BaseNode'
 import type { ExecutorContext } from '../types'
 
 /**
  * WebNode - 可以直接在浏览器环境中运行的节点
  * 其子类大多是预置的通用节点
  */
-export abstract class WebNode extends BaseNode {
+export abstract class WebNode<
+  TInput = NodeInput,
+  TOutput = NodeOutput,
+  TControl = NodeControl,
+> extends BaseNode<TInput, TOutput, TControl> {
   static override typeId: string = 'WebNode'
 }
 
@@ -13,7 +18,11 @@ export abstract class WebNode extends BaseNode {
  * BackendNode - 需要调用后端功能的节点
  * 从 executorContext 获取 IPC 类型，然后使用对应的逻辑与后端通信
  */
-export abstract class BackendNode extends BaseNode {
+export abstract class BackendNode<
+  TInput = NodeInput,
+  TOutput = NodeOutput,
+  TControl = NodeControl,
+> extends BaseNode<TInput, TOutput, TControl> {
   static override typeId: string = 'BackendNode'
 
   /**

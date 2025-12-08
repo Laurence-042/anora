@@ -6,12 +6,16 @@ import { ArrayPort, ObjectPort } from './ContainerPorts'
 
 import type { BaseNode } from '../nodes/BaseNode'
 
+/** Port 可以关联的节点类型 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyNode = BaseNode<any, any, any>
+
 /**
  * 根据数据类型创建对应的 Port
  */
 export function createPort(
   dataType: DataType,
-  parentNode: BaseNode,
+  parentNode: AnyNode,
   parentPort?: ContainerPort,
   keyInParent?: string | number,
 ): BasePort {
@@ -38,7 +42,7 @@ export function createPort(
  * 根据值推断类型并创建 Port
  */
 export function createPortFromValue(
-  parentNode: BaseNode,
+  parentNode: AnyNode,
   value: RealDataType,
   parentPort?: ContainerPort,
   keyInParent?: string | number,

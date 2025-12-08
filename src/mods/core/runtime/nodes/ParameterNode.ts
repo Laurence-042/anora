@@ -3,6 +3,11 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { ParameterNodePorts } from './PortNames'
 
+/** ParameterNode 出 Port 类型 */
+interface ParameterOutput {
+  [ParameterNodePorts.OUT.VALUE]: unknown
+}
+
 /**
  * ParameterNode - 参数节点
  * 在 context 中配置固定值，激活时直接输出
@@ -10,7 +15,7 @@ import { ParameterNodePorts } from './PortNames'
  * 出 Port: value (可配置类型)
  * context: { value: any }
  */
-export class ParameterNode extends WebNode {
+export class ParameterNode extends WebNode<Record<string, never>, ParameterOutput> {
   static typeId: string = 'core.ParameterNode'
 
   constructor(id?: string, label?: string) {
@@ -61,8 +66,8 @@ export class ParameterNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    _inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    _inData: Record<string, never>,
+  ): Promise<ParameterOutput> {
     // 直接输出 context 中的值
     return {
       [ParameterNodePorts.OUT.VALUE]: this.getValue(),

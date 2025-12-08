@@ -9,6 +9,17 @@ import {
   ArrayLengthNodePorts,
 } from './PortNames'
 
+/** ObjectAccessNode 入 Port 类型 */
+interface ObjectAccessInput {
+  [ObjectAccessNodePorts.IN.OBJECT]: Record<string, unknown>
+  [ObjectAccessNodePorts.IN.KEY]: string
+}
+
+/** ObjectAccessNode 出 Port 类型 */
+interface ObjectAccessOutput {
+  [ObjectAccessNodePorts.OUT.VALUE]: unknown
+}
+
 /**
  * ObjectAccessNode - 对象访问节点
  * 访问对象的属性
@@ -16,7 +27,7 @@ import {
  * 入 Port: object (object), key (string)
  * 出 Port: value (any)
  */
-export class ObjectAccessNode extends WebNode {
+export class ObjectAccessNode extends WebNode<ObjectAccessInput, ObjectAccessOutput> {
   static typeId: string = 'core.ObjectAccessNode'
 
   constructor(id?: string, label?: string) {
@@ -40,10 +51,10 @@ export class ObjectAccessNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const obj = inData[ObjectAccessNodePorts.IN.OBJECT] as Record<string, unknown>
-    const key = String(inData[ObjectAccessNodePorts.IN.KEY])
+    inData: ObjectAccessInput,
+  ): Promise<ObjectAccessOutput> {
+    const obj = inData[ObjectAccessNodePorts.IN.OBJECT]
+    const key = inData[ObjectAccessNodePorts.IN.KEY]
 
     if (obj && typeof obj === 'object') {
       return { [ObjectAccessNodePorts.OUT.VALUE]: obj[key] }
@@ -53,6 +64,18 @@ export class ObjectAccessNode extends WebNode {
   }
 }
 
+/** ObjectSetNode 入 Port 类型 */
+interface ObjectSetInput {
+  [ObjectSetNodePorts.IN.OBJECT]: Record<string, unknown>
+  [ObjectSetNodePorts.IN.KEY]: string
+  [ObjectSetNodePorts.IN.VALUE]: unknown
+}
+
+/** ObjectSetNode 出 Port 类型 */
+interface ObjectSetOutput {
+  [ObjectSetNodePorts.OUT.OBJECT]: Record<string, unknown>
+}
+
 /**
  * ObjectSetNode - 对象设置节点
  * 设置对象的属性
@@ -60,7 +83,7 @@ export class ObjectAccessNode extends WebNode {
  * 入 Port: object (object), key (string), value (any)
  * 出 Port: object (object)
  */
-export class ObjectSetNode extends WebNode {
+export class ObjectSetNode extends WebNode<ObjectSetInput, ObjectSetOutput> {
   static typeId: string = 'core.ObjectSetNode'
 
   constructor(id?: string, label?: string) {
@@ -85,10 +108,10 @@ export class ObjectSetNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const obj = (inData[ObjectSetNodePorts.IN.OBJECT] as Record<string, unknown>) || {}
-    const key = String(inData[ObjectSetNodePorts.IN.KEY])
+    inData: ObjectSetInput,
+  ): Promise<ObjectSetOutput> {
+    const obj = inData[ObjectSetNodePorts.IN.OBJECT] || {}
+    const key = inData[ObjectSetNodePorts.IN.KEY]
     const value = inData[ObjectSetNodePorts.IN.VALUE]
 
     // 创建新对象（不变性）
@@ -98,6 +121,17 @@ export class ObjectSetNode extends WebNode {
   }
 }
 
+/** ArrayAccessNode 入 Port 类型 */
+interface ArrayAccessInput {
+  [ArrayAccessNodePorts.IN.ARRAY]: unknown[]
+  [ArrayAccessNodePorts.IN.INDEX]: number
+}
+
+/** ArrayAccessNode 出 Port 类型 */
+interface ArrayAccessOutput {
+  [ArrayAccessNodePorts.OUT.VALUE]: unknown
+}
+
 /**
  * ArrayAccessNode - 数组访问节点
  * 访问数组的元素
@@ -105,7 +139,7 @@ export class ObjectSetNode extends WebNode {
  * 入 Port: array (array), index (integer)
  * 出 Port: value (any)
  */
-export class ArrayAccessNode extends WebNode {
+export class ArrayAccessNode extends WebNode<ArrayAccessInput, ArrayAccessOutput> {
   static typeId: string = 'core.ArrayAccessNode'
 
   constructor(id?: string, label?: string) {
@@ -129,10 +163,10 @@ export class ArrayAccessNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const arr = inData[ArrayAccessNodePorts.IN.ARRAY] as unknown[]
-    const index = Number(inData[ArrayAccessNodePorts.IN.INDEX])
+    inData: ArrayAccessInput,
+  ): Promise<ArrayAccessOutput> {
+    const arr = inData[ArrayAccessNodePorts.IN.ARRAY]
+    const index = inData[ArrayAccessNodePorts.IN.INDEX]
 
     if (Array.isArray(arr) && index >= 0 && index < arr.length) {
       return { [ArrayAccessNodePorts.OUT.VALUE]: arr[index] }
@@ -142,6 +176,17 @@ export class ArrayAccessNode extends WebNode {
   }
 }
 
+/** ArrayPushNode 入 Port 类型 */
+interface ArrayPushInput {
+  [ArrayPushNodePorts.IN.ARRAY]: unknown[]
+  [ArrayPushNodePorts.IN.VALUE]: unknown
+}
+
+/** ArrayPushNode 出 Port 类型 */
+interface ArrayPushOutput {
+  [ArrayPushNodePorts.OUT.ARRAY]: unknown[]
+}
+
 /**
  * ArrayPushNode - 数组添加节点
  * 向数组末尾添加元素
@@ -149,7 +194,7 @@ export class ArrayAccessNode extends WebNode {
  * 入 Port: array (array), value (any)
  * 出 Port: array (array)
  */
-export class ArrayPushNode extends WebNode {
+export class ArrayPushNode extends WebNode<ArrayPushInput, ArrayPushOutput> {
   static typeId: string = 'core.ArrayPushNode'
 
   constructor(id?: string, label?: string) {
@@ -173,9 +218,9 @@ export class ArrayPushNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const arr = (inData[ArrayPushNodePorts.IN.ARRAY] as unknown[]) || []
+    inData: ArrayPushInput,
+  ): Promise<ArrayPushOutput> {
+    const arr = inData[ArrayPushNodePorts.IN.ARRAY] || []
     const value = inData[ArrayPushNodePorts.IN.VALUE]
 
     // 创建新数组（不变性）
@@ -185,6 +230,16 @@ export class ArrayPushNode extends WebNode {
   }
 }
 
+/** ArrayLengthNode 入 Port 类型 */
+interface ArrayLengthInput {
+  [ArrayLengthNodePorts.IN.ARRAY]: unknown[]
+}
+
+/** ArrayLengthNode 出 Port 类型 */
+interface ArrayLengthOutput {
+  [ArrayLengthNodePorts.OUT.LENGTH]: number
+}
+
 /**
  * ArrayLengthNode - 数组长度节点
  * 获取数组长度
@@ -192,7 +247,7 @@ export class ArrayPushNode extends WebNode {
  * 入 Port: array (array)
  * 出 Port: length (integer)
  */
-export class ArrayLengthNode extends WebNode {
+export class ArrayLengthNode extends WebNode<ArrayLengthInput, ArrayLengthOutput> {
   static typeId: string = 'core.ArrayLengthNode'
 
   constructor(id?: string, label?: string) {
@@ -207,9 +262,9 @@ export class ArrayLengthNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const arr = inData[ArrayLengthNodePorts.IN.ARRAY] as unknown[]
+    inData: ArrayLengthInput,
+  ): Promise<ArrayLengthOutput> {
+    const arr = inData[ArrayLengthNodePorts.IN.ARRAY]
 
     if (Array.isArray(arr)) {
       return { [ArrayLengthNodePorts.OUT.LENGTH]: arr.length }

@@ -17,15 +17,26 @@ export enum CompareOperation {
   StrictNotEqual = '!==',
 }
 
+/** CompareNode 入 Port 类型 */
+interface CompareInput {
+  [CompareNodePorts.IN.LEFT]: unknown
+  [CompareNodePorts.IN.RIGHT]: unknown
+}
+
+/** CompareNode 出 Port 类型 */
+interface CompareOutput {
+  [CompareNodePorts.OUT.RESULT]: boolean
+}
+
 /**
  * CompareNode - 比较节点
  * 比较两个值
  *
- * 入 Port: a (any), b (any)
+ * 入 Port: left (any), right (any)
  * 出 Port: result (boolean)
  * context: { operation: CompareOperation }
  */
-export class CompareNode extends WebNode {
+export class CompareNode extends WebNode<CompareInput, CompareOutput> {
   static typeId: string = 'core.CompareNode'
 
   constructor(id?: string, label?: string) {
@@ -58,8 +69,8 @@ export class CompareNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: CompareInput,
+  ): Promise<CompareOutput> {
     const left = inData[CompareNodePorts.IN.LEFT]
     const right = inData[CompareNodePorts.IN.RIGHT]
     const operation = this.getOperation()

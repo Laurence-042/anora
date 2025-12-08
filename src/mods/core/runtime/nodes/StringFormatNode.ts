@@ -3,6 +3,16 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { StringFormatNodePorts } from './PortNames'
 
+/** StringFormatNode 入 Port 类型 */
+interface StringFormatInput {
+  [StringFormatNodePorts.IN.ARGS]: Record<string, unknown>
+}
+
+/** StringFormatNode 出 Port 类型 */
+interface StringFormatOutput {
+  [StringFormatNodePorts.OUT.RESULT]: string
+}
+
 /**
  * StringFormatNode - 字符串格式化节点
  * 使用模板字符串格式化输出
@@ -13,7 +23,7 @@ import { StringFormatNodePorts } from './PortNames'
  *
  * 模板格式: "Hello, {name}! You are {age} years old."
  */
-export class StringFormatNode extends WebNode {
+export class StringFormatNode extends WebNode<StringFormatInput, StringFormatOutput> {
   static typeId: string = 'core.StringFormatNode'
 
   constructor(id?: string, label?: string) {
@@ -45,10 +55,10 @@ export class StringFormatNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    inData: StringFormatInput,
+  ): Promise<StringFormatOutput> {
     const template = this.getTemplate()
-    const args = (inData[StringFormatNodePorts.IN.ARGS] as Record<string, unknown>) || {}
+    const args = inData[StringFormatNodePorts.IN.ARGS] || {}
 
     // 简单的模板替换
     const result = template.replace(/\{(\w+)\}/g, (match, key) => {

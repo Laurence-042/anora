@@ -3,6 +3,11 @@ import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { BranchNodePorts } from './PortNames'
 
+/** BranchNode 入 Port 类型 */
+interface BranchInput {
+  [BranchNodePorts.IN.CONDITION]: boolean
+}
+
 /**
  * BranchNode - 分支节点
  * 根据条件选择执行路径
@@ -10,7 +15,7 @@ import { BranchNodePorts } from './PortNames'
  * 入 Port: condition (boolean)
  * 出控制 Port: onTrue (null), onFalse (null)
  */
-export class BranchNode extends WebNode {
+export class BranchNode extends WebNode<BranchInput, Record<string, never>> {
   static typeId: string = 'core.BranchNode'
 
   constructor(id?: string, label?: string) {
@@ -26,9 +31,9 @@ export class BranchNode extends WebNode {
 
   async activateCore(
     _executorContext: ExecutorContext,
-    inData: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const condition = Boolean(inData[BranchNodePorts.IN.CONDITION])
+    inData: BranchInput,
+  ): Promise<Record<string, never>> {
+    const condition = inData[BranchNodePorts.IN.CONDITION]
 
     // 根据条件激活对应的控制 Port
     if (condition) {
