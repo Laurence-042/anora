@@ -543,12 +543,9 @@ ANORA 支持**继承 Executor** 以修改/扩展运行逻辑，实现时需要�
 ### 6.6 Context
 
 ```typescript
-interface ExecutorBasicContext {
+type ExecutorContext = {
   ipcTypeId: string // 后端类型
-}
-
-type ExecutorContext = ExecutorBasicContext & {
-  [key: string]: any
+  [key: string]: unknown // 其他的可能由节点访问的属性
 }
 ```
 
@@ -579,8 +576,7 @@ src/
 │   │   ├── ports/
 │   │   │   └── BasePort.ts
 │   │   ├── executor/
-│   │   │   ├── BasicExecutor.ts
-│   │   │   └── BasicContext.ts
+│   │   │   └── BasicExecutor.ts
 │   │   ├── registry/
 │   │   │   ├── BaseRegistry.ts
 │   │   │   ├── NodeRegistry.ts     # ← 子类自动注册、插件加载入口

@@ -6,11 +6,11 @@ export {
   NodeExecutionStatus,
   DefType,
   TYPE_COMPATIBILITY_MATRIX,
+  DEFAULT_EXECUTOR_CONTEXT,
 } from './types'
 
 export type {
   RealDataType,
-  ExecutorBasicContext,
   ExecutorContext,
   SerializedPort,
   SerializedNode,
@@ -45,7 +45,7 @@ export { BaseNode, WebNode, BackendNode } from './nodes'
 export { AnoraGraph } from './graph'
 
 // Executor 系统
-export { BasicContext, BasicExecutor, createExecutor, executeGraph } from './executor'
+export { BasicExecutor, createExecutor, executeGraph } from './executor'
 export type {
   ExecutionResult,
   NodeExecutionResult,

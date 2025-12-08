@@ -70,18 +70,21 @@ export enum NodeExecutionStatus {
 // ==================== Context ====================
 
 /**
- * Executor 基础上下文接口
+ * 执行器上下文类型
+ * 用于在执行过程中传递全局状态给节点
  */
-export interface ExecutorBasicContext {
+export type ExecutorContext = {
   /** 后端 IPC 类型标识 */
   ipcTypeId: string
+  /** 其他的可能由节点访问的属性 */
+  [key: string]: unknown
 }
 
 /**
- * Executor 上下文类型（可扩展）
+ * 默认执行器上下文
  */
-export type ExecutorContext = ExecutorBasicContext & {
-  [key: string]: unknown
+export const DEFAULT_EXECUTOR_CONTEXT: ExecutorContext = {
+  ipcTypeId: 'postMessage',
 }
 
 // ==================== 序列化 ====================

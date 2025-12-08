@@ -2,7 +2,7 @@ import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraGraph } from '../../../../base/runtime/graph'
-import { BasicExecutor, BasicContext } from '../../../../base/runtime/executor'
+import { BasicExecutor } from '../../../../base/runtime/executor'
 
 /**
  * SubGraphNode - 子图节点
@@ -134,11 +134,8 @@ export class SubGraphNode extends WebNode {
       }
     }
 
-    // 创建子图执行上下文
-    const subContext = new BasicContext(executorContext.ipcTypeId)
-
-    // 执行子图
-    const result = await this._executor.execute(this._graph, subContext)
+    // 执行子图（共享 executorContext）
+    const result = await this._executor.execute(this._graph, executorContext)
 
     if (result.error) {
       throw result.error

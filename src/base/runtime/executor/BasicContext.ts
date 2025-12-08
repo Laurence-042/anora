@@ -1,9 +1,10 @@
-import type { ExecutorContext, ExecutorBasicContext } from '../types'
+import type { ExecutorContext } from '../types'
 
 /**
  * 基础执行上下文
+ * 对应 story-working.md 中的 BasicContext 定义
  */
-export class BasicContext implements ExecutorBasicContext {
+export class BasicContext {
   /** 后端 IPC 类型标识 */
   ipcTypeId: string = 'postMessage'
 

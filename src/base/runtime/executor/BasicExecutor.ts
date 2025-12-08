@@ -2,7 +2,7 @@ import { ActivationReadyStatus, ExecutorStatus } from '../types'
 import type { ExecutorContext } from '../types'
 import { BaseNode } from '../nodes/BaseNode'
 import { AnoraGraph } from '../graph/AnoraGraph'
-import { BasicContext } from './BasicContext'
+import { DEFAULT_EXECUTOR_CONTEXT } from '../types'
 
 /**
  * 执行结果
@@ -102,7 +102,7 @@ export class BasicExecutor {
   /**
    * 执行图
    */
-  async execute(graph: AnoraGraph, context?: BasicContext): Promise<ExecutionResult> {
+  async execute(graph: AnoraGraph, context?: ExecutorContext): Promise<ExecutionResult> {
     if (this._status === ExecutorStatus.Running) {
       throw new Error('Executor is already running')
     }
@@ -111,9 +111,7 @@ export class BasicExecutor {
     this._status = ExecutorStatus.Running
     this.cancelled = false
 
-    const execContext: ExecutorContext = context?.toExecutorContext() ?? {
-      ipcTypeId: 'postMessage',
-    }
+    const execContext: ExecutorContext = context ?? DEFAULT_EXECUTOR_CONTEXT
 
     this.emit({ type: 'start' })
 
@@ -371,7 +369,7 @@ export function createExecutor(): BasicExecutor {
  */
 export async function executeGraph(
   graph: AnoraGraph,
-  context?: BasicContext,
+  context?: ExecutorContext,
 ): Promise<ExecutionResult> {
   const executor = createExecutor()
   return executor.execute(graph, context)
