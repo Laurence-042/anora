@@ -202,7 +202,7 @@ class BaseNode {
   // 基类实现：所有"被连接的" inExecPort 和 inPorts 都被填入数据才会 READY
   // 如果没有任何 inExecPort 和 inPorts 被连接也算 READY
   // 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
-  isReadyToActivate(connectedPorts: string[]): ActivationReadyStatus
+  isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus
 
   // 节点激活逻辑，Executor 调用时传入全局 context
   // 流程：从入 Port 读取并清空数据 → 调用 activateCore → 把结果填到出 Port
