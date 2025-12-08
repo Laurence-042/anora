@@ -1,6 +1,13 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import {
+  ObjectAccessNodePorts,
+  ObjectSetNodePorts,
+  ArrayAccessNodePorts,
+  ArrayPushNodePorts,
+  ArrayLengthNodePorts,
+} from './PortNames'
 
 /**
  * ObjectAccessNode - 对象访问节点
@@ -16,33 +23,33 @@ export class ObjectAccessNode extends WebNode {
     super(id, label ?? 'ObjectAccess')
 
     // 入 Port
-    this.addInPort('object', DataType.OBJECT)
-    this.addInPort('key', DataType.STRING)
+    this.addInPort(ObjectAccessNodePorts.IN.OBJECT, DataType.OBJECT)
+    this.addInPort(ObjectAccessNodePorts.IN.KEY, DataType.STRING)
 
     // 出 Port
-    this.addOutPort('value', DataType.STRING)
+    this.addOutPort(ObjectAccessNodePorts.OUT.VALUE, DataType.STRING)
   }
 
   /**
    * 设置输出类型
    */
   setOutputType(dataType: DataType): void {
-    this.outPorts.delete('value')
-    this.addOutPort('value', dataType)
+    this.outPorts.delete(ObjectAccessNodePorts.OUT.VALUE)
+    this.addOutPort(ObjectAccessNodePorts.OUT.VALUE, dataType)
   }
 
   async activateCore(
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const obj = inData.object as Record<string, unknown>
-    const key = String(inData.key)
+    const obj = inData[ObjectAccessNodePorts.IN.OBJECT] as Record<string, unknown>
+    const key = String(inData[ObjectAccessNodePorts.IN.KEY])
 
     if (obj && typeof obj === 'object') {
-      return { value: obj[key] }
+      return { [ObjectAccessNodePorts.OUT.VALUE]: obj[key] }
     }
 
-    return { value: undefined }
+    return { [ObjectAccessNodePorts.OUT.VALUE]: undefined }
   }
 }
 
@@ -60,34 +67,34 @@ export class ObjectSetNode extends WebNode {
     super(id, label ?? 'ObjectSet')
 
     // 入 Port
-    this.addInPort('object', DataType.OBJECT)
-    this.addInPort('key', DataType.STRING)
-    this.addInPort('value', DataType.STRING)
+    this.addInPort(ObjectSetNodePorts.IN.OBJECT, DataType.OBJECT)
+    this.addInPort(ObjectSetNodePorts.IN.KEY, DataType.STRING)
+    this.addInPort(ObjectSetNodePorts.IN.VALUE, DataType.STRING)
 
     // 出 Port
-    this.addOutPort('object', DataType.OBJECT)
+    this.addOutPort(ObjectSetNodePorts.OUT.OBJECT, DataType.OBJECT)
   }
 
   /**
    * 设置值类型
    */
   setValueType(dataType: DataType): void {
-    this.inPorts.delete('value')
-    this.addInPort('value', dataType)
+    this.inPorts.delete(ObjectSetNodePorts.IN.VALUE)
+    this.addInPort(ObjectSetNodePorts.IN.VALUE, dataType)
   }
 
   async activateCore(
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const obj = (inData.object as Record<string, unknown>) || {}
-    const key = String(inData.key)
-    const value = inData.value
+    const obj = (inData[ObjectSetNodePorts.IN.OBJECT] as Record<string, unknown>) || {}
+    const key = String(inData[ObjectSetNodePorts.IN.KEY])
+    const value = inData[ObjectSetNodePorts.IN.VALUE]
 
     // 创建新对象（不变性）
     const newObj = { ...obj, [key]: value }
 
-    return { object: newObj }
+    return { [ObjectSetNodePorts.OUT.OBJECT]: newObj }
   }
 }
 
@@ -105,33 +112,33 @@ export class ArrayAccessNode extends WebNode {
     super(id, label ?? 'ArrayAccess')
 
     // 入 Port
-    this.addInPort('array', DataType.ARRAY)
-    this.addInPort('index', DataType.INTEGER)
+    this.addInPort(ArrayAccessNodePorts.IN.ARRAY, DataType.ARRAY)
+    this.addInPort(ArrayAccessNodePorts.IN.INDEX, DataType.INTEGER)
 
     // 出 Port
-    this.addOutPort('value', DataType.STRING)
+    this.addOutPort(ArrayAccessNodePorts.OUT.VALUE, DataType.STRING)
   }
 
   /**
    * 设置输出类型
    */
   setOutputType(dataType: DataType): void {
-    this.outPorts.delete('value')
-    this.addOutPort('value', dataType)
+    this.outPorts.delete(ArrayAccessNodePorts.OUT.VALUE)
+    this.addOutPort(ArrayAccessNodePorts.OUT.VALUE, dataType)
   }
 
   async activateCore(
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const arr = inData.array as unknown[]
-    const index = Number(inData.index)
+    const arr = inData[ArrayAccessNodePorts.IN.ARRAY] as unknown[]
+    const index = Number(inData[ArrayAccessNodePorts.IN.INDEX])
 
     if (Array.isArray(arr) && index >= 0 && index < arr.length) {
-      return { value: arr[index] }
+      return { [ArrayAccessNodePorts.OUT.VALUE]: arr[index] }
     }
 
-    return { value: undefined }
+    return { [ArrayAccessNodePorts.OUT.VALUE]: undefined }
   }
 }
 
@@ -149,32 +156,32 @@ export class ArrayPushNode extends WebNode {
     super(id, label ?? 'ArrayPush')
 
     // 入 Port
-    this.addInPort('array', DataType.ARRAY)
-    this.addInPort('value', DataType.STRING)
+    this.addInPort(ArrayPushNodePorts.IN.ARRAY, DataType.ARRAY)
+    this.addInPort(ArrayPushNodePorts.IN.VALUE, DataType.STRING)
 
     // 出 Port
-    this.addOutPort('array', DataType.ARRAY)
+    this.addOutPort(ArrayPushNodePorts.OUT.ARRAY, DataType.ARRAY)
   }
 
   /**
    * 设置值类型
    */
   setValueType(dataType: DataType): void {
-    this.inPorts.delete('value')
-    this.addInPort('value', dataType)
+    this.inPorts.delete(ArrayPushNodePorts.IN.VALUE)
+    this.addInPort(ArrayPushNodePorts.IN.VALUE, dataType)
   }
 
   async activateCore(
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const arr = (inData.array as unknown[]) || []
-    const value = inData.value
+    const arr = (inData[ArrayPushNodePorts.IN.ARRAY] as unknown[]) || []
+    const value = inData[ArrayPushNodePorts.IN.VALUE]
 
     // 创建新数组（不变性）
     const newArr = [...arr, value]
 
-    return { array: newArr }
+    return { [ArrayPushNodePorts.OUT.ARRAY]: newArr }
   }
 }
 
@@ -192,22 +199,22 @@ export class ArrayLengthNode extends WebNode {
     super(id, label ?? 'ArrayLength')
 
     // 入 Port
-    this.addInPort('array', DataType.ARRAY)
+    this.addInPort(ArrayLengthNodePorts.IN.ARRAY, DataType.ARRAY)
 
     // 出 Port
-    this.addOutPort('length', DataType.INTEGER)
+    this.addOutPort(ArrayLengthNodePorts.OUT.LENGTH, DataType.INTEGER)
   }
 
   async activateCore(
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const arr = inData.array as unknown[]
+    const arr = inData[ArrayLengthNodePorts.IN.ARRAY] as unknown[]
 
     if (Array.isArray(arr)) {
-      return { length: arr.length }
+      return { [ArrayLengthNodePorts.OUT.LENGTH]: arr.length }
     }
 
-    return { length: 0 }
+    return { [ArrayLengthNodePorts.OUT.LENGTH]: 0 }
   }
 }

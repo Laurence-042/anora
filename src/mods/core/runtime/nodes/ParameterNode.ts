@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { ParameterNodePorts } from './PortNames'
 
 /**
  * ParameterNode - 参数节点
@@ -16,7 +17,7 @@ export class ParameterNode extends WebNode {
     super(id, label ?? 'Parameter')
 
     // 出 Port - 默认输出字符串
-    this.addOutPort('value', DataType.STRING)
+    this.addOutPort(ParameterNodePorts.OUT.VALUE, DataType.STRING)
 
     // 默认上下文
     this.context = { value: '' }
@@ -29,8 +30,8 @@ export class ParameterNode extends WebNode {
     this.context = { value }
 
     if (dataType) {
-      this.outPorts.delete('value')
-      this.addOutPort('value', dataType)
+      this.outPorts.delete(ParameterNodePorts.OUT.VALUE)
+      this.addOutPort(ParameterNodePorts.OUT.VALUE, dataType)
     }
   }
 
@@ -64,7 +65,7 @@ export class ParameterNode extends WebNode {
   ): Promise<Record<string, unknown>> {
     // 直接输出 context 中的值
     return {
-      value: this.getValue(),
+      [ParameterNodePorts.OUT.VALUE]: this.getValue(),
     }
   }
 }

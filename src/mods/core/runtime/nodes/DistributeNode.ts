@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { DistributeNodePorts } from './PortNames'
 
 /**
  * DistributeNode - 分配节点 (For-Each)
@@ -28,22 +29,22 @@ export class DistributeNode extends WebNode {
     super(id, label ?? 'Distribute')
 
     // 入 Port
-    this.addInPort('array', DataType.ARRAY)
+    this.addInPort(DistributeNodePorts.IN.ARRAY, DataType.ARRAY)
 
     // 出 Port
-    this.addOutPort('item', DataType.STRING)
-    this.addOutPort('index', DataType.INTEGER)
+    this.addOutPort(DistributeNodePorts.OUT.ITEM, DataType.STRING)
+    this.addOutPort(DistributeNodePorts.OUT.INDEX, DataType.INTEGER)
 
     // 出控制 Port - 完成时激活
-    this.addOutControlPort('done', DataType.NULL)
+    this.addOutControlPort(DistributeNodePorts.OUT_CONTROL.DONE, DataType.NULL)
   }
 
   /**
    * 设置输出元素的类型
    */
   setItemType(dataType: DataType): void {
-    this.outPorts.delete('item')
-    this.addOutPort('item', dataType)
+    this.outPorts.delete(DistributeNodePorts.OUT.ITEM)
+    this.addOutPort(DistributeNodePorts.OUT.ITEM, dataType)
   }
 
   /**
@@ -79,8 +80,8 @@ export class DistributeNode extends WebNode {
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     // 如果有新的数组输入，重新开始
-    if (inData.array !== undefined) {
-      const arr = inData.array
+    if (inData[DistributeNodePorts.IN.ARRAY] !== undefined) {
+      const arr = inData[DistributeNodePorts.IN.ARRAY]
       if (Array.isArray(arr)) {
         this.currentArray = arr
         this.currentIndex = 0
@@ -94,7 +95,7 @@ export class DistributeNode extends WebNode {
     if (this.currentIndex >= this.currentArray.length) {
       this.isCompleted = true
       // 激活 done 控制 Port
-      const donePort = this.outControlPorts.get('done')
+      const donePort = this.outControlPorts.get(DistributeNodePorts.OUT_CONTROL.DONE)
       if (donePort) {
         donePort.write(null)
       }
@@ -109,8 +110,8 @@ export class DistributeNode extends WebNode {
     this.currentIndex++
 
     return {
-      item,
-      index,
+      [DistributeNodePorts.OUT.ITEM]: item,
+      [DistributeNodePorts.OUT.INDEX]: index,
     }
   }
 }

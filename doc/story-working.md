@@ -392,6 +392,53 @@ class ForwardNode extends BaseWebNode {}
 import.meta.glob('./nodes/**/*.ts', { eager: true })
 ```
 
+### 4.7 Port 名称常量
+
+为避免硬编码字符串带来的维护问题，每个节点类型的 Port 名称应使用常量定义：
+
+```typescript
+// 通用 Port 名称
+const CommonPorts = {
+  VALUE: 'value',
+  RESULT: 'result',
+  A: 'a',
+  B: 'b',
+} as const
+
+// 节点特定 Port 名称（支持继承）
+const ForwardNodePorts = {
+  IN: { VALUE: CommonPorts.VALUE },
+  OUT: { VALUE: CommonPorts.VALUE },
+} as const
+
+const DistributeNodePorts = {
+  IN: { ARRAY: 'array' },
+  OUT: { ITEM: 'item', INDEX: 'index' },
+  OUT_CONTROL: { DONE: 'done' },
+} as const
+
+// 使用示例
+class ForwardNode extends WebNode {
+  constructor() {
+    this.addInPort(ForwardNodePorts.IN.VALUE, DataType.STRING)
+    this.addOutPort(ForwardNodePorts.OUT.VALUE, DataType.STRING)
+  }
+
+  async activateCore(ctx, inData) {
+    return {
+      [ForwardNodePorts.OUT.VALUE]: inData[ForwardNodePorts.IN.VALUE],
+    }
+  }
+}
+```
+
+**设计原则**：
+
+- 使用 `as const` 确保类型安全
+- 通用名称（如 `value`, `result`）定义在 `CommonPorts` 中复用
+- 节点特定的 Port 名称按 `IN`/`OUT`/`IN_CONTROL`/`OUT_CONTROL` 分组
+- 子类可继承父类的 Port 名称常量
+
 ---
 
 ## 5. Graph 系统

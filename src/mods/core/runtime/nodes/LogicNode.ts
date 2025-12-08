@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { LogicNodePorts } from './PortNames'
 
 /**
  * 逻辑操作类型
@@ -29,11 +30,11 @@ export class LogicNode extends WebNode {
     super(id, label ?? 'Logic')
 
     // 入 Port
-    this.addInPort('a', DataType.BOOLEAN)
-    this.addInPort('b', DataType.BOOLEAN)
+    this.addInPort(LogicNodePorts.IN.LEFT, DataType.BOOLEAN)
+    this.addInPort(LogicNodePorts.IN.RIGHT, DataType.BOOLEAN)
 
     // 出 Port
-    this.addOutPort('result', DataType.BOOLEAN)
+    this.addOutPort(LogicNodePorts.OUT.RESULT, DataType.BOOLEAN)
 
     // 默认操作
     this.context = { operation: LogicOperation.And }
@@ -57,35 +58,35 @@ export class LogicNode extends WebNode {
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const a = Boolean(inData.a)
-    const b = Boolean(inData.b)
+    const left = Boolean(inData[LogicNodePorts.IN.LEFT])
+    const right = Boolean(inData[LogicNodePorts.IN.RIGHT])
     const operation = this.getOperation()
 
     let result: boolean
 
     switch (operation) {
       case LogicOperation.And:
-        result = a && b
+        result = left && right
         break
       case LogicOperation.Or:
-        result = a || b
+        result = left || right
         break
       case LogicOperation.Not:
-        result = !a
+        result = !left
         break
       case LogicOperation.Xor:
-        result = (a || b) && !(a && b)
+        result = (left || right) && !(left && right)
         break
       case LogicOperation.Nand:
-        result = !(a && b)
+        result = !(left && right)
         break
       case LogicOperation.Nor:
-        result = !(a || b)
+        result = !(left || right)
         break
       default:
         result = false
     }
 
-    return { result }
+    return { [LogicNodePorts.OUT.RESULT]: result }
   }
 }

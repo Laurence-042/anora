@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AggregateNodePorts } from './PortNames'
 
 /**
  * AggregateNode - 聚集节点
@@ -24,21 +25,21 @@ export class AggregateNode extends WebNode {
     super(id, label ?? 'Aggregate')
 
     // 入 Port
-    this.addInPort('item', DataType.STRING)
+    this.addInPort(AggregateNodePorts.IN.ITEM, DataType.STRING)
 
     // 入控制 Port - 触发输出
-    this.addInControlPort('aggregate', DataType.NULL)
+    this.addInControlPort(AggregateNodePorts.IN_CONTROL.AGGREGATE, DataType.NULL)
 
     // 出 Port
-    this.addOutPort('array', DataType.ARRAY)
+    this.addOutPort(AggregateNodePorts.OUT.ARRAY, DataType.ARRAY)
   }
 
   /**
    * 设置输入元素的类型
    */
   setItemType(dataType: DataType): void {
-    this.inPorts.delete('item')
-    this.addInPort('item', dataType)
+    this.inPorts.delete(AggregateNodePorts.IN.ITEM)
+    this.addInPort(AggregateNodePorts.IN.ITEM, dataType)
   }
 
   /**
@@ -60,7 +61,7 @@ export class AggregateNode extends WebNode {
    */
   override checkActivationReady(connectedPorts: Set<string>): ActivationReadyStatus {
     // 检查 aggregate 控制 Port
-    const aggregatePort = this.inControlPorts.get('aggregate')
+    const aggregatePort = this.inControlPorts.get(AggregateNodePorts.IN_CONTROL.AGGREGATE)
     if (aggregatePort?.hasData) {
       return ActivationReadyStatus.Ready
     }
@@ -75,18 +76,18 @@ export class AggregateNode extends WebNode {
     controlData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     // 检查是否是聚集触发
-    if (controlData.aggregate !== undefined) {
+    if (controlData[AggregateNodePorts.IN_CONTROL.AGGREGATE] !== undefined) {
       // 输出当前收集的数组
       const result = [...this.collector]
       this.collector = []
       return {
-        array: result,
+        [AggregateNodePorts.OUT.ARRAY]: result,
       }
     }
 
     // 添加元素到收集器
-    if (inData.item !== undefined) {
-      this.collector.push(inData.item)
+    if (inData[AggregateNodePorts.IN.ITEM] !== undefined) {
+      this.collector.push(inData[AggregateNodePorts.IN.ITEM])
     }
 
     // 不输出任何数据（继续收集）

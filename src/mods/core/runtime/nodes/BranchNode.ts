@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { BranchNodePorts } from './PortNames'
 
 /**
  * BranchNode - 分支节点
@@ -16,27 +17,27 @@ export class BranchNode extends WebNode {
     super(id, label ?? 'Branch')
 
     // 入 Port
-    this.addInPort('condition', DataType.BOOLEAN)
+    this.addInPort(BranchNodePorts.IN.CONDITION, DataType.BOOLEAN)
 
     // 出控制 Port
-    this.addOutControlPort('onTrue', DataType.NULL)
-    this.addOutControlPort('onFalse', DataType.NULL)
+    this.addOutControlPort(BranchNodePorts.OUT_CONTROL.ON_TRUE, DataType.NULL)
+    this.addOutControlPort(BranchNodePorts.OUT_CONTROL.ON_FALSE, DataType.NULL)
   }
 
   async activateCore(
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const condition = Boolean(inData.condition)
+    const condition = Boolean(inData[BranchNodePorts.IN.CONDITION])
 
     // 根据条件激活对应的控制 Port
     if (condition) {
-      const onTruePort = this.outControlPorts.get('onTrue')
+      const onTruePort = this.outControlPorts.get(BranchNodePorts.OUT_CONTROL.ON_TRUE)
       if (onTruePort) {
         onTruePort.write(null)
       }
     } else {
-      const onFalsePort = this.outControlPorts.get('onFalse')
+      const onFalsePort = this.outControlPorts.get(BranchNodePorts.OUT_CONTROL.ON_FALSE)
       if (onFalsePort) {
         onFalsePort.write(null)
       }

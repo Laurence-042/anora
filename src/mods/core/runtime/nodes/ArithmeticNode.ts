@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { ArithmeticNodePorts } from './PortNames'
 
 /**
  * 算术操作类型
@@ -29,11 +30,11 @@ export class ArithmeticNode extends WebNode {
     super(id, label ?? 'Arithmetic')
 
     // 入 Port
-    this.addInPort('a', DataType.NUMBER)
-    this.addInPort('b', DataType.NUMBER)
+    this.addInPort(ArithmeticNodePorts.IN.LEFT, DataType.NUMBER)
+    this.addInPort(ArithmeticNodePorts.IN.RIGHT, DataType.NUMBER)
 
     // 出 Port
-    this.addOutPort('result', DataType.NUMBER)
+    this.addOutPort(ArithmeticNodePorts.OUT.RESULT, DataType.NUMBER)
 
     // 默认操作
     this.context = { operation: ArithmeticOperation.Add }
@@ -59,41 +60,41 @@ export class ArithmeticNode extends WebNode {
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const a = Number(inData.a)
-    const b = Number(inData.b)
+    const left = Number(inData[ArithmeticNodePorts.IN.LEFT])
+    const right = Number(inData[ArithmeticNodePorts.IN.RIGHT])
     const operation = this.getOperation()
 
     let result: number
 
     switch (operation) {
       case ArithmeticOperation.Add:
-        result = a + b
+        result = left + right
         break
       case ArithmeticOperation.Subtract:
-        result = a - b
+        result = left - right
         break
       case ArithmeticOperation.Multiply:
-        result = a * b
+        result = left * right
         break
       case ArithmeticOperation.Divide:
-        if (b === 0) {
+        if (right === 0) {
           throw new Error('Division by zero')
         }
-        result = a / b
+        result = left / right
         break
       case ArithmeticOperation.Modulo:
-        if (b === 0) {
+        if (right === 0) {
           throw new Error('Modulo by zero')
         }
-        result = a % b
+        result = left % right
         break
       case ArithmeticOperation.Power:
-        result = Math.pow(a, b)
+        result = Math.pow(left, right)
         break
       default:
         result = 0
     }
 
-    return { result }
+    return { [ArithmeticNodePorts.OUT.RESULT]: result }
   }
 }

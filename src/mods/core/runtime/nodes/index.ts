@@ -17,3 +17,6 @@ export {
   ArrayLengthNode,
 } from './DataNodes'
 export { SubGraphNode, SubGraphEntryNode, SubGraphExitNode } from './SubGraphNode'
+
+// Port 名称常量导出
+export * from './PortNames'

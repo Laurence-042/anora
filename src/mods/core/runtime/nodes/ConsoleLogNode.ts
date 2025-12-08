@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { ConsoleLogNodePorts } from './PortNames'
 
 /**
  * ConsoleLogNode - 控制台日志节点
@@ -16,7 +17,7 @@ export class ConsoleLogNode extends WebNode {
     super(id, label ?? 'ConsoleLog')
 
     // 入 Port
-    this.addInPort('message', DataType.STRING)
+    this.addInPort(ConsoleLogNodePorts.IN.MESSAGE, DataType.STRING)
 
     // 默认前缀
     this.context = { prefix: '[ANORA]' }
@@ -40,7 +41,7 @@ export class ConsoleLogNode extends WebNode {
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const message = String(inData.message ?? '')
+    const message = String(inData[ConsoleLogNodePorts.IN.MESSAGE] ?? '')
     const prefix = this.getPrefix()
 
     console.log(`${prefix} ${message}`)

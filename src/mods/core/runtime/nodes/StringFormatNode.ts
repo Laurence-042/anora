@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { StringFormatNodePorts } from './PortNames'
 
 /**
  * StringFormatNode - 字符串格式化节点
@@ -19,10 +20,10 @@ export class StringFormatNode extends WebNode {
     super(id, label ?? 'StringFormat')
 
     // 入 Port
-    this.addInPort('args', DataType.OBJECT)
+    this.addInPort(StringFormatNodePorts.IN.ARGS, DataType.OBJECT)
 
     // 出 Port
-    this.addOutPort('result', DataType.STRING)
+    this.addOutPort(StringFormatNodePorts.OUT.RESULT, DataType.STRING)
 
     // 默认模板
     this.context = { template: '' }
@@ -47,7 +48,7 @@ export class StringFormatNode extends WebNode {
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const template = this.getTemplate()
-    const args = (inData.args as Record<string, unknown>) || {}
+    const args = (inData[StringFormatNodePorts.IN.ARGS] as Record<string, unknown>) || {}
 
     // 简单的模板替换
     const result = template.replace(/\{(\w+)\}/g, (match, key) => {
@@ -57,6 +58,6 @@ export class StringFormatNode extends WebNode {
       return match
     })
 
-    return { result }
+    return { [StringFormatNodePorts.OUT.RESULT]: result }
   }
 }

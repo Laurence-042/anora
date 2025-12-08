@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { ForwardNodePorts } from './PortNames'
 
 /**
  * ForwardNode - 中继节点
@@ -21,9 +22,9 @@ export class ForwardNode extends WebNode {
     super(id, label ?? 'Forward')
 
     // 入 Port - 接受任意类型
-    this.addInPort('value', DataType.STRING)
+    this.addInPort(ForwardNodePorts.IN.VALUE, DataType.STRING)
     // 出 Port - 默认输出字符串
-    this.addOutPort('value', DataType.STRING)
+    this.addOutPort(ForwardNodePorts.OUT.VALUE, DataType.STRING)
   }
 
   /**
@@ -31,8 +32,8 @@ export class ForwardNode extends WebNode {
    */
   setOutputType(dataType: DataType): void {
     // 重新创建出 Port
-    this.outPorts.delete('value')
-    this.addOutPort('value', dataType)
+    this.outPorts.delete(ForwardNodePorts.OUT.VALUE)
+    this.addOutPort(ForwardNodePorts.OUT.VALUE, dataType)
   }
 
   /**
@@ -40,8 +41,8 @@ export class ForwardNode extends WebNode {
    */
   setInputType(dataType: DataType): void {
     // 重新创建入 Port
-    this.inPorts.delete('value')
-    this.addInPort('value', dataType)
+    this.inPorts.delete(ForwardNodePorts.IN.VALUE)
+    this.addInPort(ForwardNodePorts.IN.VALUE, dataType)
   }
 
   /**
@@ -65,7 +66,7 @@ export class ForwardNode extends WebNode {
   ): Promise<Record<string, unknown>> {
     // 直接传递数据
     return {
-      value: inData.value,
+      [ForwardNodePorts.OUT.VALUE]: inData[ForwardNodePorts.IN.VALUE],
     }
   }
 }

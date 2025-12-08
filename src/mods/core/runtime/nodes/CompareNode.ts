@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { CompareNodePorts } from './PortNames'
 
 /**
  * 比较操作类型
@@ -31,11 +32,11 @@ export class CompareNode extends WebNode {
     super(id, label ?? 'Compare')
 
     // 入 Port
-    this.addInPort('a', DataType.STRING)
-    this.addInPort('b', DataType.STRING)
+    this.addInPort(CompareNodePorts.IN.LEFT, DataType.STRING)
+    this.addInPort(CompareNodePorts.IN.RIGHT, DataType.STRING)
 
     // 出 Port
-    this.addOutPort('result', DataType.BOOLEAN)
+    this.addOutPort(CompareNodePorts.OUT.RESULT, DataType.BOOLEAN)
 
     // 默认比较操作
     this.context = { operation: CompareOperation.Equal }
@@ -59,41 +60,41 @@ export class CompareNode extends WebNode {
     _executorContext: ExecutorContext,
     inData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const a = inData.a
-    const b = inData.b
+    const left = inData[CompareNodePorts.IN.LEFT]
+    const right = inData[CompareNodePorts.IN.RIGHT]
     const operation = this.getOperation()
 
     let result: boolean
 
     switch (operation) {
       case CompareOperation.Equal:
-        result = a == b
+        result = left == right
         break
       case CompareOperation.NotEqual:
-        result = a != b
+        result = left != right
         break
       case CompareOperation.GreaterThan:
-        result = (a as number) > (b as number)
+        result = (left as number) > (right as number)
         break
       case CompareOperation.GreaterThanOrEqual:
-        result = (a as number) >= (b as number)
+        result = (left as number) >= (right as number)
         break
       case CompareOperation.LessThan:
-        result = (a as number) < (b as number)
+        result = (left as number) < (right as number)
         break
       case CompareOperation.LessThanOrEqual:
-        result = (a as number) <= (b as number)
+        result = (left as number) <= (right as number)
         break
       case CompareOperation.StrictEqual:
-        result = a === b
+        result = left === right
         break
       case CompareOperation.StrictNotEqual:
-        result = a !== b
+        result = left !== right
         break
       default:
         result = false
     }
 
-    return { result }
+    return { [CompareNodePorts.OUT.RESULT]: result }
   }
 }
