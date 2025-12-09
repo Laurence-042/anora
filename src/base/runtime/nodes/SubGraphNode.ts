@@ -1,12 +1,12 @@
-import type { ExecutorContext } from '../../../../base/runtime/types'
-import { WebNode } from '../../../../base/runtime/nodes'
-import { NullPort } from '../../../../base/runtime/ports'
-import { BasePort } from '../../../../base/runtime/ports'
-import { AnoraGraph } from '../../../../base/runtime/graph'
-import { BasicExecutor } from '../../../../base/runtime/executor'
-import { AnoraRegister } from '../../../../base/runtime/registry'
+import type { ExecutorContext } from '../types'
+import { WebNode } from './NodeTypes'
+import { NullPort } from '../ports'
+import { BasePort } from '../ports'
+import { AnoraGraph } from '../graph'
+import { BasicExecutor } from '../executor'
+import { AnoraRegister } from '../registry'
 
-import type { NodeInput, NodeOutput } from '../../../../base/runtime/nodes'
+import type { NodeInput, NodeOutput } from './BaseNode'
 
 /**
  * SubGraphNode - 子图节点
@@ -17,7 +17,7 @@ import type { NodeInput, NodeOutput } from '../../../../base/runtime/nodes'
  *
  * context: { graph: AnoraGraph }
  */
-@AnoraRegister('core.SubGraphNode')
+@AnoraRegister('base.SubGraphNode')
 export class SubGraphNode extends WebNode<NodeInput, NodeOutput> {
   /** 内部图 */
   private _graph: AnoraGraph | null = null
@@ -181,7 +181,7 @@ interface EntryExitPorts {
  * SubGraphEntryNode - 子图入口节点
  * 用于标记子图的输入点
  */
-@AnoraRegister('core.SubGraphEntryNode')
+@AnoraRegister('base.SubGraphEntryNode')
 export class SubGraphEntryNode extends WebNode<EntryExitPorts, EntryExitPorts> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Entry')
@@ -205,7 +205,7 @@ export class SubGraphEntryNode extends WebNode<EntryExitPorts, EntryExitPorts> {
  * SubGraphExitNode - 子图出口节点
  * 用于标记子图的输出点
  */
-@AnoraRegister('core.SubGraphExitNode')
+@AnoraRegister('base.SubGraphExitNode')
 export class SubGraphExitNode extends WebNode<EntryExitPorts, EntryExitPorts> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Exit')
