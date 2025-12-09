@@ -1,14 +1,12 @@
 <script setup lang="ts">
 /**
  * ArithmeticNodeView - 算术节点视图
- * 提供运算符选择功能
+ * 基于 BaseNodeView 扩展，提供运算符选择控件
  */
-import { computed, ref, nextTick } from 'vue'
+import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import { Handle, Position } from '@vue-flow/core'
 import { ArithmeticNode, ArithmeticOperation } from '@/mods/core/runtime/nodes/ArithmeticNode'
-import { NodeExecutionStatus } from '@/base/runtime/types'
-import { useGraphStore } from '@/stores/graph'
+import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
 import { ElSelect, ElOption } from 'element-plus'
 
 interface ArithmeticNodeProps extends NodeProps {
@@ -18,32 +16,8 @@ interface ArithmeticNodeProps extends NodeProps {
 }
 
 const props = defineProps<ArithmeticNodeProps>()
-const graphStore = useGraphStore()
 
 const node = computed(() => props.data.node)
-const isSelected = computed(() => graphStore.isNodeSelected(node.value.id))
-const isExecuting = computed(() => graphStore.isNodeExecuting(node.value.id))
-
-/** Label 编辑 */
-const isEditingLabel = ref(false)
-const labelInput = ref<HTMLInputElement | null>(null)
-const editingLabel = ref('')
-
-function startEditLabel(): void {
-  editingLabel.value = node.value.label
-  isEditingLabel.value = true
-  nextTick(() => {
-    labelInput.value?.focus()
-    labelInput.value?.select()
-  })
-}
-
-function saveLabel(): void {
-  if (editingLabel.value.trim()) {
-    node.value.label = editingLabel.value.trim()
-  }
-  isEditingLabel.value = false
-}
 
 /** 当前运算符 */
 const currentOperation = computed({
@@ -60,117 +34,33 @@ const operationOptions = [
   { value: ArithmeticOperation.Modulo, label: '取余 (%)' },
   { value: ArithmeticOperation.Power, label: '幂 (**)' },
 ]
-
-/** 状态边框颜色 */
-const borderColor = computed(() => {
-  if (isExecuting.value) return '#fbbf24'
-  if (node.value.executionStatus === NodeExecutionStatus.SUCCESS) return '#22c55e'
-  if (node.value.executionStatus === NodeExecutionStatus.FAILED) return '#ef4444'
-  return isSelected.value ? '#60a5fa' : 'transparent'
-})
 </script>
 
 <template>
-  <div
-    class="arithmetic-node"
-    :class="{
-      'node-selected': isSelected,
-      'node-executing': isExecuting,
-    }"
-    :style="{ borderColor }"
-  >
-    <!-- 头部 -->
-    <div class="node-header">
-      <div class="header-info">
-        <span class="node-type">core.ArithmeticNode</span>
-        <div class="label-row">
-          <input
-            v-if="isEditingLabel"
-            ref="labelInput"
-            v-model="editingLabel"
-            type="text"
-            class="label-input"
-            @blur="saveLabel"
-            @keyup.enter="saveLabel"
-            @keyup.escape="isEditingLabel = false"
+  <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
+  <BaseNodeView v-bind="props as any">
+    <template #controls>
+      <div class="control-section">
+        <ElSelect v-model="currentOperation" placeholder="选择运算" class="operation-select">
+          <ElOption
+            v-for="op in operationOptions"
+            :key="op.value"
+            :label="op.label"
+            :value="op.value"
           />
-          <span v-else class="node-label" @dblclick="startEditLabel">{{ node.label }}</span>
-        </div>
+        </ElSelect>
       </div>
-    </div>
-
-    <!-- 运算符选择 -->
-    <div class="control-section">
-      <ElSelect v-model="currentOperation" placeholder="选择运算" class="operation-select">
-        <ElOption
-          v-for="op in operationOptions"
-          :key="op.value"
-          :label="op.label"
-          :value="op.value"
-        />
-      </ElSelect>
-    </div>
-
-    <!-- Ports -->
-    <div class="ports-section">
-      <!-- 左侧入 Port -->
-      <div class="ports-left">
-        <div class="port-row">
-          <Handle
-            :id="node.inExecPort.id"
-            type="target"
-            :position="Position.Left"
-            class="port-handle exec-handle"
-          />
-          <span class="port-name">exec</span>
-        </div>
-        <div class="port-row">
-          <Handle
-            :id="node.inPorts.get('left')?.id ?? ''"
-            type="target"
-            :position="Position.Left"
-            class="port-handle data-handle"
-          />
-          <span class="port-name">left</span>
-        </div>
-        <div class="port-row">
-          <Handle
-            :id="node.inPorts.get('right')?.id ?? ''"
-            type="target"
-            :position="Position.Left"
-            class="port-handle data-handle"
-          />
-          <span class="port-name">right</span>
-        </div>
-      </div>
-
-      <!-- 右侧出 Port -->
-      <div class="ports-right">
-        <div class="port-row">
-          <span class="port-name">exec</span>
-          <Handle
-            :id="node.outExecPort.id"
-            type="source"
-            :position="Position.Right"
-            class="port-handle exec-handle"
-          />
-        </div>
-        <div class="port-row">
-          <span class="port-name">result</span>
-          <Handle
-            :id="node.outPorts.get('result')?.id ?? ''"
-            type="source"
-            :position="Position.Right"
-            class="port-handle data-handle"
-          />
-        </div>
-      </div>
-    </div>
-  </div>
+    </template>
+  </BaseNodeView>
 </template>
 
 <style scoped>
-/* ArithmeticNode 特有样式 - 通用样式由 node-theme.css 提供 */
+/* ArithmeticNode 特有样式 */
+.control-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--node-border, #3a3a5c);
+}
+
 .operation-select {
   width: 100%;
 }
