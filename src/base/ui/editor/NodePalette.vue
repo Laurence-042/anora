@@ -1,0 +1,242 @@
+<script setup lang="ts">
+/**
+ * NodePalette - 节点面板
+ * 显示可用的节点类型，支持拖放添加
+ */
+import { ref, computed } from 'vue'
+import { NodeRegistry } from '@/base/runtime/registry'
+import { useGraphStore } from '@/stores/graph'
+
+const graphStore = useGraphStore()
+
+/** 搜索关键字 */
+const searchQuery = ref('')
+
+/** 是否展开面板 */
+const isExpanded = ref(true)
+
+/** 可用的节点类型 */
+const nodeTypes = computed(() => {
+  const types: Array<{ typeId: string; name: string; category: string }> = []
+
+  for (const [typeId] of NodeRegistry.getAll()) {
+    // 从 typeId 解析分类和名称
+    const parts = typeId.split('.')
+    const category = parts.length > 1 ? (parts[0] ?? 'other') : 'other'
+    const name = parts[parts.length - 1] ?? typeId
+
+    types.push({ typeId, name, category })
+  }
+
+  // 按分类排序
+  return types.sort((a, b) => {
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category)
+    }
+    return a.name.localeCompare(b.name)
+  })
+})
+
+/** 过滤后的节点类型 */
+const filteredTypes = computed(() => {
+  if (!searchQuery.value) return nodeTypes.value
+
+  const query = searchQuery.value.toLowerCase()
+  return nodeTypes.value.filter(
+    (t) => t.name.toLowerCase().includes(query) || t.typeId.toLowerCase().includes(query),
+  )
+})
+
+/** 按分类分组 */
+const groupedTypes = computed(() => {
+  const groups: Record<string, typeof filteredTypes.value> = {}
+
+  for (const type of filteredTypes.value) {
+    if (!groups[type.category]) {
+      groups[type.category] = []
+    }
+    groups[type.category]!.push(type)
+  }
+
+  return groups
+})
+
+/** 添加节点 */
+function addNode(typeId: string): void {
+  const NodeClass = NodeRegistry.get(typeId)
+  if (!NodeClass) {
+    console.error(`Unknown node type: ${typeId}`)
+    return
+  }
+
+  const node = new NodeClass()
+  graphStore.addNode(node)
+}
+
+/** 处理拖放开始 */
+function onDragStart(event: DragEvent, typeId: string): void {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('application/anora-node', typeId)
+    event.dataTransfer.effectAllowed = 'copy'
+  }
+}
+</script>
+
+<template>
+  <div class="node-palette" :class="{ collapsed: !isExpanded }">
+    <!-- 头部 -->
+    <div class="palette-header" @click="isExpanded = !isExpanded">
+      <span class="header-title">节点</span>
+      <span class="toggle-icon">{{ isExpanded ? '◀' : '▶' }}</span>
+    </div>
+
+    <!-- 内容区域 -->
+    <div v-show="isExpanded" class="palette-content">
+      <!-- 搜索框 -->
+      <div class="search-box">
+        <input v-model="searchQuery" type="text" placeholder="搜索节点..." class="search-input" />
+      </div>
+
+      <!-- 节点列表 -->
+      <div class="node-list">
+        <div v-for="(types, category) in groupedTypes" :key="category" class="category-group">
+          <div class="category-header">{{ category }}</div>
+          <div
+            v-for="type in types"
+            :key="type.typeId"
+            class="node-item"
+            draggable="true"
+            @click="addNode(type.typeId)"
+            @dragstart="onDragStart($event, type.typeId)"
+          >
+            <span class="node-icon">◇</span>
+            <span class="node-name">{{ type.name }}</span>
+          </div>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-if="filteredTypes.length === 0" class="empty-state">没有找到匹配的节点</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.node-palette {
+  position: absolute;
+  left: 16px;
+  top: 80px;
+  width: 200px;
+  background: var(--vf-controls-bg, #1a1a2e);
+  border: 1px solid var(--vf-border, #3a3a5c);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 10;
+  transition: width 0.2s;
+}
+
+.node-palette.collapsed {
+  width: 40px;
+}
+
+.palette-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--vf-node-header-bg, #252542);
+  cursor: pointer;
+  user-select: none;
+}
+
+.header-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vf-text, #e2e8f0);
+}
+
+.collapsed .header-title {
+  display: none;
+}
+
+.toggle-icon {
+  font-size: 10px;
+  color: var(--vf-text-muted, #94a3b8);
+}
+
+.palette-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-box {
+  padding: 8px;
+  border-bottom: 1px solid var(--vf-border, #3a3a5c);
+}
+
+.search-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--vf-input-bg, #252542);
+  border: 1px solid var(--vf-border, #3a3a5c);
+  border-radius: 4px;
+  color: var(--vf-text, #e2e8f0);
+  font-size: 11px;
+}
+
+.search-input::placeholder {
+  color: var(--vf-text-muted, #6b7280);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+.node-list {
+  padding: 8px 0;
+}
+
+.category-group {
+  margin-bottom: 8px;
+}
+
+.category-header {
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vf-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.node-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.node-item:hover {
+  background: var(--vf-btn-hover-bg, #3a3a5c);
+}
+
+.node-icon {
+  font-size: 12px;
+  color: var(--vf-text-muted, #94a3b8);
+}
+
+.node-name {
+  font-size: 11px;
+  color: var(--vf-text, #e2e8f0);
+}
+
+.empty-state {
+  padding: 16px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--vf-text-muted, #6b7280);
+}
+</style>

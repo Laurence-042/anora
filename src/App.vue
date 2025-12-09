@@ -1,85 +1,70 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
   <RouterView />
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+<style>
+/* 全局样式变量 - ANORA 主题 */
+:root {
+  /* 背景色 */
+  --vf-bg: #0f0f1a;
+  --vf-toolbar-bg: #1a1a2e;
+  --vf-statusbar-bg: #1a1a2e;
+  --vf-controls-bg: #1a1a2e;
+  --vf-breadcrumb-bg: #1a1a2e;
+  --vf-minimap-bg: #1a1a2e;
+
+  /* 节点颜色 */
+  --vf-node-bg: #1a1a2e;
+  --vf-node-header-bg: #252542;
+  --vf-node-border: #3a3a5c;
+
+  /* 文字颜色 */
+  --vf-text: #e2e8f0;
+  --vf-text-muted: #94a3b8;
+  --vf-node-text: #e2e8f0;
+  --vf-node-text-muted: #6b7280;
+
+  /* 边框和按钮 */
+  --vf-border: #3a3a5c;
+  --vf-btn-bg: #252542;
+  --vf-btn-hover-bg: #3a3a5c;
+  --vf-input-bg: #252542;
+
+  /* 边颜色 */
+  --vf-edge: #64748b;
+  --vf-edge-selected: #60a5fa;
+  --vf-connection-line: #60a5fa;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+/* 全局重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-nav {
+html,
+body {
   width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
+  height: 100%;
+  overflow: hidden;
 }
 
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+#app {
+  width: 100%;
+  height: 100%;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 </style>
