@@ -1,8 +1,8 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { StringFormatNodePorts } from './PortNames'
+import { StringPort, ObjectPort } from '../ports'
 
 /** StringFormatNode 入 Port 类型 */
 interface StringFormatInput {
@@ -30,10 +30,10 @@ export class StringFormatNode extends WebNode<StringFormatInput, StringFormatOut
     super(id, label ?? 'StringFormat')
 
     // 入 Port
-    this.addInPort(StringFormatNodePorts.IN.ARGS, DataType.OBJECT)
+    this.addInPort(StringFormatNodePorts.IN.ARGS, new ObjectPort(this))
 
     // 出 Port
-    this.addOutPort(StringFormatNodePorts.OUT.RESULT, DataType.STRING)
+    this.addOutPort(StringFormatNodePorts.OUT.RESULT, new StringPort(this))
 
     // 默认模板
     this.context = { template: '' }

@@ -1,6 +1,7 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { NullPort } from '../../../../base/runtime/ports'
+import { BasePort } from '../../../../base/runtime/ports'
 import { AnoraGraph } from '../../../../base/runtime/graph'
 import { BasicExecutor } from '../../../../base/runtime/executor'
 import { AnoraRegister } from '../../../../base/runtime/registry'
@@ -56,22 +57,22 @@ export class SubGraphNode extends WebNode<NodeInput, NodeOutput> {
    * 添加入口映射
    * @param entryNodeId 入口节点 ID
    * @param portName 对外暴露的 Port 名称
-   * @param dataType 数据类型
+   * @param port Port 实例
    */
-  addEntryMapping(entryNodeId: string, portName: string, dataType: DataType): void {
+  addEntryMapping(entryNodeId: string, portName: string, port: BasePort): void {
     this.entryMappings.set(entryNodeId, portName)
-    this.addInPort(portName, dataType)
+    this.addInPort(portName, port)
   }
 
   /**
    * 添加出口映射
    * @param exitNodeId 出口节点 ID
    * @param portName 对外暴露的 Port 名称
-   * @param dataType 数据类型
+   * @param port Port 实例
    */
-  addExitMapping(exitNodeId: string, portName: string, dataType: DataType): void {
+  addExitMapping(exitNodeId: string, portName: string, port: BasePort): void {
     this.exitMappings.set(exitNodeId, portName)
-    this.addOutPort(portName, dataType)
+    this.addOutPort(portName, port)
   }
 
   /**
@@ -96,19 +97,17 @@ export class SubGraphNode extends WebNode<NodeInput, NodeOutput> {
       // 检查是否是入口节点（假设 typeId 以 'Entry' 结尾）
       if (node.typeId.endsWith('Entry') || node.typeId.includes('SubGraphEntry')) {
         const portName = node.label || `entry_${node.id}`
-        // 获取节点的第一个出 Port 类型
+        // 获取节点的第一个出 Port，使用 NullPort 作为默认
         const firstOutPort = Array.from(node.outPorts.values())[0]
-        const dataType = firstOutPort?.dataType ?? DataType.STRING
-        this.addEntryMapping(node.id, portName, dataType)
+        this.addEntryMapping(node.id, portName, firstOutPort ?? new NullPort(this))
       }
 
       // 检查是否是出口节点（假设 typeId 以 'Exit' 结尾）
       if (node.typeId.endsWith('Exit') || node.typeId.includes('SubGraphExit')) {
         const portName = node.label || `exit_${node.id}`
-        // 获取节点的第一个入 Port 类型
+        // 获取节点的第一个入 Port，使用 NullPort 作为默认
         const firstInPort = Array.from(node.inPorts.values())[0]
-        const dataType = firstInPort?.dataType ?? DataType.STRING
-        this.addExitMapping(node.id, portName, dataType)
+        this.addExitMapping(node.id, portName, firstInPort ?? new NullPort(this))
       }
     }
   }
@@ -187,20 +186,10 @@ export class SubGraphEntryNode extends WebNode<EntryExitPorts, EntryExitPorts> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Entry')
 
-    // 入 Port - 接收外部数据
-    this.addInPort('value', DataType.STRING)
-    // 出 Port - 传递给子图内部
-    this.addOutPort('value', DataType.STRING)
-  }
-
-  /**
-   * 设置数据类型
-   */
-  setDataType(dataType: DataType): void {
-    this.inPorts.delete('value')
-    this.outPorts.delete('value')
-    this.addInPort('value', dataType)
-    this.addOutPort('value', dataType)
+    // 入 Port - 接收外部数据 (任意类型)
+    this.addInPort('value', new NullPort(this))
+    // 出 Port - 传递给子图内部 (任意类型)
+    this.addOutPort('value', new NullPort(this))
   }
 
   async activateCore(
@@ -221,20 +210,10 @@ export class SubGraphExitNode extends WebNode<EntryExitPorts, EntryExitPorts> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Exit')
 
-    // 入 Port - 接收子图内部数据
-    this.addInPort('value', DataType.STRING)
-    // 出 Port - 传递给外部
-    this.addOutPort('value', DataType.STRING)
-  }
-
-  /**
-   * 设置数据类型
-   */
-  setDataType(dataType: DataType): void {
-    this.inPorts.delete('value')
-    this.outPorts.delete('value')
-    this.addInPort('value', dataType)
-    this.addOutPort('value', dataType)
+    // 入 Port - 接收子图内部数据 (任意类型)
+    this.addInPort('value', new NullPort(this))
+    // 出 Port - 传递给外部 (任意类型)
+    this.addOutPort('value', new NullPort(this))
   }
 
   async activateCore(

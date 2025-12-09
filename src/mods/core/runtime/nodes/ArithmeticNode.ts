@@ -1,8 +1,8 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ArithmeticNodePorts } from './PortNames'
+import { NumberPort } from '../ports'
 
 /**
  * 算术操作类型
@@ -41,11 +41,11 @@ export class ArithmeticNode extends WebNode<ArithmeticInput, ArithmeticOutput> {
     super(id, label ?? 'Arithmetic')
 
     // 入 Port
-    this.addInPort(ArithmeticNodePorts.IN.LEFT, DataType.NUMBER)
-    this.addInPort(ArithmeticNodePorts.IN.RIGHT, DataType.NUMBER)
+    this.addInPort(ArithmeticNodePorts.IN.LEFT, new NumberPort(this))
+    this.addInPort(ArithmeticNodePorts.IN.RIGHT, new NumberPort(this))
 
     // 出 Port
-    this.addOutPort(ArithmeticNodePorts.OUT.RESULT, DataType.NUMBER)
+    this.addOutPort(ArithmeticNodePorts.OUT.RESULT, new NumberPort(this))
 
     // 默认操作
     this.context = { operation: ArithmeticOperation.Add }

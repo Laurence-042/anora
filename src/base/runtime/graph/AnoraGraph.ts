@@ -1,6 +1,6 @@
 import { BaseNode } from '../nodes/BaseNode'
 import { BasePort, ContainerPort } from '../ports'
-import { areTypesCompatible } from '../ports/PortFactory'
+import { areTypesCompatible } from '../types'
 import type { SerializedGraph, SerializedEdge } from '../types'
 
 /**

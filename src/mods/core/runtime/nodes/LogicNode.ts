@@ -1,8 +1,8 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { LogicNodePorts } from './PortNames'
+import { BooleanPort } from '../ports'
 
 /**
  * 逻辑操作类型
@@ -41,11 +41,11 @@ export class LogicNode extends WebNode<LogicInput, LogicOutput> {
     super(id, label ?? 'Logic')
 
     // 入 Port
-    this.addInPort(LogicNodePorts.IN.LEFT, DataType.BOOLEAN)
-    this.addInPort(LogicNodePorts.IN.RIGHT, DataType.BOOLEAN)
+    this.addInPort(LogicNodePorts.IN.LEFT, new BooleanPort(this))
+    this.addInPort(LogicNodePorts.IN.RIGHT, new BooleanPort(this))
 
     // 出 Port
-    this.addOutPort(LogicNodePorts.OUT.RESULT, DataType.BOOLEAN)
+    this.addOutPort(LogicNodePorts.OUT.RESULT, new BooleanPort(this))
 
     // 默认操作
     this.context = { operation: LogicOperation.And }

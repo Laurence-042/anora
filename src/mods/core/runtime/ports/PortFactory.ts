@@ -1,17 +1,20 @@
-import { BasePort, ContainerPort } from './BasePort'
-import { DataType, TYPE_COMPATIBILITY_MATRIX } from '../types'
-import type { RealDataType } from '../types'
-import { StringPort, NumberPort, IntegerPort, BooleanPort, NullPort } from './PrimitivePorts'
+import { BasePort, ContainerPort, NullPort } from '../../../../base/runtime/ports'
+import { DataType } from '../../../../base/runtime/types'
+import type { RealDataType } from '../../../../base/runtime/types'
+import { StringPort, NumberPort, IntegerPort, BooleanPort } from './PrimitivePorts'
 import { ArrayPort, ObjectPort } from './ContainerPorts'
 
-import type { BaseNode } from '../nodes/BaseNode'
+// Re-export areTypesCompatible from base
+export { areTypesCompatible } from '../../../../base/runtime/types'
+
+import type { BaseNode } from '../../../../base/runtime/nodes/BaseNode'
 
 /** Port 可以关联的节点类型 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyNode = BaseNode<any, any, any>
 
 /**
- * 根据数据类型创建对应的 Port
+ * 根据数据类型创建对应的 Port（便利工厂函数）
  */
 export function createPort(
   dataType: DataType,
@@ -66,18 +69,4 @@ export function inferDataType(value: RealDataType): DataType {
   if (Array.isArray(value)) return DataType.ARRAY
   if (typeof value === 'object') return DataType.OBJECT
   return DataType.NULL
-}
-
-/**
- * 检查两个 Port 类型是否兼容（可以建立连接）
- */
-export function areTypesCompatible(sourceType: DataType, targetType: DataType): boolean {
-  // null 类型可以接受任何类型
-  if (targetType === DataType.NULL) return true
-
-  // 任何类型都可以输出到 null 类型
-  if (sourceType === DataType.NULL) return true
-
-  // 使用兼容性矩阵检查
-  return TYPE_COMPATIBILITY_MATRIX[sourceType]?.[targetType] ?? false
 }

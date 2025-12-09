@@ -22,3 +22,18 @@ export {
   SubGraphEntryNode,
   SubGraphExitNode,
 } from './nodes'
+
+// Core Ports
+export {
+  StringPort,
+  NumberPort,
+  IntegerPort,
+  BooleanPort,
+  NullPort,
+  ArrayPort,
+  ObjectPort,
+  createPort,
+  createPortFromValue,
+  inferDataType,
+  areTypesCompatible,
+} from './ports'

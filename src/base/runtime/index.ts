@@ -21,22 +21,8 @@ export type {
   ConversionResult,
 } from './types'
 
-// Port 系统
-export {
-  BasePort,
-  ContainerPort,
-  StringPort,
-  NumberPort,
-  IntegerPort,
-  BooleanPort,
-  NullPort,
-  ArrayPort,
-  ObjectPort,
-  createPort,
-  createPortFromValue,
-  inferDataType,
-  areTypesCompatible,
-} from './ports'
+// Port 系统（基类和 NullPort）
+export { BasePort, ContainerPort, NullPort } from './ports'
 
 // Node 系统
 export { BaseNode, WebNode, BackendNode } from './nodes'

@@ -1,8 +1,10 @@
-import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
+import { ActivationReadyStatus } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { NullPort } from '../../../../base/runtime/ports'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { AggregateNodePorts } from './PortNames'
+import { ArrayPort } from '../ports'
 
 /** AggregateNode 入 Port 类型 */
 interface AggregateInput {
@@ -39,22 +41,14 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Aggregate')
 
-    // 入 Port
-    this.addInPort(AggregateNodePorts.IN.ITEM, DataType.STRING)
+    // 入 Port - 接受任意类型
+    this.addInPort(AggregateNodePorts.IN.ITEM, new NullPort(this))
 
     // 入控制 Port - 触发输出
-    this.addInControlPort(AggregateNodePorts.IN_CONTROL.AGGREGATE, DataType.NULL)
+    this.addInControlPort(AggregateNodePorts.IN_CONTROL.AGGREGATE, new NullPort(this))
 
     // 出 Port
-    this.addOutPort(AggregateNodePorts.OUT.ARRAY, DataType.ARRAY)
-  }
-
-  /**
-   * 设置输入元素的类型
-   */
-  setItemType(dataType: DataType): void {
-    this.inPorts.delete(AggregateNodePorts.IN.ITEM)
-    this.addInPort(AggregateNodePorts.IN.ITEM, dataType)
+    this.addOutPort(AggregateNodePorts.OUT.ARRAY, new ArrayPort(this))
   }
 
   /**

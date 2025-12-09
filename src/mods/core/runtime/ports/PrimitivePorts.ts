@@ -1,10 +1,12 @@
-import { BasePort } from './BasePort'
-import { DataType } from '../types'
-import type { RealDataType, ConversionResult } from '../types'
+import { BasePort } from '../../../../base/runtime/ports'
+import { DataType } from '../../../../base/runtime/types'
+import type { RealDataType, ConversionResult } from '../../../../base/runtime/types'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 
 /**
  * StringPort - 字符串类型 Port
  */
+@AnoraRegister('core.StringPort')
 export class StringPort extends BasePort {
   get dataType(): DataType {
     return DataType.STRING
@@ -53,6 +55,7 @@ export class StringPort extends BasePort {
 /**
  * NumberPort - 浮点数类型 Port
  */
+@AnoraRegister('core.NumberPort')
 export class NumberPort extends BasePort {
   get dataType(): DataType {
     return DataType.NUMBER
@@ -98,6 +101,7 @@ export class NumberPort extends BasePort {
 /**
  * IntegerPort - 整数类型 Port
  */
+@AnoraRegister('core.IntegerPort')
 export class IntegerPort extends BasePort {
   get dataType(): DataType {
     return DataType.INTEGER
@@ -145,6 +149,7 @@ export class IntegerPort extends BasePort {
 /**
  * BooleanPort - 布尔类型 Port
  */
+@AnoraRegister('core.BooleanPort')
 export class BooleanPort extends BasePort {
   get dataType(): DataType {
     return DataType.BOOLEAN
@@ -175,19 +180,5 @@ export class BooleanPort extends BasePort {
           error: `Cannot convert ${valueType} to boolean`,
         }
     }
-  }
-}
-
-/**
- * NullPort - 空类型 Port（可接受任意类型）
- */
-export class NullPort extends BasePort {
-  get dataType(): DataType {
-    return DataType.NULL
-  }
-
-  protected convert(value: RealDataType): ConversionResult {
-    // NullPort 接受任何类型
-    return { success: true, value }
   }
 }

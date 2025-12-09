@@ -1,8 +1,8 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { CompareNodePorts } from './PortNames'
+import { NullPort, BooleanPort } from '../ports'
 
 /**
  * 比较操作类型
@@ -42,12 +42,12 @@ export class CompareNode extends WebNode<CompareInput, CompareOutput> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Compare')
 
-    // 入 Port
-    this.addInPort(CompareNodePorts.IN.LEFT, DataType.STRING)
-    this.addInPort(CompareNodePorts.IN.RIGHT, DataType.STRING)
+    // 入 Port - 接受任意类型
+    this.addInPort(CompareNodePorts.IN.LEFT, new NullPort(this))
+    this.addInPort(CompareNodePorts.IN.RIGHT, new NullPort(this))
 
     // 出 Port
-    this.addOutPort(CompareNodePorts.OUT.RESULT, DataType.BOOLEAN)
+    this.addOutPort(CompareNodePorts.OUT.RESULT, new BooleanPort(this))
 
     // 默认比较操作
     this.context = { operation: CompareOperation.Equal }

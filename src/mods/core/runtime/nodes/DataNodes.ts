@@ -1,6 +1,6 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { NullPort } from '../../../../base/runtime/ports'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import {
   ObjectAccessNodePorts,
@@ -9,6 +9,7 @@ import {
   ArrayPushNodePorts,
   ArrayLengthNodePorts,
 } from './PortNames'
+import { StringPort, IntegerPort, ObjectPort, ArrayPort } from '../ports'
 
 /** ObjectAccessNode 入 Port 类型 */
 interface ObjectAccessInput {
@@ -34,19 +35,11 @@ export class ObjectAccessNode extends WebNode<ObjectAccessInput, ObjectAccessOut
     super(id, label ?? 'ObjectAccess')
 
     // 入 Port
-    this.addInPort(ObjectAccessNodePorts.IN.OBJECT, DataType.OBJECT)
-    this.addInPort(ObjectAccessNodePorts.IN.KEY, DataType.STRING)
+    this.addInPort(ObjectAccessNodePorts.IN.OBJECT, new ObjectPort(this))
+    this.addInPort(ObjectAccessNodePorts.IN.KEY, new StringPort(this))
 
-    // 出 Port
-    this.addOutPort(ObjectAccessNodePorts.OUT.VALUE, DataType.STRING)
-  }
-
-  /**
-   * 设置输出类型
-   */
-  setOutputType(dataType: DataType): void {
-    this.outPorts.delete(ObjectAccessNodePorts.OUT.VALUE)
-    this.addOutPort(ObjectAccessNodePorts.OUT.VALUE, dataType)
+    // 出 Port - 输出任意类型
+    this.addOutPort(ObjectAccessNodePorts.OUT.VALUE, new NullPort(this))
   }
 
   async activateCore(
@@ -88,21 +81,13 @@ export class ObjectSetNode extends WebNode<ObjectSetInput, ObjectSetOutput> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ObjectSet')
 
-    // 入 Port
-    this.addInPort(ObjectSetNodePorts.IN.OBJECT, DataType.OBJECT)
-    this.addInPort(ObjectSetNodePorts.IN.KEY, DataType.STRING)
-    this.addInPort(ObjectSetNodePorts.IN.VALUE, DataType.STRING)
+    // 入 Port - value 接受任意类型
+    this.addInPort(ObjectSetNodePorts.IN.OBJECT, new ObjectPort(this))
+    this.addInPort(ObjectSetNodePorts.IN.KEY, new StringPort(this))
+    this.addInPort(ObjectSetNodePorts.IN.VALUE, new NullPort(this))
 
     // 出 Port
-    this.addOutPort(ObjectSetNodePorts.OUT.OBJECT, DataType.OBJECT)
-  }
-
-  /**
-   * 设置值类型
-   */
-  setValueType(dataType: DataType): void {
-    this.inPorts.delete(ObjectSetNodePorts.IN.VALUE)
-    this.addInPort(ObjectSetNodePorts.IN.VALUE, dataType)
+    this.addOutPort(ObjectSetNodePorts.OUT.OBJECT, new ObjectPort(this))
   }
 
   async activateCore(
@@ -144,19 +129,11 @@ export class ArrayAccessNode extends WebNode<ArrayAccessInput, ArrayAccessOutput
     super(id, label ?? 'ArrayAccess')
 
     // 入 Port
-    this.addInPort(ArrayAccessNodePorts.IN.ARRAY, DataType.ARRAY)
-    this.addInPort(ArrayAccessNodePorts.IN.INDEX, DataType.INTEGER)
+    this.addInPort(ArrayAccessNodePorts.IN.ARRAY, new ArrayPort(this))
+    this.addInPort(ArrayAccessNodePorts.IN.INDEX, new IntegerPort(this))
 
-    // 出 Port
-    this.addOutPort(ArrayAccessNodePorts.OUT.VALUE, DataType.STRING)
-  }
-
-  /**
-   * 设置输出类型
-   */
-  setOutputType(dataType: DataType): void {
-    this.outPorts.delete(ArrayAccessNodePorts.OUT.VALUE)
-    this.addOutPort(ArrayAccessNodePorts.OUT.VALUE, dataType)
+    // 出 Port - 输出任意类型
+    this.addOutPort(ArrayAccessNodePorts.OUT.VALUE, new NullPort(this))
   }
 
   async activateCore(
@@ -197,20 +174,12 @@ export class ArrayPushNode extends WebNode<ArrayPushInput, ArrayPushOutput> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayPush')
 
-    // 入 Port
-    this.addInPort(ArrayPushNodePorts.IN.ARRAY, DataType.ARRAY)
-    this.addInPort(ArrayPushNodePorts.IN.VALUE, DataType.STRING)
+    // 入 Port - value 接受任意类型
+    this.addInPort(ArrayPushNodePorts.IN.ARRAY, new ArrayPort(this))
+    this.addInPort(ArrayPushNodePorts.IN.VALUE, new NullPort(this))
 
     // 出 Port
-    this.addOutPort(ArrayPushNodePorts.OUT.ARRAY, DataType.ARRAY)
-  }
-
-  /**
-   * 设置值类型
-   */
-  setValueType(dataType: DataType): void {
-    this.inPorts.delete(ArrayPushNodePorts.IN.VALUE)
-    this.addInPort(ArrayPushNodePorts.IN.VALUE, dataType)
+    this.addOutPort(ArrayPushNodePorts.OUT.ARRAY, new ArrayPort(this))
   }
 
   async activateCore(
@@ -250,10 +219,10 @@ export class ArrayLengthNode extends WebNode<ArrayLengthInput, ArrayLengthOutput
     super(id, label ?? 'ArrayLength')
 
     // 入 Port
-    this.addInPort(ArrayLengthNodePorts.IN.ARRAY, DataType.ARRAY)
+    this.addInPort(ArrayLengthNodePorts.IN.ARRAY, new ArrayPort(this))
 
     // 出 Port
-    this.addOutPort(ArrayLengthNodePorts.OUT.LENGTH, DataType.INTEGER)
+    this.addOutPort(ArrayLengthNodePorts.OUT.LENGTH, new IntegerPort(this))
   }
 
   async activateCore(

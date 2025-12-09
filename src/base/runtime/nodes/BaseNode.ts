@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
-import { DataType, ActivationReadyStatus, NodeExecutionStatus } from '../types'
+import { ActivationReadyStatus, NodeExecutionStatus } from '../types'
 import type { ExecutorContext, SerializedNode, RealDataType } from '../types'
-import { BasePort, NullPort, createPort } from '../ports'
+import { BasePort, NullPort } from '../ports'
 
 /**
  * 节点输入数据类型
@@ -91,37 +91,33 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   }
 
   /**
-   * 添加入 Port
+   * 添加入 Port（子类直接传入已创建的 Port 实例）
    */
-  protected addInPort(name: string, dataType: DataType): BasePort {
-    const port = createPort(dataType, this)
+  protected addInPort(name: string, port: BasePort): BasePort {
     this.inPorts.set(name, port)
     return port
   }
 
   /**
-   * 添加出 Port
+   * 添加出 Port（子类直接传入已创建的 Port 实例）
    */
-  protected addOutPort(name: string, dataType: DataType): BasePort {
-    const port = createPort(dataType, this)
+  protected addOutPort(name: string, port: BasePort): BasePort {
     this.outPorts.set(name, port)
     return port
   }
 
   /**
-   * 添加入控制 Port
+   * 添加入控制 Port（子类直接传入已创建的 Port 实例）
    */
-  protected addInControlPort(name: string, dataType: DataType = DataType.NULL): BasePort {
-    const port = createPort(dataType, this)
+  protected addInControlPort(name: string, port: BasePort): BasePort {
     this.inControlPorts.set(name, port)
     return port
   }
 
   /**
-   * 添加出控制 Port
+   * 添加出控制 Port（子类直接传入已创建的 Port 实例）
    */
-  protected addOutControlPort(name: string, dataType: DataType = DataType.NULL): BasePort {
-    const port = createPort(dataType, this)
+  protected addOutControlPort(name: string, port: BasePort): BasePort {
     this.outControlPorts.set(name, port)
     return port
   }

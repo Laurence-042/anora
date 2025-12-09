@@ -1,8 +1,8 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ConsoleLogNodePorts } from './PortNames'
+import { StringPort } from '../ports'
 
 /** ConsoleLogNode 入 Port 类型 */
 interface ConsoleLogInput {
@@ -22,7 +22,7 @@ export class ConsoleLogNode extends WebNode<ConsoleLogInput, Record<string, neve
     super(id, label ?? 'ConsoleLog')
 
     // 入 Port
-    this.addInPort(ConsoleLogNodePorts.IN.MESSAGE, DataType.STRING)
+    this.addInPort(ConsoleLogNodePorts.IN.MESSAGE, new StringPort(this))
 
     // 默认前缀
     this.context = { prefix: '[ANORA]' }

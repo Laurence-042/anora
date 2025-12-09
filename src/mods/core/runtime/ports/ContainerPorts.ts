@@ -1,7 +1,8 @@
-import { ContainerPort, BasePort } from './BasePort'
-import { DataType } from '../types'
-import type { RealDataType, ConversionResult } from '../types'
-import { StringPort, NumberPort, IntegerPort, BooleanPort, NullPort } from './PrimitivePorts'
+import { ContainerPort, BasePort, NullPort } from '../../../../base/runtime/ports'
+import { DataType } from '../../../../base/runtime/types'
+import type { RealDataType, ConversionResult } from '../../../../base/runtime/types'
+import { AnoraRegister } from '../../../../base/runtime/registry'
+import { StringPort, NumberPort, IntegerPort, BooleanPort } from './PrimitivePorts'
 
 /**
  * 推断值的数据类型（局部实现避免循环依赖）
@@ -21,6 +22,7 @@ function inferDataTypeLocal(value: RealDataType): DataType {
 /**
  * ArrayPort - 数组类型 Port
  */
+@AnoraRegister('core.ArrayPort')
 export class ArrayPort extends ContainerPort {
   get dataType(): DataType {
     return DataType.ARRAY
@@ -144,6 +146,7 @@ export class ArrayPort extends ContainerPort {
 /**
  * ObjectPort - 对象类型 Port
  */
+@AnoraRegister('core.ObjectPort')
 export class ObjectPort extends ContainerPort {
   get dataType(): DataType {
     return DataType.OBJECT

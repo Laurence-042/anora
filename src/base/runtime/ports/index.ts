@@ -1,4 +1,3 @@
+// Base Port 类导出
 export { BasePort, ContainerPort } from './BasePort'
-export { StringPort, NumberPort, IntegerPort, BooleanPort, NullPort } from './PrimitivePorts'
-export { ArrayPort, ObjectPort } from './ContainerPorts'
-export { createPort, createPortFromValue, inferDataType, areTypesCompatible } from './PortFactory'
+export { NullPort } from './NullPort'

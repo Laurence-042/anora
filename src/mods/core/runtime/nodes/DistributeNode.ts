@@ -1,8 +1,10 @@
-import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
+import { ActivationReadyStatus } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { NullPort } from '../../../../base/runtime/ports'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { DistributeNodePorts } from './PortNames'
+import { ArrayPort, IntegerPort } from '../ports'
 
 /** DistributeNode 入 Port 类型 */
 interface DistributeInput {
@@ -40,22 +42,14 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
     super(id, label ?? 'Distribute')
 
     // 入 Port
-    this.addInPort(DistributeNodePorts.IN.ARRAY, DataType.ARRAY)
+    this.addInPort(DistributeNodePorts.IN.ARRAY, new ArrayPort(this))
 
-    // 出 Port
-    this.addOutPort(DistributeNodePorts.OUT.ITEM, DataType.STRING)
-    this.addOutPort(DistributeNodePorts.OUT.INDEX, DataType.INTEGER)
+    // 出 Port - item 使用 NullPort 接受任意类型
+    this.addOutPort(DistributeNodePorts.OUT.ITEM, new NullPort(this))
+    this.addOutPort(DistributeNodePorts.OUT.INDEX, new IntegerPort(this))
 
     // 出控制 Port - 完成时激活
-    this.addOutControlPort(DistributeNodePorts.OUT_CONTROL.DONE, DataType.NULL)
-  }
-
-  /**
-   * 设置输出元素的类型
-   */
-  setItemType(dataType: DataType): void {
-    this.outPorts.delete(DistributeNodePorts.OUT.ITEM)
-    this.addOutPort(DistributeNodePorts.OUT.ITEM, dataType)
+    this.addOutControlPort(DistributeNodePorts.OUT_CONTROL.DONE, new NullPort(this))
   }
 
   /**

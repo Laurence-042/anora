@@ -248,3 +248,17 @@ export const TYPE_COMPATIBILITY_MATRIX: Record<DataType, Record<DataType, boolea
     [DataType.NULL]: true,
   },
 }
+
+/**
+ * 检查两个 Port 类型是否兼容（可以建立连接）
+ */
+export function areTypesCompatible(sourceType: DataType, targetType: DataType): boolean {
+  // null 类型可以接受任何类型
+  if (targetType === DataType.NULL) return true
+
+  // 任何类型都可以输出到 null 类型
+  if (sourceType === DataType.NULL) return true
+
+  // 查询兼容性矩阵
+  return TYPE_COMPATIBILITY_MATRIX[sourceType]?.[targetType] ?? false
+}

@@ -1,8 +1,9 @@
-import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { NullPort } from '../../../../base/runtime/ports'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { BranchNodePorts } from './PortNames'
+import { BooleanPort } from '../ports'
 
 /** BranchNode 入 Port 类型 */
 interface BranchInput {
@@ -22,11 +23,11 @@ export class BranchNode extends WebNode<BranchInput, Record<string, never>> {
     super(id, label ?? 'Branch')
 
     // 入 Port
-    this.addInPort(BranchNodePorts.IN.CONDITION, DataType.BOOLEAN)
+    this.addInPort(BranchNodePorts.IN.CONDITION, new BooleanPort(this))
 
     // 出控制 Port
-    this.addOutControlPort(BranchNodePorts.OUT_CONTROL.ON_TRUE, DataType.NULL)
-    this.addOutControlPort(BranchNodePorts.OUT_CONTROL.ON_FALSE, DataType.NULL)
+    this.addOutControlPort(BranchNodePorts.OUT_CONTROL.ON_TRUE, new NullPort(this))
+    this.addOutControlPort(BranchNodePorts.OUT_CONTROL.ON_FALSE, new NullPort(this))
   }
 
   async activateCore(

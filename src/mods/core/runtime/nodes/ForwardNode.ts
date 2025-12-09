@@ -1,8 +1,9 @@
-import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
+import { ActivationReadyStatus } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ForwardNodePorts } from './PortNames'
+import { NullPort } from '../ports'
 
 /** ForwardNode 入 Port 类型 */
 interface ForwardInput {
@@ -31,28 +32,10 @@ export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Forward')
 
-    // 入 Port - 接受任意类型
-    this.addInPort(ForwardNodePorts.IN.VALUE, DataType.STRING)
-    // 出 Port - 默认输出字符串
-    this.addOutPort(ForwardNodePorts.OUT.VALUE, DataType.STRING)
-  }
-
-  /**
-   * 设置出 Port 的数据类型
-   */
-  setOutputType(dataType: DataType): void {
-    // 重新创建出 Port
-    this.outPorts.delete(ForwardNodePorts.OUT.VALUE)
-    this.addOutPort(ForwardNodePorts.OUT.VALUE, dataType)
-  }
-
-  /**
-   * 设置入 Port 的数据类型
-   */
-  setInputType(dataType: DataType): void {
-    // 重新创建入 Port
-    this.inPorts.delete(ForwardNodePorts.IN.VALUE)
-    this.addInPort(ForwardNodePorts.IN.VALUE, dataType)
+    // 入 Port - 接受任意类型（使用 NullPort）
+    this.addInPort(ForwardNodePorts.IN.VALUE, new NullPort(this))
+    // 出 Port - 输出任意类型（使用 NullPort）
+    this.addOutPort(ForwardNodePorts.OUT.VALUE, new NullPort(this))
   }
 
   /**

@@ -1,8 +1,9 @@
-import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
+import { ActivationReadyStatus } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ParameterNodePorts } from './PortNames'
+import { NullPort } from '../ports'
 
 /** ParameterNode 出 Port 类型 */
 interface ParameterOutput {
@@ -21,23 +22,18 @@ export class ParameterNode extends WebNode<Record<string, never>, ParameterOutpu
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Parameter')
 
-    // 出 Port - 默认输出字符串
-    this.addOutPort(ParameterNodePorts.OUT.VALUE, DataType.STRING)
+    // 出 Port - 输出任意类型
+    this.addOutPort(ParameterNodePorts.OUT.VALUE, new NullPort(this))
 
     // 默认上下文
     this.context = { value: '' }
   }
 
   /**
-   * 设置参数值和类型
+   * 设置参数值
    */
-  setValue(value: unknown, dataType?: DataType): void {
+  setValue(value: unknown): void {
     this.context = { value }
-
-    if (dataType) {
-      this.outPorts.delete(ParameterNodePorts.OUT.VALUE)
-      this.addOutPort(ParameterNodePorts.OUT.VALUE, dataType)
-    }
   }
 
   /**
