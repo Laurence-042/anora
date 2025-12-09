@@ -37,8 +37,6 @@ export enum ActivationReadyStatus {
   NotReadyUntilAllPortsFilled = 'NOT_READY_UNTIL_ALL_PORTS_FILLED',
   /** 已准备好，Executor 下一轮迭代中可执行 */
   Ready = 'READY',
-  /** 直通模式（ForwardNode 等），同步传播数据 */
-  DirectThrough = 'DIRECT_THROUGH',
 }
 
 /**

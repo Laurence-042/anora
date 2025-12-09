@@ -5,6 +5,19 @@ import { AnoraGraph } from '../graph/AnoraGraph'
 import { DEFAULT_EXECUTOR_CONTEXT } from '../types'
 
 /**
+ * 检查节点是否为开启直通模式的 ForwardNode
+ * 通过 typeId 和 directThrough 属性判断，避免循环依赖
+ */
+function isDirectThroughForwardNode(node: BaseNode): boolean {
+  // 检查是否是 ForwardNode 类型（通过 typeId）
+  if (node.typeId !== 'core.ForwardNode') {
+    return false
+  }
+  // 检查是否开启了直通模式
+  return (node as BaseNode & { directThrough?: boolean }).directThrough === true
+}
+
+/**
  * 执行结果
  */
 export interface ExecutionResult {
@@ -214,10 +227,7 @@ export class BasicExecutor {
       // 获取该节点所有入 Port 的已连接 Port ID 集合
       const connectedPorts = this.getConnectedInPortIds(node, graph)
       const status = node.isReadyToActivate(connectedPorts)
-      if (
-        status === ActivationReadyStatus.Ready ||
-        status === ActivationReadyStatus.DirectThrough
-      ) {
+      if (status === ActivationReadyStatus.Ready) {
         readyNodes.push(node)
       }
     }
@@ -357,33 +367,40 @@ export class BasicExecutor {
   }
 
   /**
-   * 检查节点是否为直通节点，如果是则立即执行并递归传播
+   * 检查节点是否为直通 ForwardNode，如果是则立即执行并递归传播
+   * 直通机制仅针对 ForwardNode，不是通用机制
    */
   private async executeDirectThroughIfReady(
     node: BaseNode,
     graph: AnoraGraph,
     context: ExecutorContext,
   ): Promise<void> {
-    const connectedPorts = this.getConnectedInPortIds(node, graph)
-    const status = node.isReadyToActivate(connectedPorts)
+    // 仅开启直通模式的 ForwardNode 支持直通
+    if (!isDirectThroughForwardNode(node)) {
+      return
+    }
 
-    if (status === ActivationReadyStatus.DirectThrough) {
-      // 直通节点：立即执行
-      try {
-        this.emit({ type: 'node-start', node })
-        await node.activate(context)
-        this.emit({ type: 'node-complete', node, success: true })
+    // 检查是否有数据可传播
+    const inPort = node.getInPort('value')
+    if (!inPort?.hasData) {
+      return
+    }
 
-        // 清空入 Port
-        this.clearNodeInputPorts(node)
+    // 直通节点：立即执行
+    try {
+      this.emit({ type: 'node-start', node })
+      await node.activate(context)
+      this.emit({ type: 'node-complete', node, success: true })
 
-        // 递归传播数据（可能触发更多直通节点）
-        await this.propagateDataWithDirectThrough(node, graph, context)
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error))
-        this.emit({ type: 'node-complete', node, success: false, error: err })
-        throw err
-      }
+      // 清空入 Port
+      this.clearNodeInputPorts(node)
+
+      // 递归传播数据（可能触发更多直通节点）
+      await this.propagateDataWithDirectThrough(node, graph, context)
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      this.emit({ type: 'node-complete', node, success: false, error: err })
+      throw err
     }
   }
 

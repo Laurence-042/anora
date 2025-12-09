@@ -209,7 +209,7 @@ abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = Nod
   // 基类实现：所有"被连接的" inExecPort 和 inPorts 都被填入数据才会 READY
   // 如果没有任何 inExecPort 和 inPorts 被连接也算 READY
   // 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
-  // 子类可以覆盖此方法实现特殊激活规则（如 ForwardNode 的直通模式、DistributeNode 的多次输出）
+  // 子类可以覆盖此方法实现特殊激活规则（如 DistributeNode 的多次输出、AggregateNode 的双模式激活）
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus
 
   // 节点激活逻辑，Executor 调用时传入全局 context
@@ -265,18 +265,18 @@ BaseNode
 
 #### 4.5.1 ForwardNode (中继)
 
-接受所有数据类型并**原样输出**，可使用 context 指定"直通"模式：
+接受所有数据类型并**原样输出**，可使用 `directThrough` 属性指定"直通"模式：
 
 | 模式   | 行为                                                |
 | ------ | --------------------------------------------------- |
-| 非直通 | 默认。走正常迭代流程                                |
+| 非直通 | 走正常迭代流程                                      |
 | 直通   | 填写入 Port 时立刻执行并填写后面的入 Port，不等迭代 |
 
 **直通机制详解**：
 
 通常一个迭代的流程是：当前节点执行 → 将执行结果填到出 Port → 将出 Port 数据推到下一个节点的入 Port
 
-Executor 在推完数据后，还会检查目标入 Port 是不是直通 Forward 的：
+Executor 在推完数据后，还会检查目标节点是不是开启了直通模式的 ForwardNode：
 
 - 如果是，Executor 会**立刻执行**这个直通 Forward
 - 然后再将其出 Port 的数据继续往后推
@@ -285,6 +285,15 @@ Executor 在推完数据后，还会检查目标入 Port 是不是直通 Forward
 **用途**：整理图结构、作为 MergeGate 保证后续节点在同一迭代中执行、缓存数据值、延迟迭代以控制执行时序
 
 **限制**：两个直通模式的 Forward **不允许组成环**（Graph 中需要检查）
+
+> **⚠️ 设计说明**：直通模式是 Executor 针对 ForwardNode 的**特殊处理**，而非通用机制。
+> 这是有意为之的设计决策——如果将直通作为通用机制提供给所有节点类型，会导致：
+>
+> 1. **时序管理灾难**：任意节点都能在迭代中途触发执行，执行顺序将变得不可预测
+> 2. **调试困难**：难以追踪数据流和执行顺序
+> 3. **语义混乱**：节点的"执行"概念被稀释，违背"迭代"作为执行单元的设计
+>
+> ForwardNode 的直通之所以安全，是因为它**只做数据传递，不产生副作用**。
 
 #### 4.5.2 ParameterNode (参数)
 
@@ -560,7 +569,6 @@ enum ActivationReadyStatus {
   NOT_READY_UNTIL_ANY_PORTS_FILLED, // 至少一个入 Port 被新写入数据后再询问
   NOT_READY_UNTIL_ALL_PORTS_FILLED, // 至少一个入 Port 被写入，且所有有入边的入 Port 都被填写后再询问
   READY, // 已准备好，Executor 下一轮迭代中可执行
-  DIRECT_THROUGH, // 直通模式，填写入 Port 时立即执行，不等迭代
 }
 ```
 

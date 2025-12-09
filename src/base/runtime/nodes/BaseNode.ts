@@ -130,7 +130,8 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   }
 
   /**
-   * 检查入 Port 是否都被填入数据
+   * 检查被连接的入 Port 是否都被填入数据
+   * 如果没有任何入 Port 被连接，返回 true
    * @param connectedPorts Executor 传入的已连接 Port ID 集合
    */
   protected areConnectedInPortsFilled(connectedPorts: Set<string>): boolean {
@@ -150,24 +151,6 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   }
 
   /**
-   * 检查是否有任何入 Port 被连接
-   * @param connectedPorts Executor 传入的已连接 Port ID 集合
-   */
-  protected hasAnyConnectedInPort(connectedPorts: Set<string>): boolean {
-    if (connectedPorts.has(this.inExecPort.id)) {
-      return true
-    }
-
-    for (const [, port] of this.inPorts) {
-      if (connectedPorts.has(port.id)) {
-        return true
-      }
-    }
-
-    return false
-  }
-
-  /**
    * 表示节点是否可以激活并运行（由 Executor 调用）
    * Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
    * 基类实现：所有"被连接的" inExecPort 和 inPorts 都被填入数据才会 READY
@@ -177,12 +160,8 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
    * @param connectedPorts Executor 传入的当前被连接的 Ports 的 ID 集合
    */
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
-    // 如果没有任何入 Port 被连接，直接 READY
-    if (!this.hasAnyConnectedInPort(connectedPorts)) {
-      return ActivationReadyStatus.Ready
-    }
-
     // 检查所有被连接的入 Port 是否都有数据
+    // 如果没有任何入 Port 被连接，areConnectedInPortsFilled 返回 true，也是 READY
     if (this.areConnectedInPortsFilled(connectedPorts)) {
       return ActivationReadyStatus.Ready
     }
