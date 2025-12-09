@@ -7,6 +7,7 @@ import { computed, ref, watch } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { ParameterNode } from '@/mods/core/runtime/nodes/ParameterNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
+import { useNodeInput } from '@/base/ui/composables'
 import { ElInput } from 'element-plus'
 
 interface ParameterNodeProps extends NodeProps {
@@ -18,6 +19,7 @@ interface ParameterNodeProps extends NodeProps {
 const props = defineProps<ParameterNodeProps>()
 
 const node = computed(() => props.data.node)
+const { inputClass, onKeydown } = useNodeInput()
 
 /** 值编辑 */
 const editValue = ref('')
@@ -57,8 +59,9 @@ function saveValue(): void {
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 8 }"
           placeholder="输入参数值"
-          class="value-textarea"
+          :class="['value-textarea', inputClass]"
           @blur="saveValue"
+          @keydown="onKeydown"
           @keyup.ctrl.enter="saveValue"
         />
         <div class="value-hint">

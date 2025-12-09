@@ -7,6 +7,7 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import { ArithmeticNode, ArithmeticOperation } from '@/mods/core/runtime/nodes/ArithmeticNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
+import { useNodeInput } from '@/base/ui/composables'
 import { ElSelect, ElOption } from 'element-plus'
 
 interface ArithmeticNodeProps extends NodeProps {
@@ -18,6 +19,7 @@ interface ArithmeticNodeProps extends NodeProps {
 const props = defineProps<ArithmeticNodeProps>()
 
 const node = computed(() => props.data.node)
+const { inputClass, onKeydown } = useNodeInput()
 
 /** 当前运算符 */
 const currentOperation = computed({
@@ -41,7 +43,12 @@ const operationOptions = [
   <BaseNodeView v-bind="props as any">
     <template #controls>
       <div class="control-section">
-        <ElSelect v-model="currentOperation" placeholder="选择运算" class="operation-select">
+        <ElSelect
+          v-model="currentOperation"
+          placeholder="选择运算"
+          :class="['operation-select', inputClass]"
+          @keydown="onKeydown"
+        >
           <ElOption
             v-for="op in operationOptions"
             :key="op.value"

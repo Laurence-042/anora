@@ -9,6 +9,7 @@ import type { BaseNode } from '@/base/runtime/nodes'
 import { NodeExecutionStatus } from '@/base/runtime/types'
 import BasePortView from './BasePortView.vue'
 import { useGraphStore } from '@/stores/graph'
+import { useNodeInput } from '@/base/ui/composables'
 
 // Vue-Flow 节点 Props
 interface AnoraNodeProps extends NodeProps {
@@ -20,6 +21,7 @@ interface AnoraNodeProps extends NodeProps {
 const props = defineProps<AnoraNodeProps>()
 
 const graphStore = useGraphStore()
+const { inputClass, onKeydown } = useNodeInput()
 
 /** 获取节点实例 */
 const node = computed(() => props.data.node)
@@ -120,8 +122,9 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
             ref="editLabelInput"
             v-model="editingLabelValue"
             type="text"
-            class="label-input"
+            :class="['label-input', inputClass]"
             @blur="finishEditLabel"
+            @keydown="onKeydown"
             @keyup.enter="finishEditLabel"
             @keyup.escape="cancelEditLabel"
           />
