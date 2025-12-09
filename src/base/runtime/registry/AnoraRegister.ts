@@ -57,7 +57,16 @@ function matchDefType(constructor: AnyConstructor): DefType {
 }
 
 /**
- * ANORA 注册装饰器
+ * TC39 Stage 3 装饰器上下文类型
+ */
+interface ClassDecoratorContext {
+  kind: 'class'
+  name: string | undefined
+  addInitializer(initializer: () => void): void
+}
+
+/**
+ * ANORA 注册装饰器（TC39 Stage 3 新语法）
  * 用于自动注册 Node、Port、Executor 类型
  *
  * @example
@@ -67,33 +76,34 @@ function matchDefType(constructor: AnyConstructor): DefType {
  * ```
  */
 export function AnoraRegister(typeString: string) {
-  return function <T extends AnyConstructor>(constructor: T): T {
-    const defType = matchDefType(constructor)
+  return function <T extends AnyConstructor>(target: T, _context: ClassDecoratorContext): T | void {
+    // 新装饰器语法中，可以直接返回修改后的类或不返回（保持原类）
+    const defType = matchDefType(target)
 
     switch (defType) {
       case DefType.NODE:
-        NodeRegistry.register(typeString, constructor as unknown as NodeConstructor)
+        NodeRegistry.register(typeString, target as unknown as NodeConstructor)
         // 设置静态 typeId
-        ;(constructor as unknown as typeof BaseNode).typeId = typeString
+        ;(target as unknown as typeof BaseNode).typeId = typeString
         // 注册子类关系
-        const nodeParent = Object.getPrototypeOf(constructor)
+        const nodeParent = Object.getPrototypeOf(target)
         if (nodeParent && typeof nodeParent.registerSubclass === 'function') {
-          nodeParent.registerSubclass(constructor)
+          nodeParent.registerSubclass(target)
         }
         break
 
       case DefType.PORT:
-        PortRegistry.register(typeString, constructor as unknown as PortConstructor)
+        PortRegistry.register(typeString, target as unknown as PortConstructor)
         break
 
       case DefType.EXECUTOR:
-        ExecutorRegistry.register(typeString, constructor as unknown as ExecutorConstructor)
+        ExecutorRegistry.register(typeString, target as unknown as ExecutorConstructor)
         break
 
       default:
         throw new Error(`Unknown definition type for ${typeString}`)
     }
 
-    return constructor
+    // 不返回表示保持原类不变
   }
 }
