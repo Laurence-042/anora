@@ -65,7 +65,7 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
    * 覆盖激活就绪检查
    * 需要处理多次激活的情况
    */
-  override checkActivationReady(connectedPorts: Set<string>): ActivationReadyStatus {
+  override isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
     // 如果正在分发中，继续分发
     if (this.currentArray.length > 0 && this.currentIndex < this.currentArray.length) {
       return ActivationReadyStatus.Ready
@@ -76,7 +76,7 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
       return ActivationReadyStatus.NotReady
     }
 
-    // 等待新数组输入
+    // 等待新数组输入（使用基类默认逻辑）
     return super.isReadyToActivate(connectedPorts)
   }
 

@@ -168,11 +168,12 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   }
 
   /**
-   * 表示节点是否可以激活并运行
+   * 表示节点是否可以激活并运行（由 Executor 调用）
    * Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
    * 基类实现：所有"被连接的" inExecPort 和 inPorts 都被填入数据才会 READY
    * 如果没有任何 inExecPort 和 inPorts 被连接也算 READY
    * 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
+   * 子类可以覆盖此方法实现特殊激活规则
    * @param connectedPorts Executor 传入的当前被连接的 Ports 的 ID 集合
    */
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
@@ -187,15 +188,6 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
     }
 
     return ActivationReadyStatus.NotReadyUntilAllPortsFilled
-  }
-
-  /**
-   * 检查激活就绪状态（由 Executor 调用）
-   * 子类可以覆盖此方法实现特殊行为
-   * @param connectedPorts Executor 传入的当前被连接的 Ports 的 ID 集合
-   */
-  checkActivationReady(connectedPorts: Set<string>): ActivationReadyStatus {
-    return this.isReadyToActivate(connectedPorts)
   }
 
   /**

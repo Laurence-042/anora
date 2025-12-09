@@ -42,7 +42,7 @@ export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
    * 覆盖激活就绪检查
    * 支持直通模式
    */
-  override checkActivationReady(connectedPorts: Set<string>): ActivationReadyStatus {
+  override isReadyToActivate(_connectedPorts: Set<string>): ActivationReadyStatus {
     if (this.directThrough) {
       const inPort = this.getInPort('value')
       if (inPort?.hasData) {
@@ -50,7 +50,12 @@ export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
       }
       return ActivationReadyStatus.NotReadyUntilAnyPortsFilled
     }
-    return super.isReadyToActivate(connectedPorts)
+    // 非直通模式：只要有数据就 Ready
+    const inPort = this.getInPort('value')
+    if (inPort?.hasData) {
+      return ActivationReadyStatus.Ready
+    }
+    return ActivationReadyStatus.NotReadyUntilAnyPortsFilled
   }
 
   async activateCore(

@@ -187,13 +187,13 @@ abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = Nod
   // 控制 Port：用于特定情况下的额外流程控制，大部分节点这俩都是空的
   // 与 inExecPort/inPorts 不同，即便连接了入边且未被填写，
   // 在绝大多数情况下（基类实现）也不会导致节点不可执行
-  inControlPorts: { [portName: string]: BasePort }
-  outControlPorts: { [portName: string]: BasePort }
+  inControlPorts: Map<string, BasePort>
+  outControlPorts: Map<string, BasePort>
 
   // 数据 Port：相当于入/出参
   // 节点初始化时可自行分配初始值来辅助用户进行 object 类型的连线
-  inPorts: { [portName: string]: BasePort }
-  outPorts: { [portName: string]: BasePort }
+  inPorts: Map<string, BasePort>
+  outPorts: Map<string, BasePort>
 
   // 上下文：便于节点在多次工作中实现差异行为，也可用于静态配置
   // 动态数据和静态数据并未分离，需实现特定节点时自己避免写静态数据
@@ -203,11 +203,13 @@ abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = Nod
   // 显示 context 配置问题、Port 数据类型无法转换等节点特有的警告信息
   getConfigurationWarnings(): string[]
 
-  // 表示节点是否可以激活并运行，connectedPorts 为 Executor 传入，表示当前被连接的 Ports 的 ID 列表
+  // 表示节点是否可以激活并运行（由 Executor 调用）
+  // connectedPorts 为 Executor 传入，表示当前被连接的 Ports 的 ID 列表
   // Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
   // 基类实现：所有"被连接的" inExecPort 和 inPorts 都被填入数据才会 READY
   // 如果没有任何 inExecPort 和 inPorts 被连接也算 READY
   // 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
+  // 子类可以覆盖此方法实现特殊激活规则（如 ForwardNode 的直通模式、DistributeNode 的多次输出）
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus
 
   // 节点激活逻辑，Executor 调用时传入全局 context
@@ -297,11 +299,12 @@ Executor 在推完数据后，还会检查目标入 Port 是不是直通 Forward
 
 接受一个数组，然后在接下来的**数次迭代**中依次输出每个元素，相当于 **for-each**：
 
-- outControlPort `index`：输出当前索引
-- outControlPort `finish`：输出最后一个元素时同步激活，表示迭代完成
+- outPort `item`：输出当前元素
+- outPort `index`：输出当前索引
+- outControlPort `done`：输出最后一个元素时同步激活，表示迭代完成
 - outExecPort：每输出一个元素都会激活一次
 
-**激活条件**：`还有元素待输出 || 默认条件`（需要重写 isReadyToActivate，可调 super 复用）
+**激活条件**：`还有元素待输出 || 默认条件`（需要重写 checkActivationReady）
 
 **特殊行为**：
 
@@ -557,6 +560,7 @@ enum ActivationReadyStatus {
   NOT_READY_UNTIL_ANY_PORTS_FILLED, // 至少一个入 Port 被新写入数据后再询问
   NOT_READY_UNTIL_ALL_PORTS_FILLED, // 至少一个入 Port 被写入，且所有有入边的入 Port 都被填写后再询问
   READY, // 已准备好，Executor 下一轮迭代中可执行
+  DIRECT_THROUGH, // 直通模式，填写入 Port 时立即执行，不等迭代
 }
 ```
 

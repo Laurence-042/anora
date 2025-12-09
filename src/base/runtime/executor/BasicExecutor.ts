@@ -213,7 +213,7 @@ export class BasicExecutor {
     for (const node of nodes) {
       // 获取该节点所有入 Port 的已连接 Port ID 集合
       const connectedPorts = this.getConnectedInPortIds(node, graph)
-      const status = node.checkActivationReady(connectedPorts)
+      const status = node.isReadyToActivate(connectedPorts)
       if (
         status === ActivationReadyStatus.Ready ||
         status === ActivationReadyStatus.DirectThrough
@@ -365,7 +365,7 @@ export class BasicExecutor {
     context: ExecutorContext,
   ): Promise<void> {
     const connectedPorts = this.getConnectedInPortIds(node, graph)
-    const status = node.checkActivationReady(connectedPorts)
+    const status = node.isReadyToActivate(connectedPorts)
 
     if (status === ActivationReadyStatus.DirectThrough) {
       // 直通节点：立即执行

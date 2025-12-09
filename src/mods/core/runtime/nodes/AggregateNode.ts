@@ -26,12 +26,12 @@ interface AggregateControl {
  * 收集多个元素组成数组
  *
  * 入 Port: item (动态类型)
- * 入控制 Port: aggregate (null) - 当激活时，输出收集的数组并清空
+ * 入控制 Port: aggregate (null) - 触发时将 inPort 数据加进缓存
  * 出 Port: array (array)
  *
  * 两种激活模式：
- * 1. aggregate 控制 Port 被激活：输出当前收集的数组
- * 2. inExecPort 被激活：添加元素到收集器
+ * 1. inControlPort `aggregate` 被写入：将 inPort 数据加进缓存数组（null 也缓存）
+ * 2. inExecPort 被写入：输出缓存数组，然后清空缓存
  */
 @AnoraRegister('core.AggregateNode')
 export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, AggregateControl> {
@@ -44,7 +44,7 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
     // 入 Port - 接受任意类型
     this.addInPort(AggregateNodePorts.IN.ITEM, new NullPort(this))
 
-    // 入控制 Port - 触发输出
+    // 入控制 Port - 触发收集
     this.addInControlPort(AggregateNodePorts.IN_CONTROL.AGGREGATE, new NullPort(this))
 
     // 出 Port
@@ -67,16 +67,22 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
 
   /**
    * 覆盖激活就绪检查
+   * 两种激活条件：aggregate 控制端口有数据，或 inExecPort 有数据
    */
-  override checkActivationReady(connectedPorts: Set<string>): ActivationReadyStatus {
+  override isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
     // 检查 aggregate 控制 Port
     const aggregatePort = this.inControlPorts.get(AggregateNodePorts.IN_CONTROL.AGGREGATE)
     if (aggregatePort?.hasData) {
       return ActivationReadyStatus.Ready
     }
 
-    // 正常检查
-    return super.isReadyToActivate(connectedPorts)
+    // 检查 inExecPort（输出模式）
+    if (this.inExecPort.hasData) {
+      return ActivationReadyStatus.Ready
+    }
+
+    // 等待任一端口被填写
+    return ActivationReadyStatus.NotReadyUntilAnyPortsFilled
   }
 
   async activateCore(
@@ -84,9 +90,11 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
     inData: AggregateInput,
     controlData: AggregateControl,
   ): Promise<AggregateOutput> {
-    // 检查是否是聚集触发
-    if (controlData[AggregateNodePorts.IN_CONTROL.AGGREGATE] !== undefined) {
-      // 输出当前收集的数组
+    // 检查是否是 inExecPort 触发（输出模式）
+    // 注意：inExecPort 的数据已在 activate() 中被 read()，所以这里检查 aggregate 控制端口
+    // 如果 aggregate 没有数据，说明是 inExecPort 触发的
+    if (controlData[AggregateNodePorts.IN_CONTROL.AGGREGATE] === undefined) {
+      // 输出当前收集的数组并清空
       const result = [...this.collector]
       this.collector = []
       return {
@@ -94,11 +102,9 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
       }
     }
 
-    // 添加元素到收集器
+    // aggregate 控制端口触发：添加元素到收集器（null 也缓存）
     const item = inData[AggregateNodePorts.IN.ITEM]
-    if (item !== undefined) {
-      this.collector.push(item)
-    }
+    this.collector.push(item)
 
     // 不输出任何数据（继续收集）
     return {}
