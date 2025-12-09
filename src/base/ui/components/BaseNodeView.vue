@@ -3,7 +3,7 @@
  * BaseNodeView - 节点基础视图组件
  * 作为 Vue-Flow 的自定义节点组件
  */
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { BaseNode } from '@/base/runtime/nodes'
 import { NodeExecutionStatus } from '@/base/runtime/types'
@@ -45,6 +45,34 @@ function togglePortExpand(portId: string): void {
   }
 }
 
+/** Label 编辑状态 */
+const isEditingLabel = ref(false)
+const editLabelInput = ref<HTMLInputElement | null>(null)
+const editingLabelValue = ref('')
+
+/** 开始编辑 label */
+function startEditLabel(): void {
+  editingLabelValue.value = node.value.label
+  isEditingLabel.value = true
+  nextTick(() => {
+    editLabelInput.value?.focus()
+    editLabelInput.value?.select()
+  })
+}
+
+/** 完成编辑 label */
+function finishEditLabel(): void {
+  if (editingLabelValue.value.trim()) {
+    node.value.label = editingLabelValue.value.trim()
+  }
+  isEditingLabel.value = false
+}
+
+/** 取消编辑 label */
+function cancelEditLabel(): void {
+  isEditingLabel.value = false
+}
+
 /** 状态边框颜色 */
 const statusBorderColor = computed(() => {
   if (isExecuting.value) return '#fbbf24' // amber - executing
@@ -83,8 +111,23 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   >
     <!-- 节点头部 -->
     <div class="node-header">
-      <span class="node-type">{{ node.typeId }}</span>
-      <span class="node-label">{{ node.label }}</span>
+      <div class="header-info">
+        <span class="node-type">{{ node.typeId }}</span>
+        <!-- Label 显示/编辑 -->
+        <div class="label-row">
+          <input
+            v-if="isEditingLabel"
+            ref="editLabelInput"
+            v-model="editingLabelValue"
+            type="text"
+            class="label-input"
+            @blur="finishEditLabel"
+            @keyup.enter="finishEditLabel"
+            @keyup.escape="cancelEditLabel"
+          />
+          <span v-else class="node-label" @dblclick="startEditLabel">{{ node.label }}</span>
+        </div>
+      </div>
       <!-- 执行状态指示器 -->
       <span v-if="isExecuting" class="status-indicator executing">⟳</span>
       <span
@@ -104,6 +147,11 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
       <div v-for="(warning, index) in warnings" :key="index" class="warning-item">
         ⚠ {{ warning }}
       </div>
+    </div>
+
+    <!-- 节点控制区域（供子组件覆盖使用的插槽） -->
+    <div class="node-controls">
+      <slot name="controls" :node="node"></slot>
     </div>
 
     <!-- 节点主体：Ports -->
@@ -179,8 +227,8 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   background: var(--vf-node-bg, #1a1a2e);
   border: 2px solid transparent;
   border-radius: 8px;
-  min-width: 180px;
-  max-width: 300px;
+  min-width: 200px;
+  max-width: 320px;
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -209,31 +257,63 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 
 .node-header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px;
   background: var(--vf-node-header-bg, #252542);
   border-radius: 6px 6px 0 0;
   border-bottom: 1px solid var(--vf-node-border, #3a3a5c);
 }
 
+.header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
 .node-type {
-  font-size: 9px;
-  color: var(--vf-node-text-muted, #6b7280);
-  background: var(--vf-node-bg, #1a1a2e);
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: 10px;
+  color: var(--vf-text-muted, #94a3b8);
+  font-family: monospace;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
 }
 
 .node-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--vf-node-text, #e2e8f0);
-  flex: 1;
+  cursor: text;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.node-label:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.label-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vf-node-text, #e2e8f0);
+  background: var(--vf-input-bg, #252542);
+  border: 1px solid #60a5fa;
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
 }
 
 .status-indicator {
   font-size: 14px;
+  margin-left: 8px;
 }
 
 .status-indicator.executing {
@@ -267,6 +347,14 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 .warning-item {
   font-size: 10px;
   color: #fbbf24;
+}
+
+.node-controls {
+  /* 控制区域，供特定节点添加编辑控件 */
+}
+
+.node-controls:empty {
+  display: none;
 }
 
 .node-body {

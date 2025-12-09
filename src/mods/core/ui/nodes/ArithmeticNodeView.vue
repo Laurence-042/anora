@@ -1,23 +1,23 @@
 <script setup lang="ts">
 /**
- * ParameterNodeView - 参数节点视图
- * 提供参数值的可视化编辑界面
+ * ArithmeticNodeView - 算术节点视图
+ * 提供运算符选择功能
  */
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import { Handle, Position } from '@vue-flow/core'
-import type { ParameterNode } from '@/mods/core/runtime/nodes/ParameterNode'
+import { ArithmeticNode, ArithmeticOperation } from '@/mods/core/runtime/nodes/ArithmeticNode'
 import { NodeExecutionStatus } from '@/base/runtime/types'
 import { useGraphStore } from '@/stores/graph'
-import { ElInput } from 'element-plus'
+import { ElSelect, ElOption } from 'element-plus'
 
-interface ParameterNodeProps extends NodeProps {
+interface ArithmeticNodeProps extends NodeProps {
   data: {
-    node: ParameterNode
+    node: ArithmeticNode
   }
 }
 
-const props = defineProps<ParameterNodeProps>()
+const props = defineProps<ArithmeticNodeProps>()
 const graphStore = useGraphStore()
 
 const node = computed(() => props.data.node)
@@ -45,32 +45,21 @@ function saveLabel(): void {
   isEditingLabel.value = false
 }
 
-/** 值编辑 */
-const editValue = ref('')
-
-/** 初始化编辑值 */
-watch(
-  () => node.value.getRawValue(),
-  (newVal) => {
-    editValue.value = newVal
-  },
-  { immediate: true },
-)
-
-/** 解析后的值预览 */
-const parsedPreview = computed(() => {
-  const parsed = node.value.getValue()
-  const type = typeof parsed
-  if (type === 'object') {
-    return Array.isArray(parsed) ? 'array' : 'object'
-  }
-  return type
+/** 当前运算符 */
+const currentOperation = computed({
+  get: () => node.value.getOperation(),
+  set: (val) => node.value.setOperation(val),
 })
 
-/** 保存值 */
-function saveValue(): void {
-  node.value.setValue(editValue.value)
-}
+/** 运算符选项 */
+const operationOptions = [
+  { value: ArithmeticOperation.Add, label: '加 (+)' },
+  { value: ArithmeticOperation.Subtract, label: '减 (-)' },
+  { value: ArithmeticOperation.Multiply, label: '乘 (×)' },
+  { value: ArithmeticOperation.Divide, label: '除 (÷)' },
+  { value: ArithmeticOperation.Modulo, label: '取余 (%)' },
+  { value: ArithmeticOperation.Power, label: '幂 (**)' },
+]
 
 /** 状态边框颜色 */
 const borderColor = computed(() => {
@@ -83,7 +72,7 @@ const borderColor = computed(() => {
 
 <template>
   <div
-    class="parameter-node"
+    class="arithmetic-node"
     :class="{
       'node-selected': isSelected,
       'node-executing': isExecuting,
@@ -93,7 +82,7 @@ const borderColor = computed(() => {
     <!-- 头部 -->
     <div class="node-header">
       <div class="header-info">
-        <span class="node-type">core.ParameterNode</span>
+        <span class="node-type">core.ArithmeticNode</span>
         <div class="label-row">
           <input
             v-if="isEditingLabel"
@@ -110,65 +99,82 @@ const borderColor = computed(() => {
       </div>
     </div>
 
-    <!-- 值编辑区域 -->
-    <div class="value-section">
-      <ElInput
-        v-model="editValue"
-        type="textarea"
-        :autosize="{ minRows: 1, maxRows: 8 }"
-        placeholder="输入参数值"
-        class="value-textarea"
-        @blur="saveValue"
-        @keyup.ctrl.enter="saveValue"
-      />
-      <div class="value-hint">
-        <span class="type-badge">{{ parsedPreview }}</span>
-        <span class="hint-text">Ctrl+Enter 确认</span>
-      </div>
+    <!-- 运算符选择 -->
+    <div class="control-section">
+      <ElSelect v-model="currentOperation" placeholder="选择运算" class="operation-select">
+        <ElOption
+          v-for="op in operationOptions"
+          :key="op.value"
+          :label="op.label"
+          :value="op.value"
+        />
+      </ElSelect>
     </div>
 
-    <!-- 出 Port -->
-    <div class="port-row">
-      <Handle
-        :id="node.outPorts.get('value')?.id ?? ''"
-        type="source"
-        :position="Position.Right"
-        class="port-handle data-handle"
-      />
-      <span class="port-label">value</span>
-    </div>
-
-    <!-- 执行 Port -->
-    <div class="exec-ports">
-      <div class="exec-port-left">
-        <Handle
-          :id="node.inExecPort.id"
-          type="target"
-          :position="Position.Left"
-          class="port-handle exec-handle"
-        />
-        <span class="exec-label">exec</span>
+    <!-- Ports -->
+    <div class="ports-section">
+      <!-- 左侧入 Port -->
+      <div class="ports-left">
+        <div class="port-row">
+          <Handle
+            :id="node.inExecPort.id"
+            type="target"
+            :position="Position.Left"
+            class="port-handle exec-handle"
+          />
+          <span class="port-name">exec</span>
+        </div>
+        <div class="port-row">
+          <Handle
+            :id="node.inPorts.get('left')?.id ?? ''"
+            type="target"
+            :position="Position.Left"
+            class="port-handle data-handle"
+          />
+          <span class="port-name">left</span>
+        </div>
+        <div class="port-row">
+          <Handle
+            :id="node.inPorts.get('right')?.id ?? ''"
+            type="target"
+            :position="Position.Left"
+            class="port-handle data-handle"
+          />
+          <span class="port-name">right</span>
+        </div>
       </div>
-      <div class="exec-port-right">
-        <span class="exec-label">exec</span>
-        <Handle
-          :id="node.outExecPort.id"
-          type="source"
-          :position="Position.Right"
-          class="port-handle exec-handle"
-        />
+
+      <!-- 右侧出 Port -->
+      <div class="ports-right">
+        <div class="port-row">
+          <span class="port-name">exec</span>
+          <Handle
+            :id="node.outExecPort.id"
+            type="source"
+            :position="Position.Right"
+            class="port-handle exec-handle"
+          />
+        </div>
+        <div class="port-row">
+          <span class="port-name">result</span>
+          <Handle
+            :id="node.outPorts.get('result')?.id ?? ''"
+            type="source"
+            :position="Position.Right"
+            class="port-handle data-handle"
+          />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.parameter-node {
+.arithmetic-node {
   background: var(--vf-node-bg, #1a1a2e);
   border: 2px solid transparent;
   border-radius: 8px;
   min-width: 200px;
-  max-width: 280px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -241,108 +247,94 @@ const borderColor = computed(() => {
   width: 100%;
 }
 
-.value-section {
+.control-section {
   padding: 8px 12px;
   border-bottom: 1px solid var(--vf-node-border, #3a3a5c);
 }
 
-.value-textarea :deep(.el-textarea__inner) {
-  background: rgba(37, 37, 66, 0.6);
-  border: 1px solid var(--vf-border, #3a3a5c);
-  color: var(--vf-text, #e2e8f0);
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 12px;
-  border-radius: 4px;
+.operation-select {
+  width: 100%;
 }
 
-.value-textarea :deep(.el-textarea__inner:focus) {
+.operation-select :deep(.el-input__wrapper) {
+  background: rgba(37, 37, 66, 0.6);
+  border: 1px solid var(--vf-border, #3a3a5c);
+  box-shadow: none;
+}
+
+.operation-select :deep(.el-input__inner) {
+  color: var(--vf-text, #e2e8f0);
+  font-size: 12px;
+}
+
+.operation-select :deep(.el-input__wrapper:hover) {
   border-color: #60a5fa;
 }
 
-.value-textarea :deep(.el-textarea__inner::placeholder) {
+.operation-select :deep(.el-select__suffix) {
   color: var(--vf-text-muted, #6b7280);
 }
 
-.value-hint {
+.ports-section {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-top: 6px;
+  padding: 8px 0;
 }
 
-.type-badge {
-  font-size: 10px;
-  color: #a78bfa;
-  background: rgba(139, 92, 246, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.hint-text {
-  font-size: 10px;
-  color: var(--vf-text-muted, #6b7280);
+.ports-left,
+.ports-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .port-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 4px 12px;
   position: relative;
 }
 
-.port-label {
+.ports-left .port-row {
+  padding-left: 0;
+}
+
+.ports-right .port-row {
+  padding-right: 0;
+  justify-content: flex-end;
+}
+
+.port-name {
   font-size: 11px;
   color: var(--vf-text-muted, #94a3b8);
-  margin-right: 12px;
 }
 
 .port-handle {
   width: 12px;
   height: 12px;
-  border-radius: 50%;
   border: 2px solid var(--vf-node-bg, #1a1a2e);
 }
 
 .data-handle {
-  background: #22c55e;
-  position: absolute;
-  right: -6px;
-}
-
-.exec-ports {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 12px;
-  position: relative;
-}
-
-.exec-port-left,
-.exec-port-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.exec-label {
-  font-size: 11px;
-  color: var(--vf-text-muted, #6b7280);
+  background: #3b82f6;
+  border-radius: 50%;
 }
 
 .exec-handle {
   background: #94a3b8;
+  border-radius: 2px;
   width: 10px;
   height: 10px;
-  border-radius: 2px;
 }
 
-.exec-port-left .exec-handle {
+.ports-left .port-handle {
   position: absolute;
-  left: -5px;
+  left: -6px;
 }
 
-.exec-port-right .exec-handle {
+.ports-right .port-handle {
   position: absolute;
-  right: -5px;
+  right: -6px;
 }
 </style>

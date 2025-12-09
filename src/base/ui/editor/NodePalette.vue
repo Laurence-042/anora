@@ -129,12 +129,13 @@ function onDragStart(event: DragEvent, typeId: string): void {
   left: 16px;
   top: 80px;
   width: 200px;
-  background: var(--vf-controls-bg, #1a1a2e);
+  background: rgba(15, 15, 26, 0.95);
   border: 1px solid var(--vf-border, #3a3a5c);
   border-radius: 8px;
   overflow: hidden;
   z-index: 10;
   transition: width 0.2s;
+  backdrop-filter: blur(8px);
 }
 
 .node-palette.collapsed {
@@ -145,14 +146,15 @@ function onDragStart(event: DragEvent, typeId: string): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--vf-node-header-bg, #252542);
+  padding: 10px 12px;
+  background: rgba(37, 37, 66, 0.8);
   cursor: pointer;
   user-select: none;
+  border-bottom: 1px solid var(--vf-border, #3a3a5c);
 }
 
 .header-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--vf-text, #e2e8f0);
 }
@@ -167,8 +169,21 @@ function onDragStart(event: DragEvent, typeId: string): void {
 }
 
 .palette-content {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
+}
+
+.palette-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.palette-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.palette-content::-webkit-scrollbar-thumb {
+  background: var(--vf-border, #3a3a5c);
+  border-radius: 3px;
 }
 
 .search-box {
@@ -179,11 +194,11 @@ function onDragStart(event: DragEvent, typeId: string): void {
 .search-input {
   width: 100%;
   padding: 6px 10px;
-  background: var(--vf-input-bg, #252542);
+  background: rgba(37, 37, 66, 0.6);
   border: 1px solid var(--vf-border, #3a3a5c);
   border-radius: 4px;
   color: var(--vf-text, #e2e8f0);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .search-input::placeholder {
@@ -200,11 +215,11 @@ function onDragStart(event: DragEvent, typeId: string): void {
 }
 
 .category-group {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .category-header {
-  padding: 4px 12px;
+  padding: 6px 12px 4px;
   font-size: 10px;
   font-weight: 600;
   color: var(--vf-text-muted, #6b7280);
@@ -218,27 +233,27 @@ function onDragStart(event: DragEvent, typeId: string): void {
   gap: 8px;
   padding: 6px 12px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .node-item:hover {
-  background: var(--vf-btn-hover-bg, #3a3a5c);
+  background: rgba(96, 165, 250, 0.15);
 }
 
 .node-icon {
   font-size: 12px;
-  color: var(--vf-text-muted, #94a3b8);
+  color: var(--vf-text-muted, #64748b);
 }
 
 .node-name {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--vf-text, #e2e8f0);
 }
 
 .empty-state {
   padding: 16px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--vf-text-muted, #6b7280);
 }
 </style>

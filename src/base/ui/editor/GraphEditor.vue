@@ -17,6 +17,9 @@ import ExecutorControls from './ExecutorControls.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
 
+// 自定义节点视图
+import { ParameterNodeView, ArithmeticNodeView } from '@/mods/core/ui'
+
 const graphStore = useGraphStore()
 
 // Vue-Flow 实例
@@ -25,6 +28,16 @@ const { onConnect, onNodeDoubleClick, onPaneClick, addNodes, addEdges, fitView }
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
+/** 根据节点 typeId 获取对应的视图组件 */
+function getNodeViewType(typeId: string): string {
+  // 特定节点使用自定义视图
+  const customViews: Record<string, string> = {
+    'core.ParameterNode': 'parameter-node',
+    'core.ArithmeticNode': 'arithmetic-node',
+  }
+  return customViews[typeId] ?? 'anora-node'
+}
+
 /** 将 AnoraGraph 转换为 Vue-Flow 节点 */
 const vfNodes = computed<Node[]>(() => {
   const nodes: Node[] = []
@@ -32,7 +45,7 @@ const vfNodes = computed<Node[]>(() => {
     const pos = nodePositions.value.get(node.id) ?? { x: 0, y: 0 }
     nodes.push({
       id: node.id,
-      type: 'anora-node',
+      type: getNodeViewType(node.typeId),
       position: pos,
       data: { node: markRaw(node) },
     })
@@ -68,6 +81,8 @@ const vfEdges = computed<Edge[]>(() => {
 /** 自定义节点类型 */
 const nodeTypes = {
   'anora-node': markRaw(BaseNodeView),
+  'parameter-node': markRaw(ParameterNodeView),
+  'arithmetic-node': markRaw(ArithmeticNodeView),
 }
 
 /** 处理连接 */
