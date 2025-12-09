@@ -3,13 +3,12 @@
  * GraphEditor - 图编辑器主组件
  * 整合 Vue-Flow、节点、边、控制面板等
  */
-import { ref, computed, watch, onMounted, markRaw, h } from 'vue'
+import { ref, computed, watch, onMounted, markRaw } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
 import { useGraphStore } from '@/stores/graph'
-import type { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 
 import BaseNodeView from '../components/BaseNodeView.vue'
@@ -23,7 +22,7 @@ import { ParameterNodeView, ArithmeticNodeView } from '@/mods/core/ui'
 const graphStore = useGraphStore()
 
 // Vue-Flow 实例
-const { onConnect, onNodeDoubleClick, onPaneClick, addNodes, addEdges, fitView } = useVueFlow()
+const { onConnect, onNodeDoubleClick, onPaneClick, fitView } = useVueFlow()
 
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())

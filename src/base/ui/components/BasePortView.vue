@@ -5,7 +5,7 @@
  */
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import type { BasePort, ContainerPort } from '@/base/runtime/ports'
+import type { BasePort } from '@/base/runtime/ports'
 import { DataType } from '@/base/runtime/types'
 
 const props = defineProps<{

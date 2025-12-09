@@ -1,10 +1,14 @@
 <script setup lang="ts">
 /**
- * Breadcrumb - 子图导航面包屑
+ * GraphBreadcrumb - 子图导航面包屑
  * 显示当前子图层级路径，支持点击导航
  */
 import { computed } from 'vue'
 import { useGraphStore } from '@/stores/graph'
+
+defineOptions({
+  name: 'GraphBreadcrumb',
+})
 
 const graphStore = useGraphStore()
 

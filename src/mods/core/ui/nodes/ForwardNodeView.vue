@@ -3,7 +3,7 @@
  * ForwardNodeView - 中继节点视图
  * 简洁的中继节点显示，支持直通模式切换
  */
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import { Handle, Position } from '@vue-flow/core'
 import type { ForwardNode } from '@/mods/core/runtime/nodes/ForwardNode'

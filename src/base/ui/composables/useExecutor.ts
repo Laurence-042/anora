@@ -2,7 +2,7 @@
  * useExecutor - 执行器操作组合式函数
  * 提供执行控制和状态监控
  */
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useGraphStore } from '@/stores/graph'
 import { ExecutorStatus } from '@/base/runtime/types'
 import type { ExecutorEvent } from '@/base/runtime/executor'

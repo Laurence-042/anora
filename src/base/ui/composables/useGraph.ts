@@ -27,9 +27,9 @@ export function useGraph() {
   /**
    * 创建节点并添加到图中
    * @param typeId 节点类型 ID
-   * @param position 节点位置（可选）
+   * @param _position 节点位置（可选，待实现）
    */
-  function createNode(typeId: string, position?: { x: number; y: number }): BaseNode | null {
+  function createNode(typeId: string, _position?: { x: number; y: number }): BaseNode | null {
     const NodeClass = NodeRegistry.get(typeId)
     if (!NodeClass) {
       console.error(`Unknown node type: ${typeId}`)

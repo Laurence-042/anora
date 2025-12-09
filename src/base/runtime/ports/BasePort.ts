@@ -3,7 +3,7 @@ import { DataType, TYPE_COMPATIBILITY_MATRIX } from '../types'
 import type { RealDataType, SerializedPort, ConversionResult } from '../types'
 
 // 前向声明类型 - 使用 any 泛型以避免循环依赖问题
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 import type { BaseNode } from '../nodes/BaseNode'
 
 /** Port 可以关联的节点类型 */

@@ -88,14 +88,6 @@ const statusBorderColor = computed(() => {
   }
 })
 
-/** 获取 Port 的名称（从 Map 中反查） */
-function getPortName(map: Map<string, unknown>, port: unknown): string {
-  for (const [name, p] of map) {
-    if (p === port) return name
-  }
-  return ''
-}
-
 /** 警告信息 */
 const warnings = computed(() => node.value.getConfigurationWarnings())
 </script>
