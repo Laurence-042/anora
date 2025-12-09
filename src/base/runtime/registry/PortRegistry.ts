@@ -1,11 +1,11 @@
 import { BaseRegistry } from './BaseRegistry'
-import { BasePort } from '../ports/BasePort'
 import { DataType } from '../types'
+import type { IPortConstructor } from '../types'
 
 /**
- * Port 类型定义
+ * Port 构造函数类型（从 types.ts 重导出）
  */
-export type PortConstructor = new (...args: unknown[]) => BasePort
+export type PortConstructor = IPortConstructor
 
 /**
  * Port 注册表

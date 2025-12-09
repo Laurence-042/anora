@@ -1,12 +1,10 @@
 import { BaseRegistry } from './BaseRegistry'
-import { BaseNode } from '../nodes/BaseNode'
+import type { INode, INodeConstructor } from '../types'
 
 /**
- * 节点类型定义
+ * 节点构造函数类型（从 types.ts 重导出）
  */
-export type NodeConstructor = (new (id?: string, label?: string) => BaseNode) & {
-  typeId: string
-}
+export type NodeConstructor = INodeConstructor
 
 /**
  * 节点注册表
@@ -15,7 +13,7 @@ class NodeRegistryClass extends BaseRegistry<NodeConstructor> {
   /**
    * 创建节点实例
    */
-  createNode(typeId: string, id?: string, label?: string): BaseNode | undefined {
+  createNode(typeId: string, id?: string, label?: string): INode | undefined {
     const Constructor = this.get(typeId)
     if (!Constructor) {
       console.error(`[NodeRegistry] Unknown node type: ${typeId}`)

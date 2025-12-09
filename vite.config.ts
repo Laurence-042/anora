@@ -7,6 +7,12 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  esbuild: {
+    // 只要 target ≥ es2022，标准装饰器直接过
+    target: 'es2022',
+    // 可选：强制关闭遗留装饰器（默认就是关的）
+    // experimentalDecorators: false,
+  },
   plugins: [vue(), vueJsx(), vueDevTools()],
   resolve: {
     alias: {

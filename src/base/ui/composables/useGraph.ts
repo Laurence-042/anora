@@ -36,7 +36,8 @@ export function useGraph() {
       return null
     }
 
-    const node = new NodeClass()
+    // NodeClass 实现了 INodeConstructor，实际创建的是 BaseNode 实例
+    const node = new NodeClass() as BaseNode
     store.addNode(node)
 
     // TODO: 如果提供了 position，需要在 GraphEditor 中处理

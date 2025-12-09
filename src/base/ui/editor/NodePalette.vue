@@ -5,6 +5,7 @@
  */
 import { ref, computed } from 'vue'
 import { NodeRegistry } from '@/base/runtime/registry'
+import { BaseNode } from '@/base/runtime/nodes'
 import { useGraphStore } from '@/stores/graph'
 
 const graphStore = useGraphStore()
@@ -69,7 +70,8 @@ function addNode(typeId: string): void {
     return
   }
 
-  const node = new NodeClass()
+  // NodeClass 实现了 INodeConstructor，实际创建的是 BaseNode 实例
+  const node = new NodeClass() as BaseNode
   graphStore.addNode(node)
 }
 

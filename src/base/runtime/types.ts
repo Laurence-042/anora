@@ -65,6 +65,58 @@ export enum NodeExecutionStatus {
   FAILED = 'failed',
 }
 
+// ==================== 抽象接口（用于 Registry，避免循环依赖） ====================
+
+/**
+ * 节点抽象接口
+ * Registry 依赖此接口而非具体的 BaseNode 类
+ */
+export interface INode {
+  readonly id: string
+  label: string
+  readonly typeId: string
+  executionStatus: NodeExecutionStatus
+  readonly inPorts: Map<string, IPort>
+  readonly outPorts: Map<string, IPort>
+}
+
+/**
+ * Port 抽象接口
+ * Registry 依赖此接口而非具体的 BasePort 类
+ */
+export interface IPort {
+  readonly id: string
+  readonly dataType: DataType
+  readonly data: RealDataType
+  readonly hasData: boolean
+  parentNode: INode
+}
+
+/**
+ * 执行器抽象接口
+ * Registry 依赖此接口而非具体的 BasicExecutor 类
+ */
+export interface IExecutor {
+  readonly status: ExecutorStatus
+}
+
+/**
+ * 节点构造函数类型
+ */
+export type INodeConstructor = (new (id?: string, label?: string) => INode) & {
+  typeId: string
+}
+
+/**
+ * Port 构造函数类型
+ */
+export type IPortConstructor = new (parentNode: INode, ...args: unknown[]) => IPort
+
+/**
+ * 执行器构造函数类型
+ */
+export type IExecutorConstructor = new (...args: unknown[]) => IExecutor
+
 // ==================== Context ====================
 
 /**
