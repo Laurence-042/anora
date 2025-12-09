@@ -223,110 +223,30 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 </template>
 
 <style scoped>
+/* BaseNodeView 特有样式 - 通用样式由 node-theme.css 提供 */
+
+/* 节点最大宽度限制 */
 .anora-node {
-  background: var(--vf-node-bg, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  min-width: 200px;
   max-width: 320px;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
 }
 
-.node-selected {
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
-}
-
-.node-executing {
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
-  }
-}
-
-.node-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: var(--vf-node-header-bg, #252542);
-  border-radius: 6px 6px 0 0;
-  border-bottom: 1px solid var(--vf-node-border, #3a3a5c);
-}
-
-.header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.node-type {
-  font-size: 10px;
-  color: var(--vf-text-muted, #94a3b8);
-  font-family: monospace;
-}
-
-.label-row {
-  display: flex;
-  align-items: center;
-}
-
-.node-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vf-node-text, #e2e8f0);
-  cursor: text;
-  padding: 2px 4px;
-  margin: -2px -4px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.node-label:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.label-input {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vf-node-text, #e2e8f0);
-  background: var(--vf-input-bg, #252542);
-  border: 1px solid #60a5fa;
-  border-radius: 4px;
-  padding: 2px 6px;
-  outline: none;
-  width: 100%;
-}
-
+/* 状态指示器动画 */
 .status-indicator {
   font-size: 14px;
   margin-left: 8px;
 }
 
 .status-indicator.executing {
-  color: #fbbf24;
+  color: var(--node-warning, #fbbf24);
   animation: spin 1s linear infinite;
 }
 
 .status-indicator.success {
-  color: #22c55e;
+  color: var(--node-success, #22c55e);
 }
 
 .status-indicator.failed {
-  color: #ef4444;
+  color: var(--node-error, #ef4444);
 }
 
 @keyframes spin {
@@ -338,25 +258,24 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   }
 }
 
+/* 警告信息 */
 .node-warnings {
   background: rgba(251, 191, 36, 0.1);
   padding: 4px 8px;
-  border-bottom: 1px solid var(--vf-node-border, #3a3a5c);
+  border-bottom: 1px solid var(--node-border, #3a3a5c);
 }
 
 .warning-item {
   font-size: 10px;
-  color: #fbbf24;
+  color: var(--node-warning, #fbbf24);
 }
 
-.node-controls {
-  /* 控制区域，供特定节点添加编辑控件 */
-}
-
+/* 控制区域 */
 .node-controls:empty {
   display: none;
 }
 
+/* 节点主体 */
 .node-body {
   display: flex;
   justify-content: space-between;
@@ -378,9 +297,10 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   align-items: flex-end;
 }
 
+/* 错误信息 */
 .node-error {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: var(--node-error, #ef4444);
   font-size: 10px;
   padding: 4px 8px;
   border-radius: 0 0 6px 6px;

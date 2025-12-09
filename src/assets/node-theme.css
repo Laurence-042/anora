@@ -1,0 +1,349 @@
+/**
+ * ANORA Node Theme - 节点全局主题样式
+ * 统一所有节点组件的样式，便于主题切换
+ */
+
+/* ==================== CSS 变量定义 ==================== */
+:root {
+  --node-bg: #1a1a2e;
+  --node-header-bg: #252542;
+  --node-border: #3a3a5c;
+  --node-text: #e2e8f0;
+  --node-text-muted: #94a3b8;
+  --node-text-dim: #6b7280;
+  --node-input-bg: rgba(37, 37, 66, 0.6);
+  --node-accent: #60a5fa;
+  --node-success: #22c55e;
+  --node-warning: #fbbf24;
+  --node-error: #ef4444;
+  --node-data-port: #3b82f6;
+  --node-exec-port: #94a3b8;
+}
+
+/* ==================== 节点容器 ==================== */
+.parameter-node,
+.arithmetic-node,
+.forward-node,
+.anora-node,
+[class$='-node'] {
+  background: var(--node-bg);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.node-selected {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+}
+
+.node-executing {
+  animation: node-pulse 1.5s infinite;
+}
+
+@keyframes node-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
+  }
+}
+
+/* ==================== 节点头部 ==================== */
+.node-header {
+  padding: 10px 12px;
+  background: var(--node-header-bg);
+  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid var(--node-border);
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.node-type {
+  font-size: 10px;
+  color: var(--node-text-muted);
+  font-family: monospace;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+}
+
+.node-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--node-text) !important;
+  cursor: text;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.node-label:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.label-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--node-text) !important;
+  background: var(--node-header-bg) !important;
+  border: 1px solid var(--node-accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+}
+
+/* ==================== 节点控制区域 ==================== */
+.value-section,
+.control-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--node-border);
+}
+
+.value-hint {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.type-badge {
+  font-size: 10px;
+  color: #a78bfa !important;
+  background: rgba(139, 92, 246, 0.2) !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.hint-text {
+  font-size: 10px;
+  color: var(--node-text-dim);
+}
+
+/* ==================== Port 样式 ==================== */
+.ports-section {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.ports-left,
+.ports-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.port-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  position: relative;
+}
+
+.ports-left .port-row {
+  padding-left: 0;
+  justify-content: flex-start;
+}
+
+.ports-right .port-row {
+  padding-right: 0;
+  justify-content: flex-end;
+}
+
+.port-name,
+.port-label {
+  font-size: 11px;
+  color: var(--node-text-muted);
+}
+
+.ports-right .port-label {
+  margin-right: 12px;
+}
+
+.exec-ports {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  position: relative;
+}
+
+.exec-port-left,
+.exec-port-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exec-label {
+  font-size: 11px;
+  color: var(--node-text-dim);
+}
+
+/* Handle 样式 */
+.port-handle {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--node-bg);
+}
+
+.data-handle {
+  background: var(--node-data-port);
+  border-radius: 50%;
+}
+
+.exec-handle {
+  background: var(--node-exec-port);
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* Handle 定位 */
+.ports-left .port-handle {
+  position: absolute;
+  left: -6px;
+}
+
+.ports-right .port-handle {
+  position: absolute;
+  right: -6px;
+}
+
+.exec-port-left .exec-handle {
+  position: absolute;
+  left: -5px;
+}
+
+.exec-port-right .exec-handle {
+  position: absolute;
+  right: -5px;
+}
+
+/* ==================== Element Plus 组件覆盖 ==================== */
+
+/* Input / Textarea */
+.el-input__wrapper,
+.el-textarea__inner {
+  background: var(--node-input-bg) !important;
+  border: 1px solid var(--node-border) !important;
+  box-shadow: none !important;
+}
+
+.el-input__inner,
+.el-textarea__inner {
+  color: var(--node-text) !important;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.el-input__wrapper:hover,
+.el-textarea__inner:hover {
+  border-color: var(--node-accent) !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  border-color: var(--node-accent) !important;
+  box-shadow: none !important;
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: var(--node-text-dim) !important;
+}
+
+/* 禁用 textarea resize 防止节点漂移 */
+.el-textarea__inner {
+  resize: none !important;
+}
+
+/* Select */
+.el-select .el-input__wrapper {
+  background: var(--node-input-bg) !important;
+  border: 1px solid var(--node-border) !important;
+  box-shadow: none !important;
+}
+
+.el-select .el-input__inner {
+  color: var(--node-text) !important;
+}
+
+.el-select .el-input__suffix,
+.el-select .el-select__caret {
+  color: var(--node-text-dim) !important;
+}
+
+/* Select Dropdown (全局弹出层) */
+.el-select-dropdown {
+  background: var(--node-bg) !important;
+  border: 1px solid var(--node-border) !important;
+}
+
+.el-select-dropdown__item {
+  color: var(--node-text) !important;
+}
+
+.el-select-dropdown__item:hover,
+.el-select-dropdown__item.hover {
+  background: rgba(96, 165, 250, 0.15) !important;
+}
+
+.el-select-dropdown__item.selected {
+  color: var(--node-accent) !important;
+  background: rgba(96, 165, 250, 0.1) !important;
+}
+
+/* Popper 箭头 */
+.el-popper.is-light {
+  background: var(--node-bg) !important;
+  border: 1px solid var(--node-border) !important;
+}
+
+.el-popper.is-light .el-popper__arrow::before {
+  background: var(--node-bg) !important;
+  border-color: var(--node-border) !important;
+}
+
+/* Checkbox */
+.el-checkbox__label {
+  color: var(--node-text) !important;
+}
+
+.el-checkbox__inner {
+  background: var(--node-input-bg) !important;
+  border-color: var(--node-border) !important;
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background: var(--node-accent) !important;
+  border-color: var(--node-accent) !important;
+}
+
+/* InputNumber */
+.el-input-number .el-input__wrapper {
+  background: var(--node-input-bg) !important;
+}
+
+.el-input-number__decrease,
+.el-input-number__increase {
+  background: var(--node-header-bg) !important;
+  color: var(--node-text-muted) !important;
+  border-color: var(--node-border) !important;
+}
+
+.el-input-number__decrease:hover,
+.el-input-number__increase:hover {
+  color: var(--node-accent) !important;
+}

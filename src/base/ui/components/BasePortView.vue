@@ -122,6 +122,8 @@ const hasData = computed(() => props.port.hasData)
 </template>
 
 <style scoped>
+/* BasePortView 特有样式 - 通用样式由 node-theme.css 提供 */
+
 .port-view {
   display: flex;
   align-items: center;
@@ -143,7 +145,7 @@ const hasData = computed(() => props.port.hasData)
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid var(--vf-node-bg, #1a1a2e);
+  border: 2px solid var(--node-bg, #1a1a2e);
   position: absolute;
 }
 
@@ -181,7 +183,7 @@ const hasData = computed(() => props.port.hasData)
 .expand-btn {
   background: none;
   border: none;
-  color: var(--vf-node-text, #e2e8f0);
+  color: var(--node-text, #e2e8f0);
   cursor: pointer;
   padding: 0 2px;
   font-size: 8px;
@@ -193,7 +195,7 @@ const hasData = computed(() => props.port.hasData)
 }
 
 .port-name {
-  color: var(--vf-node-text, #e2e8f0);
+  color: var(--node-text, #e2e8f0);
   font-weight: 500;
 }
 
@@ -203,7 +205,7 @@ const hasData = computed(() => props.port.hasData)
 }
 
 .port-value {
-  color: var(--vf-node-text, #94a3b8);
+  color: var(--node-text-muted, #94a3b8);
   font-size: 10px;
   opacity: 0.8;
   max-width: 100px;

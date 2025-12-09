@@ -136,61 +136,42 @@ const borderColor = computed(() => {
 </template>
 
 <style scoped>
+/* ForwardNodeView 特有样式 - 通用样式由 node-theme.css 提供 */
+
+/* 紧凑型节点 */
 .forward-node {
-  background: #1a1a2e;
-  border: 2px solid transparent;
-  border-radius: 8px;
   min-width: 140px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s;
 }
 
+/* 直通模式渐变背景 */
 .forward-node.direct-through {
-  background: linear-gradient(135deg, #1a1a2e 0%, #1e3a5f 100%);
+  background: linear-gradient(135deg, var(--node-bg, #1a1a2e) 0%, #1e3a5f 100%);
 }
 
-.node-selected {
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
-}
-
-.node-executing {
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
-  }
-}
-
-.node-header {
+/* Forward 节点头部 - 紧凑布局 */
+.forward-node .node-header {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
   background: rgba(96, 165, 250, 0.1);
-  border-radius: 6px 6px 0 0;
 }
 
-.node-type {
+.forward-node .node-type {
   font-size: 9px;
-  color: #60a5fa;
+  color: var(--node-accent, #60a5fa);
   background: rgba(96, 165, 250, 0.2);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
-.node-label {
+.forward-node .node-label {
   font-size: 11px;
-  font-weight: 600;
-  color: #e2e8f0;
   flex: 1;
 }
 
+/* 直通模式切换按钮 */
 .direct-through-btn {
   background: none;
   border: none;
@@ -209,9 +190,10 @@ const borderColor = computed(() => {
 
 .direct-through-btn.active {
   opacity: 1;
-  color: #fbbf24;
+  color: var(--node-warning, #fbbf24);
 }
 
+/* 数据流显示区域 */
 .data-flow {
   display: flex;
   align-items: center;
@@ -236,14 +218,14 @@ const borderColor = computed(() => {
 
 .port-name {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--node-text-dim, #6b7280);
 }
 
 .port-handle {
   width: 10px;
   height: 10px;
-  background: #6b7280;
-  border: 2px solid #1a1a2e;
+  background: var(--node-text-dim, #6b7280);
+  border: 2px solid var(--node-bg, #1a1a2e);
 }
 
 .port-left .port-handle {
@@ -256,9 +238,10 @@ const borderColor = computed(() => {
   right: -5px;
 }
 
+/* 数据预览 */
 .data-preview {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--node-text-muted, #94a3b8);
   background: rgba(0, 0, 0, 0.2);
   padding: 2px 8px;
   border-radius: 4px;
@@ -269,10 +252,11 @@ const borderColor = computed(() => {
 }
 
 .data-arrow {
-  color: #4b5563;
+  color: var(--node-text-dim, #4b5563);
   font-size: 14px;
 }
 
+/* 执行端口行 */
 .exec-row {
   position: relative;
   height: 16px;
@@ -282,8 +266,8 @@ const borderColor = computed(() => {
 .exec-handle {
   width: 8px;
   height: 12px;
-  background: #94a3b8;
-  border: 2px solid #1a1a2e;
+  background: var(--node-exec-port, #94a3b8);
+  border: 2px solid var(--node-bg, #1a1a2e);
   border-radius: 2px;
   position: absolute;
   top: 50%;
