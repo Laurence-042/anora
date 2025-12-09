@@ -125,7 +125,7 @@ export class BasicExecutor {
       }
 
       // 迭代阶段：循环直到没有就绪节点或达到最大迭代次数
-      while (!this.cancelled && iterations < this.maxIterations) {
+      while (!this.cancelled && (iterations < this.maxIterations || this.maxIterations <= 0)) {
         iterations++
         this.emit({ type: 'iteration', iteration: iterations })
 
