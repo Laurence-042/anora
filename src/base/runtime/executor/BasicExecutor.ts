@@ -47,6 +47,11 @@ export type ExecutorEventListener = (event: ExecutorEvent) => void
 /**
  * 基础执行器
  * 负责执行 AnoraGraph 中的节点
+ *
+ * 设计原则：
+ * - 迭代间使用同步，支持环结构（如周期性触发器）
+ * - 不使用最大迭代次数限制，用户可自行取消执行
+ * - 直通节点在数据传播时立即执行
  */
 export class BasicExecutor {
   /** 执行状态 */
@@ -60,9 +65,6 @@ export class BasicExecutor {
 
   /** 当前执行的 Promise（用于取消） */
   private currentExecution: Promise<ExecutionResult> | null = null
-
-  /** 最大迭代次数（防止无限循环） */
-  maxIterations: number = 10000
 
   /**
    * 获取当前状态
@@ -101,6 +103,13 @@ export class BasicExecutor {
 
   /**
    * 执行图
+   *
+   * 流程：
+   * 1. 初始化：查询所有节点的可运行状态
+   * 2. 执行已准备好的节点（并行），然后传播数据
+   * 3. 重复直到没有节点可以执行或用户取消
+   *
+   * 支持环结构，不限制最大迭代次数
    */
   async execute(graph: AnoraGraph, context?: ExecutorContext): Promise<ExecutionResult> {
     if (this._status === ExecutorStatus.Running) {
@@ -118,14 +127,9 @@ export class BasicExecutor {
     let iterations = 0
 
     try {
-      // 初始化阶段：激活所有初始就绪的节点
-      const initialReadyNodes = this.findReadyNodes(graph)
-      if (initialReadyNodes.length > 0) {
-        await this.executeNodes(initialReadyNodes, graph, execContext)
-      }
-
-      // 迭代阶段：循环直到没有就绪节点或达到最大迭代次数
-      while (!this.cancelled && (iterations < this.maxIterations || this.maxIterations <= 0)) {
+      // 迭代阶段：循环直到没有就绪节点或用户取消
+      // 不使用最大迭代次数限制，支持环结构做周期性触发器
+      while (!this.cancelled) {
         iterations++
         this.emit({ type: 'iteration', iteration: iterations })
 
@@ -154,10 +158,6 @@ export class BasicExecutor {
           iterations,
           duration: Date.now() - startTime,
         }
-      }
-
-      if (iterations >= this.maxIterations) {
-        throw new Error(`Max iterations (${this.maxIterations}) exceeded. Possible infinite loop.`)
       }
 
       this._status = ExecutorStatus.Completed
@@ -243,77 +243,60 @@ export class BasicExecutor {
   }
 
   /**
-   * 并行执行一组节点
+   * 执行一组节点
+   *
+   * 流程：
+   * 1. 并行执行所有普通节点
+   * 2. 执行后清空节点的入 Port
+   * 3. 传播出 Port 数据到下游入 Port
+   * 4. 如果下游入 Port 是直通节点，立即执行并继续传播
    */
   private async executeNodes(
     nodes: BaseNode[],
     graph: AnoraGraph,
     context: ExecutorContext,
   ): Promise<NodeExecutionResult[]> {
-    // 分离直通节点和普通节点
-    const directThroughNodes: BaseNode[] = []
-    const normalNodes: BaseNode[] = []
-
-    for (const node of nodes) {
-      const connectedPorts = this.getConnectedInPortIds(node, graph)
-      if (node.checkActivationReady(connectedPorts) === ActivationReadyStatus.DirectThrough) {
-        directThroughNodes.push(node)
-      } else {
-        normalNodes.push(node)
-      }
-    }
-
     const results: NodeExecutionResult[] = []
 
-    // 先同步处理直通节点（立即传播数据）
-    for (const node of directThroughNodes) {
+    // 并行执行所有节点
+    const promises = nodes.map(async (node) => {
       try {
         this.emit({ type: 'node-start', node })
         await node.activate(context)
-        this.propagateData(node, graph)
         this.emit({ type: 'node-complete', node, success: true })
-        results.push({ node, success: true })
+        return { node, success: true } as NodeExecutionResult
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
         this.emit({ type: 'node-complete', node, success: false, error: err })
-        results.push({ node, success: false, error: err })
+        return { node, success: false, error: err } as NodeExecutionResult
+      }
+    })
+
+    const settledResults = await Promise.allSettled(promises)
+
+    // 收集执行结果
+    for (let i = 0; i < settledResults.length; i++) {
+      const result = settledResults[i]!
+      if (result.status === 'fulfilled') {
+        results.push(result.value)
+      } else {
+        const node = nodes[i]!
+        results.push({
+          node,
+          success: false,
+          error: result.reason as Error,
+        })
       }
     }
 
-    // 并行执行普通节点
-    if (normalNodes.length > 0) {
-      const promises = normalNodes.map(async (node) => {
-        try {
-          this.emit({ type: 'node-start', node })
-          await node.activate(context)
-          this.emit({ type: 'node-complete', node, success: true })
-          return { node, success: true } as NodeExecutionResult
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error))
-          this.emit({ type: 'node-complete', node, success: false, error: err })
-          return { node, success: false, error: err } as NodeExecutionResult
-        }
-      })
+    // 对成功执行的节点：清空入 Port，传播出 Port 数据
+    for (const result of results) {
+      if (result.success) {
+        // 清空执行后节点的入 Port（避免下一次激活时残留脏数据）
+        this.clearNodeInputPorts(result.node)
 
-      const normalResults = await Promise.allSettled(promises)
-
-      for (let i = 0; i < normalResults.length; i++) {
-        const result = normalResults[i]!
-        if (result.status === 'fulfilled') {
-          results.push(result.value)
-          // 成功执行后传播数据
-          if (result.value.success) {
-            this.propagateData(result.value.node, graph)
-          }
-        } else {
-          // Promise 本身 rejected（不太可能，因为我们在上面 catch 了）
-          const node = normalNodes[i]!
-          results.push({
-            node,
-            success: false,
-            error: result.reason as Error,
-          })
-        }
+        // 传播数据到下游，并处理直通节点
+        await this.propagateDataWithDirectThrough(result.node, graph, context)
       }
     }
 
@@ -321,22 +304,85 @@ export class BasicExecutor {
   }
 
   /**
-   * 传播节点的输出数据到连接的下游端口
+   * 清空节点的入 Port 数据
    */
-  private propagateData(node: BaseNode, graph: AnoraGraph): void {
+  private clearNodeInputPorts(node: BaseNode): void {
+    for (const port of node.getInputPorts()) {
+      port.clear()
+    }
+  }
+
+  /**
+   * 传播节点的输出数据到连接的下游端口，并处理直通节点
+   *
+   * 直通机制：
+   * - 推完数据后检查目标入 Port 是否属于直通 Forward 节点
+   * - 如果是，立即执行该直通节点并继续传播
+   * - 直到没有任何直通 Forward 的入 Port 被推数据
+   */
+  private async propagateDataWithDirectThrough(
+    node: BaseNode,
+    graph: AnoraGraph,
+    context: ExecutorContext,
+  ): Promise<void> {
     const outputPorts = node.getOutputPorts()
+
+    // 收集所有被写入数据的目标节点
+    const affectedNodes = new Set<BaseNode>()
 
     for (const outPort of outputPorts) {
       const connectedPorts = graph.getConnectedPorts(outPort)
 
       for (const targetPort of connectedPorts) {
-        // 获取输出端口的数据
-        const data = outPort.read()
+        // 使用 peek() 获取数据（不清空出 Port）
+        const data = outPort.peek()
 
+        // 即使值为 null 也要填入
         if (data !== undefined) {
-          // 写入目标端口（会自动进行类型转换）
           targetPort.write(data)
+
+          // 记录受影响的节点
+          const targetNode = graph.getNodeByPort(targetPort)
+          if (targetNode) {
+            affectedNodes.add(targetNode)
+          }
         }
+      }
+    }
+
+    // 检查受影响的节点是否有直通节点需要立即执行
+    for (const targetNode of affectedNodes) {
+      await this.executeDirectThroughIfReady(targetNode, graph, context)
+    }
+  }
+
+  /**
+   * 检查节点是否为直通节点，如果是则立即执行并递归传播
+   */
+  private async executeDirectThroughIfReady(
+    node: BaseNode,
+    graph: AnoraGraph,
+    context: ExecutorContext,
+  ): Promise<void> {
+    const connectedPorts = this.getConnectedInPortIds(node, graph)
+    const status = node.checkActivationReady(connectedPorts)
+
+    if (status === ActivationReadyStatus.DirectThrough) {
+      // 直通节点：立即执行
+      try {
+        this.emit({ type: 'node-start', node })
+        await node.activate(context)
+        this.emit({ type: 'node-complete', node, success: true })
+
+        // 清空入 Port
+        this.clearNodeInputPorts(node)
+
+        // 递归传播数据（可能触发更多直通节点）
+        await this.propagateDataWithDirectThrough(node, graph, context)
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error))
+        this.emit({ type: 'node-complete', node, success: false, error: err })
+        throw err
       }
     }
   }
