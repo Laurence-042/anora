@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { DistributeNodePorts } from './PortNames'
 
 /** DistributeNode 入 Port 类型 */
@@ -24,9 +25,8 @@ interface DistributeOutput {
  *
  * context: { currentIndex: number, total: number }
  */
+@AnoraRegister('core.DistributeNode')
 export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
-  static typeId: string = 'core.DistributeNode'
-
   /** 当前正在处理的数组 */
   private currentArray: unknown[] = []
 

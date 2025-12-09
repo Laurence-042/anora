@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { StringFormatNodePorts } from './PortNames'
 
 /** StringFormatNode 入 Port 类型 */
@@ -23,9 +24,8 @@ interface StringFormatOutput {
  *
  * 模板格式: "Hello, {name}! You are {age} years old."
  */
+@AnoraRegister('core.StringFormatNode')
 export class StringFormatNode extends WebNode<StringFormatInput, StringFormatOutput> {
-  static typeId: string = 'core.StringFormatNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'StringFormat')
 

@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ConsoleLogNodePorts } from './PortNames'
 
 /** ConsoleLogNode 入 Port 类型 */
@@ -15,9 +16,8 @@ interface ConsoleLogInput {
  * 入 Port: message (string)
  * context: { prefix: string }
  */
+@AnoraRegister('core.ConsoleLogNode')
 export class ConsoleLogNode extends WebNode<ConsoleLogInput, Record<string, never>> {
-  static typeId: string = 'core.ConsoleLogNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ConsoleLog')
 

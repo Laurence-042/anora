@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ForwardNodePorts } from './PortNames'
 
 /** ForwardNode 入 Port 类型 */
@@ -22,9 +23,8 @@ interface ForwardOutput {
  *
  * 支持直通模式：当入 Port 有数据时立即传播到出 Port
  */
+@AnoraRegister('core.ForwardNode')
 export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
-  static typeId: string = 'core.ForwardNode'
-
   /** 是否启用直通模式 */
   directThrough: boolean = true
 

@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import {
   ObjectAccessNodePorts,
   ObjectSetNodePorts,
@@ -27,9 +28,8 @@ interface ObjectAccessOutput {
  * 入 Port: object (object), key (string)
  * 出 Port: value (any)
  */
+@AnoraRegister('core.ObjectAccessNode')
 export class ObjectAccessNode extends WebNode<ObjectAccessInput, ObjectAccessOutput> {
-  static typeId: string = 'core.ObjectAccessNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ObjectAccess')
 
@@ -83,9 +83,8 @@ interface ObjectSetOutput {
  * 入 Port: object (object), key (string), value (any)
  * 出 Port: object (object)
  */
+@AnoraRegister('core.ObjectSetNode')
 export class ObjectSetNode extends WebNode<ObjectSetInput, ObjectSetOutput> {
-  static typeId: string = 'core.ObjectSetNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ObjectSet')
 
@@ -139,9 +138,8 @@ interface ArrayAccessOutput {
  * 入 Port: array (array), index (integer)
  * 出 Port: value (any)
  */
+@AnoraRegister('core.ArrayAccessNode')
 export class ArrayAccessNode extends WebNode<ArrayAccessInput, ArrayAccessOutput> {
-  static typeId: string = 'core.ArrayAccessNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayAccess')
 
@@ -194,9 +192,8 @@ interface ArrayPushOutput {
  * 入 Port: array (array), value (any)
  * 出 Port: array (array)
  */
+@AnoraRegister('core.ArrayPushNode')
 export class ArrayPushNode extends WebNode<ArrayPushInput, ArrayPushOutput> {
-  static typeId: string = 'core.ArrayPushNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayPush')
 
@@ -247,9 +244,8 @@ interface ArrayLengthOutput {
  * 入 Port: array (array)
  * 出 Port: length (integer)
  */
+@AnoraRegister('core.ArrayLengthNode')
 export class ArrayLengthNode extends WebNode<ArrayLengthInput, ArrayLengthOutput> {
-  static typeId: string = 'core.ArrayLengthNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayLength')
 

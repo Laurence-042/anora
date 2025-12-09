@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { BranchNodePorts } from './PortNames'
 
 /** BranchNode 入 Port 类型 */
@@ -15,9 +16,8 @@ interface BranchInput {
  * 入 Port: condition (boolean)
  * 出控制 Port: onTrue (null), onFalse (null)
  */
+@AnoraRegister('core.BranchNode')
 export class BranchNode extends WebNode<BranchInput, Record<string, never>> {
-  static typeId: string = 'core.BranchNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Branch')
 

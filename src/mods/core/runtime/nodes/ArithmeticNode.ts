@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ArithmeticNodePorts } from './PortNames'
 
 /**
@@ -34,9 +35,8 @@ interface ArithmeticOutput {
  * 出 Port: result (number)
  * context: { operation: ArithmeticOperation }
  */
+@AnoraRegister('core.ArithmeticNode')
 export class ArithmeticNode extends WebNode<ArithmeticInput, ArithmeticOutput> {
-  static typeId: string = 'core.ArithmeticNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Arithmetic')
 

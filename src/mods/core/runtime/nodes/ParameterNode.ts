@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { ParameterNodePorts } from './PortNames'
 
 /** ParameterNode 出 Port 类型 */
@@ -15,9 +16,8 @@ interface ParameterOutput {
  * 出 Port: value (可配置类型)
  * context: { value: any }
  */
+@AnoraRegister('core.ParameterNode')
 export class ParameterNode extends WebNode<Record<string, never>, ParameterOutput> {
-  static typeId: string = 'core.ParameterNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Parameter')
 

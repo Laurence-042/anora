@@ -1,6 +1,7 @@
 import { ActivationReadyStatus, DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { AggregateNodePorts } from './PortNames'
 
 /** AggregateNode 入 Port 类型 */
@@ -30,9 +31,8 @@ interface AggregateControl {
  * 1. aggregate 控制 Port 被激活：输出当前收集的数组
  * 2. inExecPort 被激活：添加元素到收集器
  */
+@AnoraRegister('core.AggregateNode')
 export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, AggregateControl> {
-  static typeId: string = 'core.AggregateNode'
-
   /** 收集器 */
   private collector: unknown[] = []
 

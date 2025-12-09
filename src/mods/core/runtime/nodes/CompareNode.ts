@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { CompareNodePorts } from './PortNames'
 
 /**
@@ -36,9 +37,8 @@ interface CompareOutput {
  * 出 Port: result (boolean)
  * context: { operation: CompareOperation }
  */
+@AnoraRegister('core.CompareNode')
 export class CompareNode extends WebNode<CompareInput, CompareOutput> {
-  static typeId: string = 'core.CompareNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Compare')
 

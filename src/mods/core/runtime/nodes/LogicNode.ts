@@ -1,6 +1,7 @@
 import { DataType } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
+import { AnoraRegister } from '../../../../base/runtime/registry'
 import { LogicNodePorts } from './PortNames'
 
 /**
@@ -34,9 +35,8 @@ interface LogicOutput {
  * 出 Port: result (boolean)
  * context: { operation: LogicOperation }
  */
+@AnoraRegister('core.LogicNode')
 export class LogicNode extends WebNode<LogicInput, LogicOutput> {
-  static typeId: string = 'core.LogicNode'
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Logic')
 

@@ -9,8 +9,23 @@ import { BaseNode } from '../nodes/BaseNode'
 import { BasePort } from '../ports/BasePort'
 import { BasicExecutor } from '../executor/BasicExecutor'
 
-// 统一的构造函数类型
-type AnyConstructor = new (...args: unknown[]) => unknown
+// 各类型的构造函数签名
+// Node: (id?: string, label?: string) => BaseNode<any, any, any>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type NodeAnyConstructor = new (id?: string, label?: string) => BaseNode<any, any, any>
+// Port: (parentNode, parentPort?, keyInParent?) => BasePort
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type PortAnyConstructor = new (
+  parentNode: any,
+  parentPort?: any,
+  keyInParent?: string | number,
+) => BasePort
+/* eslint-enable @typescript-eslint/no-explicit-any */
+// Executor: () => BasicExecutor
+type ExecutorAnyConstructor = new () => BasicExecutor
+
+// 统一的构造函数类型（联合类型）
+type AnyConstructor = NodeAnyConstructor | PortAnyConstructor | ExecutorAnyConstructor
 
 /**
  * 判断定义类型
