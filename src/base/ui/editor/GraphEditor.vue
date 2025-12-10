@@ -22,7 +22,7 @@ import { ParameterNodeView, ArithmeticNodeView } from '@/mods/core/ui'
 const graphStore = useGraphStore()
 
 // Vue-Flow 实例
-const { onConnect, onNodeDoubleClick, onPaneClick, fitView } = useVueFlow()
+const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueFlow()
 
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
@@ -62,8 +62,10 @@ const vfEdges = computed<Edge[]>(() => {
     for (const port of node.getOutputPorts()) {
       const connectedPorts = graph.getConnectedPorts(port)
       for (const targetPort of connectedPorts) {
+        const edgeId = `${port.id}->${targetPort.id}`
+
         edges.push({
-          id: `${port.id}->${targetPort.id}`,
+          id: edgeId,
           source: node.id,
           target: graph.getNodeByPort(targetPort)?.id ?? '',
           sourceHandle: port.id,
@@ -76,6 +78,54 @@ const vfEdges = computed<Edge[]>(() => {
 
   return edges
 })
+
+/** 不兼容边的默认样式 */
+const incompatibleEdgeStyle = {
+  stroke: '#ef4444',
+  strokeWidth: 2,
+}
+
+/** 正常边的默认样式 */
+const normalEdgeStyle = {
+  stroke: '#64748b',
+  strokeWidth: 2,
+}
+
+/**
+ * 监听 incompatibleEdges 变化，增量更新受影响边的样式
+ * 直接修改边对象的响应式属性
+ */
+watch(
+  () => graphStore.incompatibleEdges,
+  (newIncompatible, oldIncompatible) => {
+    const edges = getEdges.value
+
+    // 找出新增的不兼容边，设为红色
+    for (const edgeId of newIncompatible) {
+      if (!oldIncompatible?.has(edgeId)) {
+        const edge = edges.find((e) => e.id === edgeId)
+        if (edge) {
+          edge.style = incompatibleEdgeStyle
+          edge.animated = true
+        }
+      }
+    }
+
+    // 找出恢复兼容的边，恢复正常样式
+    if (oldIncompatible) {
+      for (const edgeId of oldIncompatible) {
+        if (!newIncompatible.has(edgeId)) {
+          const edge = edges.find((e) => e.id === edgeId)
+          if (edge) {
+            edge.style = normalEdgeStyle
+            edge.animated = false
+          }
+        }
+      }
+    }
+  },
+  { deep: true },
+)
 
 /** 自定义节点类型 */
 const nodeTypes = {

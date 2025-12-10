@@ -8,6 +8,7 @@ import type { NodeProps } from '@vue-flow/core'
 import type { ParameterNode } from '@/mods/core/runtime/nodes/ParameterNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
 import { useNodeInput } from '@/base/ui/composables'
+import { useGraphStore } from '@/stores/graph'
 import { ElInput } from 'element-plus'
 
 interface ParameterNodeProps extends NodeProps {
@@ -20,6 +21,7 @@ const props = defineProps<ParameterNodeProps>()
 
 const node = computed(() => props.data.node)
 const { inputClass, onKeydown } = useNodeInput()
+const graphStore = useGraphStore()
 
 /** 值编辑 */
 const editValue = ref('')
@@ -46,6 +48,8 @@ const parsedPreview = computed(() => {
 /** 保存值 */
 function saveValue(): void {
   node.value.setValue(editValue.value)
+  // 值变更可能导致出 Port 类型变化，检查相关边的兼容性
+  graphStore.checkNodeEdgesCompatibility(node.value.id)
 }
 </script>
 

@@ -37,6 +37,9 @@ export const useGraphStore = defineStore('graph', () => {
   /** 当前选中的边（出 Port ID -> 入 Port ID） */
   const selectedEdges = ref<Set<string>>(new Set())
 
+  /** 不兼容的边（类型不匹配） */
+  const incompatibleEdges = ref<Set<string>>(new Set())
+
   // ==================== 执行器状态 ====================
 
   /** 执行器实例 */
@@ -299,6 +302,33 @@ export const useGraphStore = defineStore('graph', () => {
     return executingNodeIds.value.has(nodeId)
   }
 
+  /**
+   * 检查节点相关边的兼容性
+   * 当节点 Port 类型变更时调用
+   * 只更新 incompatibleEdges 状态，不触发全图刷新
+   */
+  function checkNodeEdgesCompatibility(nodeId: string): void {
+    const incompatible = currentGraph.value.checkNodeEdgesCompatibility(nodeId)
+
+    if (incompatible.length > 0) {
+      console.warn(
+        `[Graph] Found ${incompatible.length} incompatible edge(s) for node ${nodeId}:`,
+        incompatible,
+      )
+    }
+
+    // 只更新 incompatibleEdges，不触发 currentGraph 刷新
+    // 这样只会影响边的样式计算，不会导致全图重新渲染
+    incompatibleEdges.value = currentGraph.value.getIncompatibleEdges()
+  }
+
+  /**
+   * 检查边是否不兼容
+   */
+  function isEdgeIncompatible(fromPortId: string, toPortId: string): boolean {
+    return incompatibleEdges.value.has(`${fromPortId}->${toPortId}`)
+  }
+
   // ==================== 初始化 ====================
 
   // 创建初始图
@@ -311,6 +341,7 @@ export const useGraphStore = defineStore('graph', () => {
     subGraphStack,
     selectedNodeIds,
     selectedEdges,
+    incompatibleEdges,
     executor,
     executorStatus,
     currentIteration,
@@ -344,5 +375,9 @@ export const useGraphStore = defineStore('graph', () => {
     stopExecution,
     isNodeExecuting,
     handleExecutorEvent,
+
+    // 边兼容性检查
+    checkNodeEdgesCompatibility,
+    isEdgeIncompatible,
   }
 })

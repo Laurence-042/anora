@@ -22,6 +22,9 @@ export class AnoraGraph {
   /** 所有边（连接关系） */
   private edges: Edge[] = []
 
+  /** 不兼容的边（类型不匹配的连接） */
+  private incompatibleEdges: Set<string> = new Set()
+
   /** Port ID 到 Node 的映射（用于 O(1) 查询） */
   private portToNode: Map<string, BaseNode> = new Map()
 
@@ -179,6 +182,60 @@ export class AnoraGraph {
     // 这需要在添加边后进行深度优先搜索检测环
 
     return true
+  }
+
+  /**
+   * 检查节点相关的所有边是否兼容
+   * 当节点 Port 类型变更时调用
+   * @param nodeId 要检查的节点 ID
+   * @returns 不兼容边的数组 [fromPortId, toPortId][]
+   */
+  checkNodeEdgesCompatibility(nodeId: string): Array<[string, string]> {
+    const node = this.nodes.get(nodeId)
+    if (!node) return []
+
+    const incompatible: Array<[string, string]> = []
+    const nodePorts = new Set(node.getAllPorts().map((p) => p.id))
+
+    // 检查所有与该节点相关的边
+    for (const edge of this.edges) {
+      if (nodePorts.has(edge.fromPortId) || nodePorts.has(edge.toPortId)) {
+        const fromNode = this.portToNode.get(edge.fromPortId)
+        const toNode = this.portToNode.get(edge.toPortId)
+
+        if (!fromNode || !toNode) continue
+
+        const fromPort = fromNode.getPortById(edge.fromPortId)
+        const toPort = toNode.getPortById(edge.toPortId)
+
+        if (!fromPort || !toPort) continue
+
+        // 检查类型兼容性
+        if (!areTypesCompatible(fromPort.dataType, toPort.dataType)) {
+          incompatible.push([edge.fromPortId, edge.toPortId])
+          this.incompatibleEdges.add(`${edge.fromPortId}->${edge.toPortId}`)
+        } else {
+          // 如果之前不兼容现在兼容了，移除标记
+          this.incompatibleEdges.delete(`${edge.fromPortId}->${edge.toPortId}`)
+        }
+      }
+    }
+
+    return incompatible
+  }
+
+  /**
+   * 获取所有不兼容的边
+   */
+  getIncompatibleEdges(): Set<string> {
+    return new Set(this.incompatibleEdges)
+  }
+
+  /**
+   * 检查边是否不兼容
+   */
+  isEdgeIncompatible(fromPortId: string, toPortId: string): boolean {
+    return this.incompatibleEdges.has(`${fromPortId}->${toPortId}`)
   }
 
   // ==================== O(1) 查询 ====================
