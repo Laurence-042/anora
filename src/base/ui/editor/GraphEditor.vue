@@ -16,8 +16,11 @@ import ExecutorControls from './ExecutorControls.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
 
-// 自定义节点视图
-import { ParameterNodeView, ArithmeticNodeView } from '@/mods/core/ui'
+// 节点视图注册表
+import { NodeViewRegistry } from '../registry'
+
+// 初始化时设置默认视图
+NodeViewRegistry.setDefaultView(BaseNodeView)
 
 const graphStore = useGraphStore()
 
@@ -27,14 +30,9 @@ const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueF
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
-/** 根据节点 typeId 获取对应的视图组件 */
+/** 根据节点 typeId 获取对应的视图组件类型 */
 function getNodeViewType(typeId: string): string {
-  // 特定节点使用自定义视图
-  const customViews: Record<string, string> = {
-    'core.ParameterNode': 'parameter-node',
-    'core.ArithmeticNode': 'arithmetic-node',
-  }
-  return customViews[typeId] ?? 'anora-node'
+  return NodeViewRegistry.getViewType(typeId)
 }
 
 /** 将 AnoraGraph 转换为 Vue-Flow 节点 */
@@ -127,12 +125,8 @@ watch(
   { deep: true },
 )
 
-/** 自定义节点类型 */
-const nodeTypes = {
-  'anora-node': markRaw(BaseNodeView),
-  'parameter-node': markRaw(ParameterNodeView),
-  'arithmetic-node': markRaw(ArithmeticNodeView),
-}
+/** 自定义节点类型（从注册表获取） */
+const nodeTypes = computed(() => NodeViewRegistry.getNodeTypes())
 
 /** 处理连接 */
 onConnect((connection: Connection) => {

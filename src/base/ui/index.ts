@@ -14,6 +14,9 @@ export { default as ExecutorControls } from './editor/ExecutorControls.vue'
 export { default as Breadcrumb } from './editor/Breadcrumb.vue'
 export { default as NodePalette } from './editor/NodePalette.vue'
 
+// 注册表
+export * from './registry'
+
 // Composables
 export * from './composables/useGraph'
 export * from './composables/useExecutor'
