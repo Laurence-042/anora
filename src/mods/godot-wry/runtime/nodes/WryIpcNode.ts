@@ -1,6 +1,6 @@
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { BackendNode } from '../../../../base/runtime/nodes'
-import { NullPort } from '../../../../base/runtime/ports'
+import { BasePort, NullPort } from '../../../../base/runtime/ports'
 import { AnoraRegister } from '../../../../base/runtime/registry'
 
 /**
@@ -152,6 +152,7 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
 
   /**
    * 设置参数列表（会同步更新入 Port）
+   * 支持重命名：按索引位置匹配，保留 Port 实例和连接
    */
   setParams(params: WryIpcParam[]): void {
     const oldParams = this.getParams()
@@ -162,7 +163,7 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
       params,
     }
 
-    // 同步入 Port
+    // 同步入 Port（支持重命名）
     this._syncInPorts(oldParams, params)
 
     // 触发变更事件
@@ -171,22 +172,35 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
 
   /**
    * 同步入 Port 与 params 定义
+   * 按索引位置匹配，支持重命名操作
    */
   private _syncInPorts(oldParams: WryIpcParam[], newParams: WryIpcParam[]): void {
-    const oldNames = new Set(oldParams.map((p) => p.name))
-    const newNames = new Set(newParams.map((p) => p.name))
-
-    // 移除不再需要的 Port
-    for (const name of oldNames) {
-      if (!newNames.has(name)) {
-        this.inPorts.delete(name)
+    // 构建旧 Port 的有序列表（按 oldParams 顺序）
+    const oldPortEntries: Array<{ name: string; port: BasePort }> = []
+    for (const param of oldParams) {
+      const port = this.inPorts.get(param.name)
+      if (port) {
+        oldPortEntries.push({ name: param.name, port })
       }
     }
 
-    // 添加新的 Port
-    for (const param of newParams) {
-      if (!this.inPorts.has(param.name)) {
-        this.addInPort(param.name, new NullPort(this))
+    // 清空当前 inPorts
+    this.inPorts.clear()
+
+    // 按新 params 顺序重建 inPorts
+    for (let i = 0; i < newParams.length; i++) {
+      const param = newParams[i]
+      if (!param) continue
+
+      const newName = param.name
+      const oldEntry = oldPortEntries[i]
+
+      if (oldEntry) {
+        // 复用旧 Port 实例（可能是重命名）
+        this.inPorts.set(newName, oldEntry.port)
+      } else {
+        // 新增的 Port
+        this.addInPort(newName, new NullPort(this))
       }
     }
   }
