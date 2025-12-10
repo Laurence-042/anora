@@ -5,6 +5,7 @@
  */
 import { ref, computed, watch, onMounted, markRaw } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
+import { Background, BackgroundVariant } from '@vue-flow/background'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
@@ -285,10 +286,8 @@ onMounted(() => {
         @node-drag-stop="onNodeDragStop"
         @nodes-change="onNodesChange"
       >
-        <!-- 背景 -->
-        <template #default>
-          <div class="canvas-background" />
-        </template>
+        <!-- 网格背景（跟随画布移动） -->
+        <Background :variant="BackgroundVariant.Dots" :gap="20" :size="1" pattern-color="#3a3a5c" />
       </VueFlow>
 
       <!-- 节点面板 -->
@@ -346,14 +345,6 @@ onMounted(() => {
 .editor-canvas {
   flex: 1;
   position: relative;
-}
-
-.canvas-background {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, #2a2a4a 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
 }
 
 .editor-statusbar {
