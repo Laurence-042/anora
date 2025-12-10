@@ -145,7 +145,7 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   /**
    * 触发 context 变更事件
    */
-  private _emitContextChange(field: string, oldValue: unknown, newValue: unknown): void {
+  protected _emitContextChange(field: string, oldValue: unknown, newValue: unknown): void {
     const event: NodeContextChangeEvent = {
       nodeId: this.id,
       field,

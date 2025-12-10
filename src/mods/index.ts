@@ -3,6 +3,7 @@ export * from './core'
 export * from './godot-wry'
 
 import { initCoreMod } from './core'
+import { initGodotWryMod } from './godot-wry'
 
 /**
  * 初始化所有 Mods
@@ -10,5 +11,5 @@ import { initCoreMod } from './core'
  */
 export function initAllMods(): void {
   initCoreMod()
-  // 其他 mod 的初始化...
+  initGodotWryMod()
 }

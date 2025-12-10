@@ -29,13 +29,8 @@ interface WryResponse {
   error?: string
 }
 
-/** WryIpcNode 入 Port 类型 */
-interface WryIpcInput {
-  /** 要调用的方法名 */
-  method: string
-  /** 传递给后端的参数 */
-  payload: unknown
-}
+/** WryIpcNode 入 Port 类型（动态） */
+type WryIpcInput = Record<string, unknown>
 
 /** WryIpcNode 出 Port 类型 */
 interface WryIpcOutput {
@@ -43,6 +38,22 @@ interface WryIpcOutput {
   response: unknown
   /** 是否成功 */
   success: boolean
+}
+
+/** 参数定义 */
+export interface WryIpcParam {
+  /** 参数名（也是 Port 名） */
+  name: string
+  /** 参数类型提示（可选，用于 UI 显示） */
+  type?: string
+}
+
+/** WryIpcNode context 类型 */
+export interface WryIpcContext {
+  /** 要调用的方法名 */
+  method: string
+  /** 参数列表（动态生成入 Port） */
+  params: WryIpcParam[]
 }
 
 /**
@@ -57,9 +68,11 @@ function generateMessageId(): string {
  *
  * 使用 godot-wry 提供的 IPC 机制与 Godot 后端进行双向通信
  *
- * 入 Port:
+ * context:
  *   - method (string): 要调用的后端方法名
- *   - payload (any): 传递给后端的参数
+ *   - params (WryIpcParam[]): 参数列表，动态生成入 Port
+ *
+ * 入 Port: 根据 params 动态生成
  *
  * 出 Port:
  *   - response (any): 后端返回的响应数据
@@ -83,10 +96,6 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'WryIpc')
 
-    // 入 Port
-    this.addInPort('method', new NullPort(this))
-    this.addInPort('payload', new NullPort(this))
-
     // 出 Port
     this.addOutPort('response', new NullPort(this))
     this.addOutPort('success', new NullPort(this))
@@ -95,8 +104,91 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
     this.addOutControlPort('done', new NullPort(this))
     this.addOutControlPort('error', new NullPort(this))
 
+    // 默认 context（无参数）
+    this._context = { method: '', params: [] } as WryIpcContext
+
     // 初始化全局事件监听器
     WryIpcNode.initializeListener()
+  }
+
+  /**
+   * 获取当前方法名
+   */
+  getMethod(): string {
+    return (this._context as WryIpcContext)?.method ?? ''
+  }
+
+  /**
+   * 获取当前参数列表
+   */
+  getParams(): WryIpcParam[] {
+    return (this._context as WryIpcContext)?.params ?? []
+  }
+
+  /**
+   * 设置方法名和参数
+   * 会根据 params 动态更新入 Port
+   */
+  setMethodAndParams(method: string, params: WryIpcParam[]): void {
+    const oldParams = this.getParams()
+
+    // 更新 context
+    this._context = { method, params }
+
+    // 同步入 Port
+    this._syncInPorts(oldParams, params)
+
+    // 触发变更事件
+    this._emitContextChange('method', (this._context as WryIpcContext).method, method)
+    this._emitContextChange('params', oldParams, params)
+  }
+
+  /**
+   * 仅设置方法名
+   */
+  setMethod(method: string): void {
+    this.setContextField('method', method)
+  }
+
+  /**
+   * 设置参数列表（会同步更新入 Port）
+   */
+  setParams(params: WryIpcParam[]): void {
+    const oldParams = this.getParams()
+
+    // 更新 context 中的 params
+    this._context = {
+      ...((this._context as WryIpcContext) ?? { method: '' }),
+      params,
+    }
+
+    // 同步入 Port
+    this._syncInPorts(oldParams, params)
+
+    // 触发变更事件
+    this._emitContextChange('params', oldParams, params)
+  }
+
+  /**
+   * 同步入 Port 与 params 定义
+   */
+  private _syncInPorts(oldParams: WryIpcParam[], newParams: WryIpcParam[]): void {
+    const oldNames = new Set(oldParams.map((p) => p.name))
+    const newNames = new Set(newParams.map((p) => p.name))
+
+    // 移除不再需要的 Port
+    for (const name of oldNames) {
+      if (!newNames.has(name)) {
+        this.inPorts.delete(name)
+      }
+    }
+
+    // 添加新的 Port
+    for (const param of newParams) {
+      if (!this.inPorts.has(param.name)) {
+        this.addInPort(param.name, new NullPort(this))
+      }
+    }
   }
 
   /**
@@ -194,8 +286,15 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
     _executorContext: ExecutorContext,
     inData: WryIpcInput,
   ): Promise<WryIpcOutput> {
-    const method = String(inData.method ?? '')
-    const payload = inData.payload
+    // 从 context 获取方法名
+    const method = this.getMethod()
+
+    // 从动态入 Port 组装 payload
+    const params = this.getParams()
+    const payload: Record<string, unknown> = {}
+    for (const param of params) {
+      payload[param.name] = inData[param.name]
+    }
 
     if (!method) {
       // 激活 error 控制 Port
@@ -204,7 +303,7 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
         errorPort.write(null)
       }
       return {
-        response: null,
+        response: 'Method not specified',
         success: false,
       }
     }
