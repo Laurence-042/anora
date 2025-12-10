@@ -19,6 +19,21 @@ export type NodeOutput = { [key: string]: unknown }
 export type NodeControl = { [key: string]: unknown }
 
 /**
+ * Context 变更事件
+ */
+export interface NodeContextChangeEvent {
+  nodeId: string
+  field: string
+  oldValue: unknown
+  newValue: unknown
+}
+
+/**
+ * Context 变更监听器类型
+ */
+export type NodeContextChangeListener = (event: NodeContextChangeEvent) => void
+
+/**
  * 节点基类
  * 节点本质上是函数的抽象
  *
@@ -52,13 +67,16 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   readonly outPorts: Map<string, BasePort> = new Map()
 
   /** 上下文：便于节点在多次工作中实现差异行为，也可用于静态配置 */
-  context: unknown = null
+  protected _context: unknown = null
 
   /** 节点执行状态 */
   executionStatus: NodeExecutionStatus = NodeExecutionStatus.IDLE
 
   /** 最后一次执行的错误信息 */
   lastError?: string
+
+  /** Context 变更监听器 */
+  private _contextChangeListeners: Set<NodeContextChangeListener> = new Set()
 
   constructor(id?: string, label?: string) {
     this.id = id ?? uuidv4()
@@ -67,6 +85,76 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
     // 创建执行 Port
     this.inExecPort = new NullPort(this)
     this.outExecPort = new NullPort(this)
+  }
+
+  /**
+   * 获取 context（兼容旧代码的读取）
+   */
+  get context(): unknown {
+    return this._context
+  }
+
+  /**
+   * 设置整个 context（兼容旧代码）
+   * 注意：直接设置整个 context 不会触发变更事件
+   * 如需触发事件，请使用 setContextField
+   */
+  set context(value: unknown) {
+    this._context = value
+  }
+
+  /**
+   * 设置单个 context 字段，触发变更事件
+   * @param field 字段名
+   * @param value 新值
+   */
+  setContextField(field: string, value: unknown): void {
+    const oldContext = this._context as Record<string, unknown> | null
+    const oldValue = oldContext?.[field]
+
+    // 值相同则不触发
+    if (oldValue === value) return
+
+    // 更新 context
+    this._context = {
+      ...((this._context as Record<string, unknown>) ?? {}),
+      [field]: value,
+    }
+
+    // 触发变更事件
+    this._emitContextChange(field, oldValue, value)
+  }
+
+  /**
+   * 获取单个 context 字段
+   */
+  getContextField<T = unknown>(field: string): T | undefined {
+    const ctx = this._context as Record<string, unknown> | null
+    return ctx?.[field] as T | undefined
+  }
+
+  /**
+   * 添加 context 变更监听器
+   * @returns 取消监听的函数
+   */
+  onContextChange(listener: NodeContextChangeListener): () => void {
+    this._contextChangeListeners.add(listener)
+    return () => this._contextChangeListeners.delete(listener)
+  }
+
+  /**
+   * 触发 context 变更事件
+   */
+  private _emitContextChange(field: string, oldValue: unknown, newValue: unknown): void {
+    const event: NodeContextChangeEvent = {
+      nodeId: this.id,
+      field,
+      oldValue,
+      newValue,
+    }
+    for (const listener of this._contextChangeListeners) {
+      listener(event)
+    }
   }
 
   /**

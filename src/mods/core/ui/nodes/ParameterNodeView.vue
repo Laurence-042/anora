@@ -3,12 +3,11 @@
  * ParameterNodeView - 参数节点视图
  * 基于 BaseNodeView 扩展，提供参数值编辑控件
  */
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { ParameterNode } from '@/mods/core/runtime/nodes/ParameterNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
-import { useNodeInput } from '@/base/ui/composables'
-import { useGraphStore } from '@/stores/graph'
+import { useNodeInput, useContextField } from '@/base/ui/composables'
 import { ElInput } from 'element-plus'
 
 interface ParameterNodeProps extends NodeProps {
@@ -21,19 +20,15 @@ const props = defineProps<ParameterNodeProps>()
 
 const node = computed(() => props.data.node)
 const { inputClass, onKeydown } = useNodeInput()
-const graphStore = useGraphStore()
 
-/** 值编辑 */
-const editValue = ref('')
-
-/** 初始化编辑值 */
-watch(
-  () => node.value.getRawValue(),
-  (newVal) => {
-    editValue.value = newVal
-  },
-  { immediate: true },
-)
+/**
+ * 使用 useContextField 创建 value 字段的双向绑定
+ * context 变更时会自动触发边兼容性检查
+ */
+const { value: editValue } = useContextField(node, {
+  field: 'value',
+  defaultValue: '',
+})
 
 /** 解析后的值预览 */
 const parsedPreview = computed(() => {
@@ -44,13 +39,6 @@ const parsedPreview = computed(() => {
   }
   return type
 })
-
-/** 保存值 */
-function saveValue(): void {
-  node.value.setValue(editValue.value)
-  // 值变更可能导致出 Port 类型变化，检查相关边的兼容性
-  graphStore.checkNodeEdgesCompatibility(node.value.id)
-}
 </script>
 
 <template>
@@ -64,13 +52,10 @@ function saveValue(): void {
           :autosize="{ minRows: 1, maxRows: 8 }"
           placeholder="输入参数值"
           :class="['value-textarea', inputClass]"
-          @blur="saveValue"
           @keydown="onKeydown"
-          @keyup.ctrl.enter="saveValue"
         />
         <div class="value-hint">
           <span class="type-badge">{{ parsedPreview }}</span>
-          <span class="hint-text">Ctrl+Enter 确认</span>
         </div>
       </div>
     </template>

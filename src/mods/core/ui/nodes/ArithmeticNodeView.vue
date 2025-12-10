@@ -7,7 +7,7 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import { ArithmeticNode, ArithmeticOperation } from '@/mods/core/runtime/nodes/ArithmeticNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
-import { useNodeInput } from '@/base/ui/composables'
+import { useNodeInput, useContextField } from '@/base/ui/composables'
 import { ElSelect, ElOption } from 'element-plus'
 
 interface ArithmeticNodeProps extends NodeProps {
@@ -21,10 +21,13 @@ const props = defineProps<ArithmeticNodeProps>()
 const node = computed(() => props.data.node)
 const { inputClass, onKeydown } = useNodeInput()
 
-/** 当前运算符 */
-const currentOperation = computed({
-  get: () => node.value.getOperation(),
-  set: (val) => node.value.setOperation(val),
+/**
+ * 使用 useContextField 创建 operation 字段的双向绑定
+ * context 变更时会自动触发边兼容性检查
+ */
+const { value: currentOperation } = useContextField(node, {
+  field: 'operation',
+  defaultValue: ArithmeticOperation.Add,
 })
 
 /** 运算符选项 */
