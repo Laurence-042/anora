@@ -2,7 +2,6 @@
 /**
  * NodePalette - 节点面板
  * 显示可用的节点类型，支持拖放添加
- * 使用 NodeViewRegistry 获取节点 i18n 信息和图标
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -30,22 +29,36 @@ interface NodeTypeInfo {
   categoryName: string
 }
 
+/**
+ * 获取节点 i18n 名称
+ * typeId 格式: 'mod.NodeName' -> i18n key: 'nodes.mod.NodeName'
+ */
+function getNodeName(typeId: string): string {
+  const [mod, nodeName] = typeId.split('.')
+  // 尝试翻译，如果没有则用 nodeName 作为 fallback
+  return t(`nodes.${mod}.${nodeName}`, nodeName ?? typeId)
+}
+
+/**
+ * 获取分类 i18n 名称
+ */
+function getCategoryName(category: string): string {
+  return t(`nodeCategories.${category}`, category)
+}
+
 /** 可用的节点类型 */
 const nodeTypes = computed<NodeTypeInfo[]>(() => {
   const types: NodeTypeInfo[] = []
 
   for (const [typeId] of NodeRegistry.getAll()) {
     const meta = NodeViewRegistry.getNodeMeta(typeId)
-    const name = t(meta.i18nKey, meta.typeId.split('.').pop() ?? typeId)
-    const categoryName = t(meta.categoryI18nKey, meta.category)
-    const icon = meta.icon
 
     types.push({
       typeId,
-      name,
-      icon,
+      name: getNodeName(typeId),
+      icon: meta.icon,
       category: meta.category,
-      categoryName,
+      categoryName: getCategoryName(meta.category),
     })
   }
 

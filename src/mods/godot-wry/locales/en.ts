@@ -2,10 +2,12 @@
  * Godot-WRY mod - English language pack
  */
 export default {
-  // Godot WRY nodes
+  // Godot WRY nodes - i18n key: nodes['godot-wry'].{NodeName}
   nodes: {
-    'godot-wry.WryIpcNode': 'WRY IPC',
-    'godot-wry.WryEventNode': 'WRY Event',
+    'godot-wry': {
+      WryIpcNode: 'WRY IPC',
+      WryEventNode: 'WRY Event',
+    },
   },
 
   // Node categories

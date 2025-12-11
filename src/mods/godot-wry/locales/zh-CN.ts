@@ -2,10 +2,12 @@
  * Godot-WRY mod - Chinese language pack
  */
 export default {
-  // Godot WRY 节点
+  // Godot WRY 节点 - i18n key: nodes['godot-wry'].{NodeName}
   nodes: {
-    'godot-wry.WryIpcNode': 'WRY IPC',
-    'godot-wry.WryEventNode': 'WRY 事件',
+    'godot-wry': {
+      WryIpcNode: 'WRY IPC',
+      WryEventNode: 'WRY 事件',
+    },
   },
 
   // 节点分类

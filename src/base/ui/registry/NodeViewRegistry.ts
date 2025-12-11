@@ -3,11 +3,11 @@
  *
  * 统一管理节点的视图组件和元数据：
  * 1. 视图组件注册 - 用于 Vue-Flow 自定义节点渲染
- * 2. 元数据获取 - 从节点类静态属性读取 + i18n key 自动推导
+ * 2. 元数据获取 - 从节点类静态属性读取 icon 和 category
  *
  * 设计原则：
  * - 节点固有属性（icon、category）定义在节点类的 static meta 中
- * - i18n key 按约定自动从 typeId 推导，无需手动配置
+ * - i18n 在使用处直接调用 t()，key 格式为 nodes.{mod}.{NodeName}
  * - 视图层统一从此注册表获取所需信息
  */
 import { markRaw, type Component } from 'vue'
@@ -15,20 +15,15 @@ import { NodeRegistry } from '@/base/runtime/registry'
 import type { NodeStaticMeta } from '@/base/runtime/nodes'
 
 /**
- * 节点完整元数据（运行时生成）
- * 合并节点静态 meta + 自动推导的 i18n key
+ * 节点元数据
  */
 export interface NodeMeta {
-  /** 节点类型ID */
+  /** 节点类型ID，如 'core.ForwardNode' */
   typeId: string
   /** 图标 */
   icon: string
   /** 分类 */
   category: string
-  /** 名称的 i18n key */
-  i18nKey: string
-  /** 分类的 i18n key */
-  categoryI18nKey: string
 }
 
 /**
@@ -114,7 +109,7 @@ class NodeViewRegistryClass {
 
   /**
    * 获取节点元数据
-   * 从节点类的 static meta 读取 + 自动推导 i18n key
+   * 从节点类的 static meta 读取
    */
   getNodeMeta(typeId: string): NodeMeta {
     const NodeClass = NodeRegistry.get(typeId)
@@ -125,16 +120,10 @@ class NodeViewRegistryClass {
     const parts = typeId.split('.')
     const defaultCategory = parts.length > 1 ? parts[0]! : 'other'
 
-    const category = staticMeta.category ?? defaultCategory
-    const icon = staticMeta.icon ?? '◇'
-
     return {
       typeId,
-      icon,
-      category,
-      // i18n key 自动推导
-      i18nKey: `nodes.${typeId}`,
-      categoryI18nKey: `nodeCategories.${category}`,
+      icon: staticMeta.icon ?? '◇',
+      category: staticMeta.category ?? defaultCategory,
     }
   }
 

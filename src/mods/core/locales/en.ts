@@ -2,24 +2,26 @@
  * Core mod - English language pack
  */
 export default {
-  // Core nodes
+  // Core nodes - i18n key: nodes.core.{NodeName}
   nodes: {
-    'core.ForwardNode': 'Forward',
-    'core.ParameterNode': 'Parameter',
-    'core.DistributeNode': 'Distribute',
-    'core.AggregateNode': 'Aggregate',
-    'core.CompareNode': 'Compare',
-    'core.BranchNode': 'Branch',
-    'core.LogicNode': 'Logic',
-    'core.ArithmeticNode': 'Arithmetic',
-    'core.StringFormatNode': 'String Format',
-    'core.ConsoleLogNode': 'Console Log',
-    'core.NotifyNode': 'Notify',
-    'core.ObjectAccessNode': 'Object Access',
-    'core.ObjectSetNode': 'Object Set',
-    'core.ArrayAccessNode': 'Array Access',
-    'core.ArrayPushNode': 'Array Push',
-    'core.ArrayLengthNode': 'Array Length',
+    core: {
+      ForwardNode: 'Forward',
+      ParameterNode: 'Parameter',
+      DistributeNode: 'Distribute',
+      AggregateNode: 'Aggregate',
+      CompareNode: 'Compare',
+      BranchNode: 'Branch',
+      LogicNode: 'Logic',
+      ArithmeticNode: 'Arithmetic',
+      StringFormatNode: 'String Format',
+      ConsoleLogNode: 'Console Log',
+      NotifyNode: 'Notify',
+      ObjectAccessNode: 'Object Access',
+      ObjectSetNode: 'Object Set',
+      ArrayAccessNode: 'Array Access',
+      ArrayPushNode: 'Array Push',
+      ArrayLengthNode: 'Array Length',
+    },
   },
 
   // Node categories

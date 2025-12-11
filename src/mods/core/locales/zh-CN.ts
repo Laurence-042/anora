@@ -2,24 +2,26 @@
  * Core mod - Chinese language pack
  */
 export default {
-  // Core 节点
+  // Core 节点 - i18n key: nodes.core.{NodeName}
   nodes: {
-    'core.ForwardNode': '中继',
-    'core.ParameterNode': '参数',
-    'core.DistributeNode': '分发',
-    'core.AggregateNode': '聚合',
-    'core.CompareNode': '比较',
-    'core.BranchNode': '分支',
-    'core.LogicNode': '逻辑运算',
-    'core.ArithmeticNode': '算术运算',
-    'core.StringFormatNode': '字符串格式化',
-    'core.ConsoleLogNode': '控制台输出',
-    'core.NotifyNode': '通知',
-    'core.ObjectAccessNode': '对象取值',
-    'core.ObjectSetNode': '对象设值',
-    'core.ArrayAccessNode': '数组取值',
-    'core.ArrayPushNode': '数组追加',
-    'core.ArrayLengthNode': '数组长度',
+    core: {
+      ForwardNode: '中继',
+      ParameterNode: '参数',
+      DistributeNode: '分发',
+      AggregateNode: '聚合',
+      CompareNode: '比较',
+      BranchNode: '分支',
+      LogicNode: '逻辑运算',
+      ArithmeticNode: '算术运算',
+      StringFormatNode: '字符串格式化',
+      ConsoleLogNode: '控制台输出',
+      NotifyNode: '通知',
+      ObjectAccessNode: '对象取值',
+      ObjectSetNode: '对象设值',
+      ArrayAccessNode: '数组取值',
+      ArrayPushNode: '数组追加',
+      ArrayLengthNode: '数组长度',
+    },
   },
 
   // 节点分类

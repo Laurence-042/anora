@@ -79,11 +79,13 @@ export default {
     },
   },
 
-  // Base 节点
+  // Base 节点 - i18n key: nodes.{mod}.{NodeName}
   nodes: {
-    'base.SubGraphNode': '子图',
-    'base.SubGraphEntryNode': '子图入口',
-    'base.SubGraphExitNode': '子图出口',
+    base: {
+      SubGraphNode: '子图',
+      SubGraphEntryNode: '子图入口',
+      SubGraphExitNode: '子图出口',
+    },
   },
 
   // 节点分类

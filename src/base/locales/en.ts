@@ -79,11 +79,13 @@ export default {
     },
   },
 
-  // Base nodes
+  // Base nodes - i18n key: nodes.{mod}.{NodeName}
   nodes: {
-    'base.SubGraphNode': 'SubGraph',
-    'base.SubGraphEntryNode': 'SubGraph Entry',
-    'base.SubGraphExitNode': 'SubGraph Exit',
+    base: {
+      SubGraphNode: 'SubGraph',
+      SubGraphEntryNode: 'SubGraph Entry',
+      SubGraphExitNode: 'SubGraph Exit',
+    },
   },
 
   // Node categories

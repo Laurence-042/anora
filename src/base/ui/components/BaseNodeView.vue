@@ -33,15 +33,22 @@ const node = computed(() => props.data.node)
 /** 节点元数据 */
 const nodeMeta = computed(() => NodeViewRegistry.getNodeMeta(node.value.typeId))
 
+/**
+ * 获取节点 i18n 名称
+ * typeId 格式: 'mod.NodeName' -> i18n key: 'nodes.mod.NodeName'
+ */
+function getNodeName(typeId: string): string {
+  const [mod, nodeName] = typeId.split('.')
+  return t(`nodes.${mod}.${nodeName}`, nodeName ?? typeId)
+}
+
 /** 节点显示名称 (i18n) */
 const nodeDisplayName = computed(() => {
-  const meta = nodeMeta.value
   // 如果用户已自定义 label 且不等于 typeId，使用用户定义的
   if (node.value.label && node.value.label !== node.value.typeId) {
     return node.value.label
   }
-  // 使用 i18n 翻译
-  return t(meta.i18nKey, node.value.typeId.split('.').pop() ?? node.value.typeId)
+  return getNodeName(node.value.typeId)
 })
 
 /** 节点图标 */
