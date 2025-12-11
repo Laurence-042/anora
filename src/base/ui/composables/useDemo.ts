@@ -132,6 +132,11 @@ export function useDemo(options: UseDemoOptions = {}) {
     })
   }
 
+  // Import recording from parsed data
+  function importRecording(data: DemoRecording): void {
+    loadRecording(data)
+  }
+
   return {
     // Recorder
     recorder,
@@ -155,6 +160,7 @@ export function useDemo(options: UseDemoOptions = {}) {
     canGoNext,
     canGoPrevious,
     loadRecording,
+    importRecording,
     play,
     pause,
     stop,

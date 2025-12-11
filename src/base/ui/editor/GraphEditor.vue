@@ -2,8 +2,9 @@
 /**
  * GraphEditor - 图编辑器主组件
  * 整合 Vue-Flow、节点、边、控制面板等
+ * 支持录制操作序列供演示模式使用
  */
-import { ref, computed, watch, onMounted, markRaw } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, markRaw } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
 import { Background, BackgroundVariant } from '@vue-flow/background'
 import { useI18n } from 'vue-i18n'
@@ -18,6 +19,10 @@ import ExecutorControls from './ExecutorControls.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
 import LocaleSwitcher from './LocaleSwitcher.vue'
+import RecordingControls from './RecordingControls.vue'
+
+// Demo 录制
+import { DemoRecorder } from '@/base/runtime/demo'
 
 // 节点视图注册表
 import { NodeViewRegistry } from '../registry'
@@ -33,6 +38,92 @@ const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueF
 
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
+
+// ========== 录制功能 ==========
+const recorder = new DemoRecorder()
+const isRecording = ref(false)
+const operationCount = ref(0)
+
+function startRecording(): void {
+  recorder.clear()
+  isRecording.value = true
+  operationCount.value = 0
+  // 连接执行器录制
+  graphStore.executor.setDemoRecorder(recorder)
+}
+
+function stopRecording(): void {
+  isRecording.value = false
+  graphStore.executor.setDemoRecorder(undefined)
+}
+
+function downloadRecording(): void {
+  const data = recorder.exportRecording()
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `anora-demo-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function uploadRecording(file: File): void {
+  // 上传后跳转到演示页面
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const content = e.target?.result as string
+    try {
+      const data = JSON.parse(content)
+      // 存储到 sessionStorage，演示页面读取
+      sessionStorage.setItem('anora-demo-data', JSON.stringify(data))
+      // 跳转到演示页面
+      window.location.href = '/demo'
+    } catch (err) {
+      console.error('Failed to parse demo file:', err)
+      alert(t('errors.invalidOperation'))
+    }
+  }
+  reader.readAsText(file)
+}
+
+/** 录制：节点添加 */
+function recordNodeAdded(nodeId: string, typeId: string, position: { x: number; y: number }): void {
+  if (isRecording.value) {
+    const node = graphStore.currentGraph.getNode(nodeId)
+    recorder.recordNodeAdded(nodeId, typeId, position, node?.context)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+/** 录制：节点移除 */
+function recordNodeRemoved(nodeId: string): void {
+  if (isRecording.value) {
+    recorder.recordNodeRemoved(nodeId)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+/** 录制：边添加 */
+function recordEdgeAdded(
+  fromNodeId: string,
+  fromPortName: string,
+  toNodeId: string,
+  toPortName: string,
+): void {
+  if (isRecording.value) {
+    recorder.recordEdgeAdded(fromNodeId, fromPortName, toNodeId, toPortName)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+/** 录制：节点移动 */
+function recordNodeMoved(nodeId: string, position: { x: number; y: number }): void {
+  if (isRecording.value) {
+    recorder.recordNodeMoved(nodeId, position)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
 
 /** 根据节点 typeId 获取对应的视图组件类型 */
 function getNodeViewType(typeId: string): string {
@@ -136,7 +227,26 @@ const nodeTypes = computed(() => NodeViewRegistry.getNodeTypes())
 onConnect((connection: Connection) => {
   if (connection.sourceHandle && connection.targetHandle) {
     const success = graphStore.addEdge(connection.sourceHandle, connection.targetHandle)
-    if (!success) {
+    if (success) {
+      // 录制边添加
+      const sourceNode = graphStore.nodes.find((n) =>
+        Array.from(n.outPorts.values()).some((p) => p.id === connection.sourceHandle),
+      )
+      const targetNode = graphStore.nodes.find((n) =>
+        Array.from(n.inPorts.values()).some((p) => p.id === connection.targetHandle),
+      )
+      if (sourceNode && targetNode) {
+        const sourcePortName = Array.from(sourceNode.outPorts.entries()).find(
+          ([, p]) => p.id === connection.sourceHandle,
+        )?.[0]
+        const targetPortName = Array.from(targetNode.inPorts.entries()).find(
+          ([, p]) => p.id === connection.targetHandle,
+        )?.[0]
+        if (sourcePortName && targetPortName) {
+          recordEdgeAdded(sourceNode.id, sourcePortName, targetNode.id, targetPortName)
+        }
+      }
+    } else {
       console.warn('Failed to create edge: incompatible types')
     }
   }
@@ -157,7 +267,9 @@ onPaneClick(() => {
 
 /** 处理节点位置变化 */
 function onNodeDragStop(event: { node: Node }): void {
-  nodePositions.value.set(event.node.id, { ...event.node.position })
+  const newPos = { ...event.node.position }
+  nodePositions.value.set(event.node.id, newPos)
+  recordNodeMoved(event.node.id, newPos)
 }
 
 /** 处理节点选择 */
@@ -198,6 +310,7 @@ function autoLayout(): void {
 /** 删除选中的节点 */
 function deleteSelected(): void {
   for (const nodeId of graphStore.selectedNodeIds) {
+    recordNodeRemoved(nodeId)
     graphStore.removeNode(nodeId)
     nodePositions.value.delete(nodeId)
   }
@@ -251,10 +364,13 @@ watch(
       if (!nodePositions.value.has(node.id)) {
         // 简单的默认位置：稍微偏移
         const existingCount = nodePositions.value.size
-        nodePositions.value.set(node.id, {
+        const pos = {
           x: 100 + (existingCount % 5) * 250,
           y: 100 + Math.floor(existingCount / 5) * 180,
-        })
+        }
+        nodePositions.value.set(node.id, pos)
+        // 录制节点添加
+        recordNodeAdded(node.id, node.typeId, pos)
       }
     }
   },
@@ -264,6 +380,14 @@ watch(
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  // 清理录制状态
+  if (isRecording.value) {
+    stopRecording()
+  }
+})
 </script>
 
 <template>
@@ -272,6 +396,19 @@ onMounted(() => {
     <div class="editor-toolbar">
       <Breadcrumb />
       <div class="toolbar-spacer" />
+
+      <!-- 录制控制 -->
+      <RecordingControls
+        :is-recording="isRecording"
+        :operation-count="operationCount"
+        @start-recording="startRecording"
+        @stop-recording="stopRecording"
+        @download="downloadRecording"
+        @upload="uploadRecording"
+      />
+
+      <div class="toolbar-divider" />
+
       <ExecutorControls />
       <button class="toolbar-btn" @click="autoLayout" :title="t('editor.autoLayout')">
         ⊞ {{ t('editor.layout') }}
@@ -331,6 +468,13 @@ onMounted(() => {
 
 .toolbar-spacer {
   flex: 1;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--vf-border, #3a3a5c);
+  margin: 0 8px;
 }
 
 .toolbar-btn {

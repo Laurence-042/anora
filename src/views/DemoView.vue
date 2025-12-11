@@ -1,26 +1,25 @@
 <script setup lang="ts">
 /**
- * DemoView - 演示模式页面
- * 提供图的录制和回放功能，同时支持 Godot-wry IPC 外部控制
+ * DemoView - 演示模式页面（只读）
+ * 仅用于回放已录制的操作序列，不支持编辑
+ * 支持 Godot-wry IPC 外部控制
  */
-import { ref, computed, onMounted, onUnmounted, watch, markRaw } from 'vue'
-import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
+import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
+import { VueFlow, type Node, type Edge } from '@vue-flow/core'
 import { Background, BackgroundVariant } from '@vue-flow/background'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
 import { useGraphStore } from '@/stores/graph'
-import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { BaseNode } from '@/base/runtime/nodes'
 import { useDemo, setupDemoIPC } from '@/base/ui/composables'
 import type { AnyDemoOperation } from '@/base/runtime/demo'
 import { DemoOperationType } from '@/base/runtime/demo'
 
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
-import DemoControls from '@/base/ui/editor/DemoControls.vue'
-import Breadcrumb from '@/base/ui/editor/Breadcrumb.vue'
-import NodePalette from '@/base/ui/editor/NodePalette.vue'
+import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
 
 import { NodeViewRegistry } from '@/base/ui/registry'
 import { NodeRegistry } from '@/base/runtime/registry'
@@ -29,10 +28,8 @@ import { NodeRegistry } from '@/base/runtime/registry'
 NodeViewRegistry.setDefaultView(BaseNodeView)
 
 const { t } = useI18n()
+const router = useRouter()
 const graphStore = useGraphStore()
-
-// Vue-Flow 实例
-const { onConnect, onNodeDoubleClick, onPaneClick } = useVueFlow()
 
 /** 节点位置存储 */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
@@ -40,7 +37,10 @@ const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 /** 高亮的节点 ID 列表 */
 const highlightedNodeIds = ref<Set<string>>(new Set())
 
-// ========== Demo 模式集成 ==========
+/** 是否有有效的演示数据 */
+const hasValidDemo = ref(false)
+
+// ========== Demo 回放 ==========
 
 const demo = useDemo({
   onApplyOperation: applyDemoOperation,
@@ -49,12 +49,10 @@ const demo = useDemo({
 
 /** 应用演示操作到图 */
 async function applyDemoOperation(operation: AnyDemoOperation): Promise<void> {
-  // 清除之前的高亮
   highlightedNodeIds.value.clear()
 
   switch (operation.type) {
     case DemoOperationType.ITERATION:
-      // 恢复节点输出端口状态
       for (const nodeState of operation.nodeStates) {
         const node = graphStore.currentGraph.getNode(nodeState.nodeId)
         if (node) {
@@ -62,7 +60,6 @@ async function applyDemoOperation(operation: AnyDemoOperation): Promise<void> {
             const port = node.outPorts.get(portName)
             if (port && value !== null && value !== undefined) {
               try {
-                // 直接设置端口值
                 port.write(value as string | number | boolean | object | null)
               } catch (e) {
                 console.warn(`Failed to restore port ${portName}:`, e)
@@ -71,17 +68,14 @@ async function applyDemoOperation(operation: AnyDemoOperation): Promise<void> {
           }
         }
       }
-      // 高亮被激活的节点
       for (const nodeId of operation.activatedNodeIds) {
         highlightedNodeIds.value.add(nodeId)
       }
       break
 
     case DemoOperationType.NODE_ADDED: {
-      // 使用 NodeRegistry.createNode 来创建节点
       const node = NodeRegistry.createNode(operation.nodeType, operation.nodeId)
       if (node) {
-        // INode 可能没有 context 类型定义，但实际的 BaseNode 有
         const baseNode = node as BaseNode
         if (operation.context && baseNode.context) {
           Object.assign(baseNode.context, operation.context)
@@ -131,47 +125,25 @@ async function applyDemoOperation(operation: AnyDemoOperation): Promise<void> {
   }
 }
 
-/** 录制图操作的钩子 */
-function recordNodeAdded(
-  nodeId: string,
-  typeId: string,
-  position: { x: number; y: number },
-  context?: unknown,
-): void {
-  if (demo.isRecording.value) {
-    demo.recorder.recordNodeAdded(nodeId, typeId, position, context)
-  }
-}
-
-function recordNodeRemoved(nodeId: string): void {
-  if (demo.isRecording.value) {
-    demo.recorder.recordNodeRemoved(nodeId)
-  }
-}
-
-function recordEdgeAdded(
-  fromNodeId: string,
-  fromPortName: string,
-  toNodeId: string,
-  toPortName: string,
-): void {
-  if (demo.isRecording.value) {
-    demo.recorder.recordEdgeAdded(fromNodeId, fromPortName, toNodeId, toPortName)
-  }
-}
-
-function recordNodeMoved(nodeId: string, position: { x: number; y: number }): void {
-  if (demo.isRecording.value) {
-    demo.recorder.recordNodeMoved(nodeId, position)
-  }
-}
-
 // ========== IPC 外部控制（Godot-wry 集成） ==========
 
 let cleanupIPC: (() => void) | null = null
 
 onMounted(() => {
-  // 设置 IPC 监听，允许外部控制演示回放
+  // 尝试从 sessionStorage 加载演示数据
+  const storedData = sessionStorage.getItem('anora-demo-data')
+  if (storedData) {
+    try {
+      const data = JSON.parse(storedData)
+      demo.importRecording(data)
+      hasValidDemo.value = true
+      sessionStorage.removeItem('anora-demo-data')
+    } catch (e) {
+      console.error('Failed to load demo data:', e)
+    }
+  }
+
+  // 设置 IPC 监听
   cleanupIPC = setupDemoIPC({
     executeCommand: demo.executeCommand,
     getState: () => ({
@@ -189,7 +161,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
-// ========== Vue-Flow 逻辑 ==========
+// ========== Vue-Flow 只读显示 ==========
 
 function getNodeViewType(typeId: string): string {
   return NodeViewRegistry.getViewType(typeId)
@@ -206,6 +178,8 @@ const vfNodes = computed<Node[]>(() => {
       position: pos,
       data: { node: markRaw(node) },
       class: isHighlighted ? 'highlighted-node' : '',
+      draggable: false, // 只读
+      selectable: false, // 只读
     })
   }
   return nodes
@@ -237,112 +211,27 @@ const vfEdges = computed<Edge[]>(() => {
 
 const nodeTypes = computed(() => NodeViewRegistry.getNodeTypes())
 
-/** 处理连接 - 同时录制 */
-onConnect((connection: Connection) => {
-  if (connection.sourceHandle && connection.targetHandle) {
-    const success = graphStore.addEdge(connection.sourceHandle, connection.targetHandle)
-    if (success) {
-      // 获取端口名称用于录制
-      const sourceNode = graphStore.nodes.find((n) =>
-        Array.from(n.outPorts.values()).some((p) => p.id === connection.sourceHandle),
-      )
-      const targetNode = graphStore.nodes.find((n) =>
-        Array.from(n.inPorts.values()).some((p) => p.id === connection.targetHandle),
-      )
-      if (sourceNode && targetNode) {
-        const sourcePortName = Array.from(sourceNode.outPorts.entries()).find(
-          ([, p]) => p.id === connection.sourceHandle,
-        )?.[0]
-        const targetPortName = Array.from(targetNode.inPorts.entries()).find(
-          ([, p]) => p.id === connection.targetHandle,
-        )?.[0]
-        if (sourcePortName && targetPortName) {
-          recordEdgeAdded(sourceNode.id, sourcePortName, targetNode.id, targetPortName)
-        }
-      }
-    }
-  }
+/** 进度百分比 */
+const progressPercent = computed(() => {
+  if (demo.totalSteps.value === 0) return 0
+  return ((demo.currentStep.value + 1) / demo.totalSteps.value) * 100
 })
 
-onNodeDoubleClick(({ node }) => {
-  const anoraNode = graphStore.currentGraph.getNode(node.id)
-  if (anoraNode instanceof SubGraphNode) {
-    graphStore.enterSubGraph(anoraNode)
-  }
-})
-
-onPaneClick(() => {
-  graphStore.clearSelection()
-})
-
-/** 处理节点拖拽停止 - 同时录制 */
-function onNodeDragStop(event: { node: Node }): void {
-  const newPos = { ...event.node.position }
-  nodePositions.value.set(event.node.id, newPos)
-  recordNodeMoved(event.node.id, newPos)
-}
-
-function onNodesChange(changes: unknown[]): void {
-  for (const change of changes) {
-    const c = change as { id?: string; type?: string; selected?: boolean }
-    if (c.type === 'select' && c.id !== undefined) {
-      if (c.selected) {
-        graphStore.selectNode(c.id)
-      } else {
-        graphStore.deselectNode(c.id)
-      }
-    }
-  }
-}
-
-/** 删除选中节点 - 同时录制 */
-function deleteSelected(): void {
-  for (const nodeId of graphStore.selectedNodeIds) {
-    recordNodeRemoved(nodeId)
-    graphStore.removeNode(nodeId)
-    nodePositions.value.delete(nodeId)
-  }
-}
-
-/** 执行图 - 连接录制器 */
-async function executeGraph(): Promise<void> {
-  if (demo.isRecording.value) {
-    graphStore.executor.setDemoRecorder(demo.recorder)
-  } else {
-    graphStore.executor.setDemoRecorder(undefined)
-  }
-  await graphStore.startExecution()
-}
-
+/** 键盘快捷键 */
 function handleKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Delete') {
-    deleteSelected()
-  }
+  if (!demo.hasRecording.value) return
 
-  if (event.key === 'F5' && !event.shiftKey) {
-    event.preventDefault()
-    if (!graphStore.isRunning) {
-      executeGraph()
-    }
-  }
-
-  if (event.key === 'F5' && event.shiftKey) {
-    event.preventDefault()
-    graphStore.stopExecution()
-  }
-
-  // 演示模式快捷键
-  if (event.key === 'ArrowRight' && demo.hasRecording.value) {
+  if (event.key === 'ArrowRight') {
     event.preventDefault()
     demo.next()
   }
 
-  if (event.key === 'ArrowLeft' && demo.hasRecording.value) {
+  if (event.key === 'ArrowLeft') {
     event.preventDefault()
     demo.previous()
   }
 
-  if (event.key === ' ' && demo.hasRecording.value) {
+  if (event.key === ' ') {
     event.preventDefault()
     if (demo.isPlaying.value) {
       demo.pause()
@@ -350,29 +239,24 @@ function handleKeydown(event: KeyboardEvent): void {
       demo.play()
     }
   }
+
+  if (event.key === 'Escape') {
+    router.push('/')
+  }
 }
 
-// 监听图变化，设置新节点位置
-watch(
-  () => graphStore.nodes,
-  (nodes) => {
-    for (const node of nodes) {
-      if (!nodePositions.value.has(node.id)) {
-        const existingCount = nodePositions.value.size
-        const pos = {
-          x: 100 + (existingCount % 5) * 250,
-          y: 100 + Math.floor(existingCount / 5) * 180,
-        }
-        nodePositions.value.set(node.id, pos)
-        recordNodeAdded(node.id, node.typeId, pos, node.context)
-      }
-    }
-  },
-  { immediate: true },
-)
+function goToEditor(): void {
+  router.push('/')
+}
 
-function handleUpload(file: File): void {
-  demo.uploadRecording(file)
+function handleUpload(event: Event): void {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    demo.uploadRecording(file)
+    hasValidDemo.value = true
+    target.value = ''
+  }
 }
 </script>
 
@@ -380,85 +264,45 @@ function handleUpload(file: File): void {
   <div class="demo-view">
     <!-- 顶部工具栏 -->
     <div class="demo-toolbar">
-      <Breadcrumb />
-      <div class="toolbar-spacer" />
+      <button class="back-btn" @click="goToEditor" :title="t('breadcrumb.back')">
+        ← {{ t('editor.title') }}
+      </button>
 
-      <!-- 执行按钮 -->
-      <button
-        class="toolbar-btn"
-        @click="executeGraph"
-        :disabled="graphStore.isRunning || demo.hasRecording.value"
-      >
-        ▶ {{ t('executor.run') }}
-      </button>
-      <button
-        class="toolbar-btn"
-        @click="graphStore.stopExecution"
-        :disabled="!graphStore.isRunning"
-      >
-        ⏹ {{ t('executor.stop') }}
-      </button>
+      <div class="demo-title">
+        <span class="demo-icon">🎬</span>
+        {{ t('demo.title') }}
+      </div>
+
+      <div class="toolbar-spacer" />
+      <LocaleSwitcher />
     </div>
 
     <!-- 主体区域 -->
     <div class="demo-main">
-      <!-- 左侧：Demo 控制面板 -->
-      <div class="demo-sidebar">
-        <DemoControls
-          :is-recording="demo.isRecording.value"
-          :is-playing="demo.isPlaying.value"
-          :is-paused="demo.isPaused.value"
-          :is-idle="demo.isIdle.value"
-          :current-step="demo.currentStep.value"
-          :total-steps="demo.totalSteps.value"
-          :has-recording="demo.hasRecording.value"
-          :can-go-next="demo.canGoNext.value"
-          :can-go-previous="demo.canGoPrevious.value"
-          @start-recording="demo.startRecording()"
-          @stop-recording="demo.stopRecording()"
-          @play="demo.play()"
-          @pause="demo.pause()"
-          @stop="demo.stop()"
-          @next="demo.next()"
-          @previous="demo.previous()"
-          @download="demo.downloadRecording('anora-demo.json')"
-          @upload="handleUpload"
-          @clear="demo.clearRecording()"
-        />
-
-        <!-- 快捷键说明 -->
-        <div class="shortcuts-help">
-          <div class="help-title">{{ t('demo.shortcuts') }}</div>
-          <div class="help-item"><kbd>Space</kbd> {{ t('demo.shortcutPlayPause') }}</div>
-          <div class="help-item"><kbd>←</kbd> {{ t('demo.shortcutPrev') }}</div>
-          <div class="help-item"><kbd>→</kbd> {{ t('demo.shortcutNext') }}</div>
-          <div class="help-item"><kbd>F5</kbd> {{ t('demo.shortcutExecute') }}</div>
-          <div class="help-item"><kbd>Delete</kbd> {{ t('demo.shortcutDelete') }}</div>
-        </div>
-
-        <!-- IPC 状态 -->
-        <div class="ipc-status">
-          <div class="help-title">{{ t('demo.ipcTitle') }}</div>
-          <div class="ipc-info">{{ t('demo.ipcInfo') }}</div>
-          <div class="ipc-commands">
-            <code>play</code> <code>pause</code> <code>next</code> <code>previous</code>
-            <code>goto</code>
-          </div>
-        </div>
+      <!-- 无演示数据时的提示 -->
+      <div v-if="!demo.hasRecording.value" class="empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">{{ t('demo.loadRecording') }}</div>
+        <div class="empty-desc">{{ t('demo.ipcInfo') }}</div>
+        <label class="upload-btn">
+          <input type="file" accept=".json" @change="handleUpload" style="display: none" />
+          <span class="icon">📁</span> {{ t('demo.loadRecording') }}
+        </label>
       </div>
 
-      <!-- 右侧：图编辑器 -->
-      <div class="demo-canvas">
+      <!-- 演示画布 -->
+      <template v-else>
         <VueFlow
           :nodes="vfNodes"
           :edges="vfEdges"
           :node-types="nodeTypes"
           :default-edge-options="{ type: 'default' }"
-          :snap-to-grid="true"
-          :snap-grid="[20, 20]"
+          :nodes-draggable="false"
+          :nodes-connectable="false"
+          :elements-selectable="false"
+          :pan-on-drag="true"
+          :zoom-on-scroll="true"
           fit-view-on-init
-          @node-drag-stop="onNodeDragStop"
-          @nodes-change="onNodesChange"
         >
           <Background
             :variant="BackgroundVariant.Dots"
@@ -468,26 +312,45 @@ function handleUpload(file: File): void {
           />
         </VueFlow>
 
-        <!-- 节点面板 -->
-        <NodePalette v-if="!demo.hasRecording.value" />
+        <!-- 播放控制条 -->
+        <div class="playback-bar">
+          <!-- 进度条 -->
+          <div class="progress-track">
+            <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+          </div>
 
-        <!-- 演示模式提示 -->
-        <div v-if="demo.hasRecording.value" class="demo-overlay-hint">
-          {{ t('demo.modeTip') }}
+          <!-- 控制按钮 -->
+          <div class="playback-controls">
+            <button @click="demo.previous()" :disabled="!demo.canGoPrevious.value" class="ctrl-btn">
+              ⏮
+            </button>
+            <button v-if="!demo.isPlaying.value" @click="demo.play()" class="ctrl-btn play-btn">
+              ▶️
+            </button>
+            <button v-else @click="demo.pause()" class="ctrl-btn pause-btn">⏸</button>
+            <button @click="demo.stop()" :disabled="demo.isIdle.value" class="ctrl-btn">⏹</button>
+            <button @click="demo.next()" :disabled="!demo.canGoNext.value" class="ctrl-btn">
+              ⏭
+            </button>
+          </div>
+
+          <!-- 步骤信息 -->
+          <div class="step-info">
+            {{ t('demo.step') }} {{ demo.currentStep.value + 1 }} / {{ demo.totalSteps.value }}
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- 底部状态栏 -->
-    <div class="demo-statusbar">
-      <span>{{ t('editor.nodes') }}: {{ graphStore.nodes.length }}</span>
-      <span v-if="demo.isRecording.value" class="recording-indicator"
-        >⏺ {{ t('demo.recording') }}</span
-      >
-      <span v-if="demo.hasRecording.value"
-        >{{ t('demo.step') }}: {{ demo.currentStep.value + 1 }} / {{ demo.totalSteps.value }}</span
-      >
-      <span>{{ t('editor.selected') }}: {{ graphStore.selectedNodeIds.size }}</span>
+        <!-- 快捷键提示 -->
+        <div class="shortcuts-hint">
+          <span><kbd>Space</kbd> {{ t('demo.shortcutPlayPause') }}</span>
+          <span
+            ><kbd>←</kbd><kbd>→</kbd> {{ t('demo.shortcutPrev') }}/{{
+              t('demo.shortcutNext')
+            }}</span
+          >
+          <span><kbd>Esc</kbd> {{ t('breadcrumb.back') }}</span>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -498,7 +361,7 @@ function handleUpload(file: File): void {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: #0f0f1a;
+  background: #0a0a14;
   color: #e2e8f0;
 }
 
@@ -512,11 +375,7 @@ function handleUpload(file: File): void {
   z-index: 10;
 }
 
-.toolbar-spacer {
-  flex: 1;
-}
-
-.toolbar-btn {
+.back-btn {
   padding: 6px 12px;
   background: #252542;
   border: 1px solid #3a3a5c;
@@ -527,153 +386,197 @@ function handleUpload(file: File): void {
   transition: all 0.2s;
 }
 
-.toolbar-btn:hover:not(:disabled) {
+.back-btn:hover {
   background: #3a3a5c;
 }
 
-.toolbar-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.demo-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #a78bfa;
+}
+
+.demo-icon {
+  font-size: 18px;
+}
+
+.toolbar-spacer {
+  flex: 1;
 }
 
 .demo-main {
-  display: flex;
   flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 64px;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.empty-desc {
+  font-size: 14px;
+  color: #64748b;
+  max-width: 400px;
+}
+
+.upload-btn {
+  padding: 12px 24px;
+  background: #6366f1;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.upload-btn:hover {
+  background: #7c7ff7;
+  transform: translateY(-2px);
+}
+
+/* 播放控制条 */
+.playback-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: rgba(26, 26, 46, 0.95);
+  border: 1px solid #3a3a5c;
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  min-width: 360px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: #252542;
+  border-radius: 3px;
   overflow: hidden;
 }
 
-.demo-sidebar {
-  width: 280px;
-  padding: 16px;
-  background: #1a1a2e;
-  border-right: 1px solid #3a3a5c;
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a78bfa);
+  transition: width 0.3s ease;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  padding: 8px 16px;
+  background: #252542;
+  border: 1px solid #3a3a5c;
+  border-radius: 6px;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.ctrl-btn:hover:not(:disabled) {
+  background: #3a3a5c;
+  transform: translateY(-1px);
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.play-btn {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.play-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+.pause-btn {
+  background: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.step-info {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 快捷键提示 */
+.shortcuts-hint {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-}
-
-.shortcuts-help,
-.ipc-status {
-  background: #252542;
-  border-radius: 8px;
+  gap: 4px;
   padding: 12px;
+  background: rgba(26, 26, 46, 0.8);
+  border-radius: 8px;
+  font-size: 11px;
+  color: #64748b;
 }
 
-.help-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #a0a0c0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}
-
-.help-item {
-  font-size: 12px;
-  color: #808090;
-  margin: 4px 0;
-}
-
-.help-item kbd {
-  background: #1a1a2e;
+.shortcuts-hint kbd {
+  display: inline-block;
   padding: 2px 6px;
+  background: #252542;
+  border: 1px solid #3a3a5c;
   border-radius: 3px;
   font-family: monospace;
-  font-size: 11px;
-}
-
-.ipc-info {
-  font-size: 11px;
-  color: #808090;
-  margin-bottom: 8px;
-}
-
-.ipc-commands {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.ipc-commands code {
-  background: #1a1a2e;
-  padding: 2px 6px;
-  border-radius: 3px;
   font-size: 10px;
-  color: #60a5fa;
-}
-
-.demo-canvas {
-  flex: 1;
-  position: relative;
-}
-
-.demo-overlay-hint {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(96, 165, 250, 0.9);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  z-index: 100;
-  pointer-events: none;
-}
-
-.demo-statusbar {
-  display: flex;
-  gap: 24px;
-  padding: 4px 16px;
-  background: #1a1a2e;
-  border-top: 1px solid #3a3a5c;
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.recording-indicator {
-  color: #ef4444;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  margin-right: 4px;
 }
 
 /* 高亮节点样式 */
 :deep(.highlighted-node) {
-  --vf-node-bg: #2a4a6a !important;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
 }
 
-:deep(.highlighted-node .vue-flow__node) {
-  box-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
-}
-
-/* Vue-Flow 主题 */
+/* Vue-Flow 样式 */
 :deep(.vue-flow) {
-  background: #0f0f1a;
+  background: #0a0a14;
 }
 
 :deep(.vue-flow__edge-path) {
   stroke: #64748b;
   stroke-width: 2;
-}
-
-:deep(.vue-flow__edge.selected .vue-flow__edge-path) {
-  stroke: #60a5fa;
-}
-
-:deep(.vue-flow__connection-line) {
-  stroke: #60a5fa;
-  stroke-width: 2;
-  stroke-dasharray: 5, 5;
 }
 </style>

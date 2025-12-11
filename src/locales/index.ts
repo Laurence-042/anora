@@ -59,7 +59,7 @@ export function toggleLocale(): void {
 /**
  * 可用语言列表
  */
-export const availableLocales = [
+export const availableLocales: { code: LocaleType; name: string }[] = [
   { code: 'zh-CN', name: '简体中文' },
   { code: 'en', name: 'English' },
 ]

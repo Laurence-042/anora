@@ -189,6 +189,13 @@ export class DemoRecorder {
   }
 
   /**
+   * Get the number of recorded operations
+   */
+  getOperationCount(): number {
+    return this.operations.length
+  }
+
+  /**
    * Serialize node's output ports
    */
   private serializeNodeOutPorts(node: BaseNode): { [portName: string]: unknown } {
