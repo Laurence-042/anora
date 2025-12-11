@@ -2,10 +2,12 @@
 /**
  * NodePalette - 节点面板
  * 显示可用的节点类型，支持拖放添加
+ * 使用 NodeMetaRegistry 获取节点 i18n 信息和图标
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NodeRegistry } from '@/base/runtime/registry'
+import { ElTooltip } from 'element-plus'
+import { NodeRegistry, NodeMetaRegistry } from '@/base/runtime/registry'
 import { BaseNode } from '@/base/runtime/nodes'
 import { useGraphStore } from '@/stores/graph'
 
@@ -18,17 +20,32 @@ const searchQuery = ref('')
 /** 是否展开面板 */
 const isExpanded = ref(true)
 
+/** 节点类型信息 */
+interface NodeTypeInfo {
+  typeId: string
+  name: string
+  icon: string
+  category: string
+  categoryName: string
+}
+
 /** 可用的节点类型 */
-const nodeTypes = computed(() => {
-  const types: Array<{ typeId: string; name: string; category: string }> = []
+const nodeTypes = computed<NodeTypeInfo[]>(() => {
+  const types: NodeTypeInfo[] = []
 
   for (const [typeId] of NodeRegistry.getAll()) {
-    // 从 typeId 解析分类和名称
-    const parts = typeId.split('.')
-    const category = parts.length > 1 ? (parts[0] ?? 'other') : 'other'
-    const name = parts[parts.length - 1] ?? typeId
+    const meta = NodeMetaRegistry.getOrDefault(typeId)
+    const name = t(meta.i18nKey, meta.typeId.split('.').pop() ?? typeId)
+    const categoryName = t(meta.categoryI18nKey, meta.category)
+    const icon = meta.icon ?? '◇'
 
-    types.push({ typeId, name, category })
+    types.push({
+      typeId,
+      name,
+      icon,
+      category: meta.category,
+      categoryName,
+    })
   }
 
   // 按分类排序
@@ -46,19 +63,22 @@ const filteredTypes = computed(() => {
 
   const query = searchQuery.value.toLowerCase()
   return nodeTypes.value.filter(
-    (t) => t.name.toLowerCase().includes(query) || t.typeId.toLowerCase().includes(query),
+    (t) =>
+      t.name.toLowerCase().includes(query) ||
+      t.typeId.toLowerCase().includes(query) ||
+      t.categoryName.toLowerCase().includes(query),
   )
 })
 
 /** 按分类分组 */
 const groupedTypes = computed(() => {
-  const groups: Record<string, typeof filteredTypes.value> = {}
+  const groups: Record<string, { categoryName: string; items: NodeTypeInfo[] }> = {}
 
   for (const type of filteredTypes.value) {
     if (!groups[type.category]) {
-      groups[type.category] = []
+      groups[type.category] = { categoryName: type.categoryName, items: [] }
     }
-    groups[type.category]!.push(type)
+    groups[type.category]!.items.push(type)
   }
 
   return groups
@@ -108,19 +128,25 @@ function onDragStart(event: DragEvent, typeId: string): void {
 
       <!-- 节点列表 -->
       <div class="node-list">
-        <div v-for="(types, category) in groupedTypes" :key="category" class="category-group">
-          <div class="category-header">{{ category }}</div>
-          <div
-            v-for="type in types"
+        <div v-for="(group, category) in groupedTypes" :key="category" class="category-group">
+          <div class="category-header">{{ group.categoryName }}</div>
+          <el-tooltip
+            v-for="type in group.items"
             :key="type.typeId"
-            class="node-item"
-            draggable="true"
-            @click="addNode(type.typeId)"
-            @dragstart="onDragStart($event, type.typeId)"
+            :content="type.typeId"
+            placement="right"
+            :show-after="500"
           >
-            <span class="node-icon">◇</span>
-            <span class="node-name">{{ type.name }}</span>
-          </div>
+            <div
+              class="node-item"
+              draggable="true"
+              @click="addNode(type.typeId)"
+              @dragstart="onDragStart($event, type.typeId)"
+            >
+              <span class="node-icon">{{ type.icon }}</span>
+              <span class="node-name">{{ type.name }}</span>
+            </div>
+          </el-tooltip>
         </div>
 
         <!-- 空状态 -->

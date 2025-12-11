@@ -83,17 +83,52 @@ export default {
 
   // Node types
   nodes: {
-    forward: 'Forward',
-    parameter: 'Parameter',
-    arithmetic: 'Arithmetic',
-    compare: 'Compare',
-    branch: 'Branch',
-    distribute: 'Distribute',
-    aggregate: 'Aggregate',
-    consoleLog: 'Console Log',
-    stringFormat: 'String Format',
-    wryIpc: 'WRY IPC',
-    subGraph: 'SubGraph',
+    base: {
+      subGraph: 'SubGraph',
+      subGraphEntry: 'SubGraph Entry',
+      subGraphExit: 'SubGraph Exit',
+    },
+    core: {
+      forward: 'Forward',
+      parameter: 'Parameter',
+      distribute: 'Distribute',
+      aggregate: 'Aggregate',
+      compare: 'Compare',
+      branch: 'Branch',
+      logic: 'Logic',
+      arithmetic: 'Arithmetic',
+      stringFormat: 'String Format',
+      consoleLog: 'Console Log',
+      notify: 'Notify',
+      objectAccess: 'Object Access',
+      objectSet: 'Object Set',
+      arrayAccess: 'Array Access',
+      arrayPush: 'Array Push',
+      arrayLength: 'Array Length',
+    },
+    godotWry: {
+      wryIpc: 'WRY IPC',
+    },
+  },
+
+  // Node categories
+  nodeCategories: {
+    base: 'Base',
+    core: 'Core',
+    logic: 'Logic',
+    math: 'Math',
+    string: 'String',
+    io: 'I/O',
+    data: 'Data',
+    backend: 'Backend',
+    other: 'Other',
+  },
+
+  // Mod names
+  mods: {
+    base: 'Base Module',
+    core: 'Core Module',
+    godotWry: 'Godot WRY',
   },
 
   // Ports

@@ -83,17 +83,52 @@ export default {
 
   // 节点类型
   nodes: {
-    forward: '中继',
-    parameter: '参数',
-    arithmetic: '算术运算',
-    compare: '比较',
-    branch: '分支',
-    distribute: '分配',
-    aggregate: '聚集',
-    consoleLog: '控制台输出',
-    stringFormat: '字符串格式化',
-    wryIpc: 'WRY IPC',
-    subGraph: '子图',
+    base: {
+      subGraph: '子图',
+      subGraphEntry: '子图入口',
+      subGraphExit: '子图出口',
+    },
+    core: {
+      forward: '中继',
+      parameter: '参数',
+      distribute: '分发',
+      aggregate: '聚合',
+      compare: '比较',
+      branch: '分支',
+      logic: '逻辑运算',
+      arithmetic: '算术运算',
+      stringFormat: '字符串格式化',
+      consoleLog: '控制台输出',
+      notify: '通知',
+      objectAccess: '对象取值',
+      objectSet: '对象设值',
+      arrayAccess: '数组取值',
+      arrayPush: '数组追加',
+      arrayLength: '数组长度',
+    },
+    godotWry: {
+      wryIpc: 'WRY IPC',
+    },
+  },
+
+  // 节点分类
+  nodeCategories: {
+    base: '基础',
+    core: '核心',
+    logic: '逻辑',
+    math: '运算',
+    string: '字符串',
+    io: '输入输出',
+    data: '数据结构',
+    backend: '后端',
+    other: '其他',
+  },
+
+  // Mod 名称
+  mods: {
+    base: '基础模块',
+    core: '核心模块',
+    godotWry: 'Godot WRY',
   },
 
   // 端口

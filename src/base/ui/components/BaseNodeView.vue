@@ -4,9 +4,12 @@
  * 作为 Vue-Flow 的自定义节点组件
  */
 import { computed, ref, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { ElTooltip } from 'element-plus'
 import type { NodeProps } from '@vue-flow/core'
 import type { BaseNode } from '@/base/runtime/nodes'
 import { NodeExecutionStatus } from '@/base/runtime/types'
+import { NodeMetaRegistry } from '@/base/runtime/registry'
 import BasePortView from './BasePortView.vue'
 import { useGraphStore } from '@/stores/graph'
 import { useNodeInput } from '@/base/ui/composables'
@@ -20,11 +23,29 @@ interface AnoraNodeProps extends NodeProps {
 
 const props = defineProps<AnoraNodeProps>()
 
+const { t } = useI18n()
 const graphStore = useGraphStore()
 const { inputClass, onKeydown } = useNodeInput()
 
 /** 获取节点实例 */
 const node = computed(() => props.data.node)
+
+/** 节点元数据 */
+const nodeMeta = computed(() => NodeMetaRegistry.getOrDefault(node.value.typeId))
+
+/** 节点显示名称 (i18n) */
+const nodeDisplayName = computed(() => {
+  const meta = nodeMeta.value
+  // 如果用户已自定义 label 且不等于 typeId，使用用户定义的
+  if (node.value.label && node.value.label !== node.value.typeId) {
+    return node.value.label
+  }
+  // 使用 i18n 翻译
+  return t(meta.i18nKey, node.value.typeId.split('.').pop() ?? node.value.typeId)
+})
+
+/** 节点图标 */
+const nodeIcon = computed(() => nodeMeta.value.icon ?? '◇')
 
 /** 是否被选中 */
 const isSelected = computed(() => graphStore.isNodeSelected(node.value.id))
@@ -106,22 +127,22 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
     <!-- 节点头部 -->
     <div class="node-header">
       <div class="header-info">
-        <span class="node-type">{{ node.typeId }}</span>
+        <el-tooltip :content="node.typeId" placement="top" :show-after="500">
+          <span class="node-icon-wrapper">{{ nodeIcon }}</span>
+        </el-tooltip>
         <!-- Label 显示/编辑 -->
-        <div class="label-row">
-          <input
-            v-if="isEditingLabel"
-            ref="editLabelInput"
-            v-model="editingLabelValue"
-            type="text"
-            :class="['label-input', inputClass]"
-            @blur="finishEditLabel"
-            @keydown="onKeydown"
-            @keyup.enter="finishEditLabel"
-            @keyup.escape="cancelEditLabel"
-          />
-          <span v-else class="node-label" @dblclick="startEditLabel">{{ node.label }}</span>
-        </div>
+        <input
+          v-if="isEditingLabel"
+          ref="editLabelInput"
+          v-model="editingLabelValue"
+          type="text"
+          :class="['label-input', inputClass]"
+          @blur="finishEditLabel"
+          @keydown="onKeydown"
+          @keyup.enter="finishEditLabel"
+          @keyup.escape="cancelEditLabel"
+        />
+        <span v-else class="node-label" @dblclick="startEditLabel">{{ nodeDisplayName }}</span>
       </div>
       <!-- 执行状态指示器 -->
       <span v-if="isExecuting" class="status-indicator executing">⟳</span>
@@ -223,6 +244,18 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 /* 节点最大宽度限制 */
 .anora-node {
   max-width: 320px;
+}
+
+/* 节点图标 */
+.node-icon-wrapper {
+  font-size: 14px;
+  margin-right: 6px;
+  cursor: help;
+  opacity: 0.9;
+}
+
+.node-icon-wrapper:hover {
+  opacity: 1;
 }
 
 /* 状态指示器动画 */

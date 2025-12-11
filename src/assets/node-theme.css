@@ -61,19 +61,17 @@
 
 .header-info {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 .node-type {
   font-size: 10px;
   color: var(--node-text-muted);
   font-family: monospace;
-}
-
-.label-row {
-  display: flex;
-  align-items: center;
 }
 
 .node-label {

@@ -9,6 +9,7 @@ export { ArithmeticNode, ArithmeticOperation } from './ArithmeticNode'
 export { LogicNode, LogicOperation } from './LogicNode'
 export { StringFormatNode } from './StringFormatNode'
 export { ConsoleLogNode } from './ConsoleLogNode'
+export { NotifyNode, type NotifyType } from './NotifyNode'
 export {
   ObjectAccessNode,
   ObjectSetNode,
