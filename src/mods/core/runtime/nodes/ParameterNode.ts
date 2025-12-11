@@ -1,4 +1,3 @@
-import { ActivationReadyStatus } from '../../../../base/runtime/types'
 import type { ExecutorContext } from '../../../../base/runtime/types'
 import { WebNode } from '../../../../base/runtime/nodes'
 import { AnoraRegister } from '../../../../base/runtime/registry'
@@ -79,23 +78,6 @@ export class ParameterNode extends WebNode<Record<string, never>, ParameterOutpu
    */
   getRawValue(): string {
     return (this.context as { value: string })?.value ?? ''
-  }
-
-  /**
-   * 覆盖激活就绪检查
-   * 参数节点只需要被触发即可
-   */
-  override isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
-    // 如果有入 Exec 连接，则需要等待触发
-    if (connectedPorts.has(this.inExecPort.id)) {
-      if (this.inExecPort.hasData) {
-        return ActivationReadyStatus.Ready
-      }
-      return ActivationReadyStatus.NotReadyUntilAnyPortsFilled
-    }
-
-    // 没有入 Exec 连接时，直接就绪（只执行一次）
-    return ActivationReadyStatus.Ready
   }
 
   async activateCore(

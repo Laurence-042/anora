@@ -95,6 +95,9 @@ export abstract class BaseNode<
   /** 最后一次执行的错误信息 */
   lastError?: string
 
+  /** 标记是否已执行过（无入边时只执行一次） */
+  private _hasActivatedOnce: boolean = false
+
   /** Context 变更监听器 */
   private _contextChangeListeners: Set<NodeContextChangeListener> = new Set()
 
@@ -260,22 +263,52 @@ export abstract class BaseNode<
   }
 
   /**
+   * 检查是否有任何入 Port 被连接（包括 inExecPort 和 inPorts）
+   */
+  protected hasAnyInPortConnected(connectedPorts: Set<string>): boolean {
+    if (connectedPorts.has(this.inExecPort.id)) {
+      return true
+    }
+    for (const [, port] of this.inPorts) {
+      if (connectedPorts.has(port.id)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * 表示节点是否可以激活并运行（由 Executor 调用）
-   * Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
-   * 基类实现：所有"被连接的" inExecPort 和 inPorts 都被填入数据才会 READY
-   * 如果没有任何 inExecPort 和 inPorts 被连接也算 READY
-   * 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
+   *
+   * 基类逻辑：
+   * - 有入边连接：所有被连接的入 Port 都有数据时 READY
+   * - 无入边连接：只执行一次
+   *
    * 子类可以覆盖此方法实现特殊激活规则
    * @param connectedPorts Executor 传入的当前被连接的 Ports 的 ID 集合
    */
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
-    // 检查所有被连接的入 Port 是否都有数据
-    // 如果没有任何入 Port 被连接，areConnectedInPortsFilled 返回 true，也是 READY
-    if (this.areConnectedInPortsFilled(connectedPorts)) {
-      return ActivationReadyStatus.Ready
+    // 检查是否有任何入 Port 被连接
+    if (this.hasAnyInPortConnected(connectedPorts)) {
+      // 有连接：所有被连接的入 Port 都有数据时才 READY
+      if (this.areConnectedInPortsFilled(connectedPorts)) {
+        return ActivationReadyStatus.Ready
+      }
+      return ActivationReadyStatus.NotReadyUntilAllPortsFilled
     }
 
-    return ActivationReadyStatus.NotReadyUntilAllPortsFilled
+    // 无连接：只执行一次
+    if (this._hasActivatedOnce) {
+      return ActivationReadyStatus.NotReady
+    }
+    return ActivationReadyStatus.Ready
+  }
+
+  /**
+   * 重置激活状态（由 Executor 在执行开始前调用）
+   */
+  resetActivationState(): void {
+    this._hasActivatedOnce = false
   }
 
   /**
@@ -285,6 +318,7 @@ export abstract class BaseNode<
   async activate(executorContext: ExecutorContext): Promise<void> {
     this.executionStatus = NodeExecutionStatus.EXECUTING
     this.lastError = undefined
+    this._hasActivatedOnce = true
 
     try {
       // 收集入 Port 数据

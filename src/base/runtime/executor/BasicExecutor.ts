@@ -146,6 +146,11 @@ export class BasicExecutor {
 
     const execContext: ExecutorContext = context ?? DEFAULT_EXECUTOR_CONTEXT
 
+    // 重置所有节点的激活状态
+    for (const node of graph.getAllNodes()) {
+      node.resetActivationState()
+    }
+
     this.emit({ type: 'start' })
 
     let iterations = 0
