@@ -272,7 +272,7 @@ function onNodeDragStop(event: { node: Node }): void {
   recordNodeMoved(event.node.id, newPos)
 }
 
-/** 处理节点选择 */
+/** 处理节点变更（选择、删除等） */
 function onNodesChange(changes: unknown[]): void {
   for (const change of changes) {
     const c = change as { id?: string; type?: string; selected?: boolean }
@@ -281,6 +281,28 @@ function onNodesChange(changes: unknown[]): void {
         graphStore.selectNode(c.id)
       } else {
         graphStore.deselectNode(c.id)
+      }
+    }
+    // 处理节点删除
+    if (c.type === 'remove' && c.id !== undefined) {
+      recordNodeRemoved(c.id)
+      graphStore.removeNode(c.id)
+      nodePositions.value.delete(c.id)
+    }
+  }
+}
+
+/** 处理边变更（删除等） */
+function onEdgesChange(changes: unknown[]): void {
+  for (const change of changes) {
+    const c = change as { id?: string; type?: string }
+    // 处理边删除
+    if (c.type === 'remove' && c.id !== undefined) {
+      // 边 ID 格式: "fromPortId->toPortId"
+      const [fromPortId, toPortId] = c.id.split('->')
+      if (fromPortId && toPortId) {
+        graphStore.removeEdge(fromPortId, toPortId)
+        // TODO: 录制边删除操作
       }
     }
   }
@@ -428,6 +450,7 @@ onUnmounted(() => {
         fit-view-on-init
         @node-drag-stop="onNodeDragStop"
         @nodes-change="onNodesChange"
+        @edges-change="onEdgesChange"
       >
         <!-- 网格背景（跟随画布移动） -->
         <Background :variant="BackgroundVariant.Dots" :gap="20" :size="1" pattern-color="#3a3a5c" />
