@@ -2,13 +2,13 @@
   <div class="demo-controls">
     <!-- Recording Controls -->
     <div v-if="!hasRecording" class="demo-section recording-section">
-      <div class="demo-title">Recording</div>
+      <div class="demo-title">{{ t('demo.recording') }}</div>
       <div class="demo-buttons">
         <button v-if="!isRecording" @click="startRecording" class="btn btn-record">
-          <span class="icon">⏺</span> Start Recording
+          <span class="icon">⏺</span> {{ t('demo.startRecording') }}
         </button>
         <button v-else @click="stopRecording" class="btn btn-stop">
-          <span class="icon">⏹</span> Stop Recording
+          <span class="icon">⏹</span> {{ t('demo.stopRecording') }}
         </button>
         <button
           v-if="!isRecording"
@@ -16,7 +16,7 @@
           class="btn btn-upload"
           :disabled="isRecording"
         >
-          <span class="icon">📂</span> Load Recording
+          <span class="icon">📂</span> {{ t('demo.loadRecording') }}
         </button>
       </div>
       <input
@@ -30,14 +30,16 @@
 
     <!-- Playback Controls -->
     <div v-else class="demo-section playback-section">
-      <div class="demo-title">Demo Playback</div>
+      <div class="demo-title">{{ t('demo.playback') }}</div>
 
       <!-- Progress Bar -->
       <div class="progress-container">
         <div class="progress-bar">
           <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
         </div>
-        <div class="progress-text">Step {{ currentStep + 1 }} / {{ totalSteps }}</div>
+        <div class="progress-text">
+          {{ t('demo.step') }} {{ currentStep + 1 }} / {{ totalSteps }}
+        </div>
       </div>
 
       <!-- Transport Controls -->
@@ -62,10 +64,10 @@
       <!-- Additional Controls -->
       <div class="demo-buttons secondary-controls">
         <button @click="handleDownload" class="btn btn-download">
-          <span class="icon">💾</span> Export
+          <span class="icon">💾</span> {{ t('demo.export') }}
         </button>
         <button @click="handleClear" class="btn btn-clear">
-          <span class="icon">🗑</span> Clear
+          <span class="icon">🗑</span> {{ t('demo.clear') }}
         </button>
       </div>
     </div>
@@ -74,6 +76,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface DemoControlsProps {
   isRecording: boolean
@@ -157,7 +162,7 @@ function handleFileChange(event: Event) {
 }
 
 function handleClear() {
-  if (confirm('Clear the current recording? This cannot be undone.')) {
+  if (confirm(t('demo.clearConfirm'))) {
     emit('clear')
   }
 }

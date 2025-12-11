@@ -6,6 +6,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, markRaw } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
 import { Background, BackgroundVariant } from '@vue-flow/background'
+import { useI18n } from 'vue-i18n'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
@@ -27,6 +28,7 @@ import { NodeRegistry } from '@/base/runtime/registry'
 // 设置默认视图
 NodeViewRegistry.setDefaultView(BaseNodeView)
 
+const { t } = useI18n()
 const graphStore = useGraphStore()
 
 // Vue-Flow 实例
@@ -387,14 +389,14 @@ function handleUpload(file: File): void {
         @click="executeGraph"
         :disabled="graphStore.isRunning || demo.hasRecording.value"
       >
-        ▶ 执行
+        ▶ {{ t('executor.run') }}
       </button>
       <button
         class="toolbar-btn"
         @click="graphStore.stopExecution"
         :disabled="!graphStore.isRunning"
       >
-        ⏹ 停止
+        ⏹ {{ t('executor.stop') }}
       </button>
     </div>
 
@@ -426,18 +428,18 @@ function handleUpload(file: File): void {
 
         <!-- 快捷键说明 -->
         <div class="shortcuts-help">
-          <div class="help-title">快捷键</div>
-          <div class="help-item"><kbd>Space</kbd> 播放/暂停</div>
-          <div class="help-item"><kbd>←</kbd> 上一步</div>
-          <div class="help-item"><kbd>→</kbd> 下一步</div>
-          <div class="help-item"><kbd>F5</kbd> 执行图</div>
-          <div class="help-item"><kbd>Delete</kbd> 删除节点</div>
+          <div class="help-title">{{ t('demo.shortcuts') }}</div>
+          <div class="help-item"><kbd>Space</kbd> {{ t('demo.shortcutPlayPause') }}</div>
+          <div class="help-item"><kbd>←</kbd> {{ t('demo.shortcutPrev') }}</div>
+          <div class="help-item"><kbd>→</kbd> {{ t('demo.shortcutNext') }}</div>
+          <div class="help-item"><kbd>F5</kbd> {{ t('demo.shortcutExecute') }}</div>
+          <div class="help-item"><kbd>Delete</kbd> {{ t('demo.shortcutDelete') }}</div>
         </div>
 
         <!-- IPC 状态 -->
         <div class="ipc-status">
-          <div class="help-title">Godot IPC</div>
-          <div class="ipc-info">外部可通过 <code>post_message</code> 发送控制命令</div>
+          <div class="help-title">{{ t('demo.ipcTitle') }}</div>
+          <div class="ipc-info">{{ t('demo.ipcInfo') }}</div>
           <div class="ipc-commands">
             <code>play</code> <code>pause</code> <code>next</code> <code>previous</code>
             <code>goto</code>
@@ -471,19 +473,21 @@ function handleUpload(file: File): void {
 
         <!-- 演示模式提示 -->
         <div v-if="demo.hasRecording.value" class="demo-overlay-hint">
-          演示模式 - 使用控制面板或快捷键操作
+          {{ t('demo.modeTip') }}
         </div>
       </div>
     </div>
 
     <!-- 底部状态栏 -->
     <div class="demo-statusbar">
-      <span>节点: {{ graphStore.nodes.length }}</span>
-      <span v-if="demo.isRecording.value" class="recording-indicator">⏺ 录制中</span>
-      <span v-if="demo.hasRecording.value"
-        >步骤: {{ demo.currentStep.value + 1 }} / {{ demo.totalSteps.value }}</span
+      <span>{{ t('editor.nodes') }}: {{ graphStore.nodes.length }}</span>
+      <span v-if="demo.isRecording.value" class="recording-indicator"
+        >⏺ {{ t('demo.recording') }}</span
       >
-      <span>选中: {{ graphStore.selectedNodeIds.size }}</span>
+      <span v-if="demo.hasRecording.value"
+        >{{ t('demo.step') }}: {{ demo.currentStep.value + 1 }} / {{ demo.totalSteps.value }}</span
+      >
+      <span>{{ t('editor.selected') }}: {{ graphStore.selectedNodeIds.size }}</span>
     </div>
   </div>
 </template>

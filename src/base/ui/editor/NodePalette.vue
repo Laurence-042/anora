@@ -4,10 +4,12 @@
  * 显示可用的节点类型，支持拖放添加
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NodeRegistry } from '@/base/runtime/registry'
 import { BaseNode } from '@/base/runtime/nodes'
 import { useGraphStore } from '@/stores/graph'
 
+const { t } = useI18n()
 const graphStore = useGraphStore()
 
 /** 搜索关键字 */
@@ -88,7 +90,7 @@ function onDragStart(event: DragEvent, typeId: string): void {
   <div class="node-palette" :class="{ collapsed: !isExpanded }">
     <!-- 头部 -->
     <div class="palette-header" @click="isExpanded = !isExpanded">
-      <span class="header-title">节点</span>
+      <span class="header-title">{{ t('nodePalette.title') }}</span>
       <span class="toggle-icon">{{ isExpanded ? '◀' : '▶' }}</span>
     </div>
 
@@ -96,7 +98,12 @@ function onDragStart(event: DragEvent, typeId: string): void {
     <div v-show="isExpanded" class="palette-content">
       <!-- 搜索框 -->
       <div class="search-box">
-        <input v-model="searchQuery" type="text" placeholder="搜索节点..." class="search-input" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="t('nodePalette.search')"
+          class="search-input"
+        />
       </div>
 
       <!-- 节点列表 -->
@@ -117,7 +124,9 @@ function onDragStart(event: DragEvent, typeId: string): void {
         </div>
 
         <!-- 空状态 -->
-        <div v-if="filteredTypes.length === 0" class="empty-state">没有找到匹配的节点</div>
+        <div v-if="filteredTypes.length === 0" class="empty-state">
+          {{ t('nodePalette.noResults') }}
+        </div>
       </div>
     </div>
   </div>

@@ -4,9 +4,11 @@
  * 提供执行/停止按钮、迭代信息、延迟设置等
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import { ExecutorStatus } from '@/base/runtime/types'
 
+const { t } = useI18n()
 const graphStore = useGraphStore()
 
 /** 是否正在执行 */
@@ -25,15 +27,15 @@ const delayInput = ref(graphStore.iterationDelay)
 const statusText = computed(() => {
   switch (status.value) {
     case ExecutorStatus.Idle:
-      return '空闲'
+      return t('executor.idle')
     case ExecutorStatus.Running:
-      return `执行中 (迭代 ${currentIteration.value})`
+      return `${t('executor.running')} (${t('executor.iteration')} ${currentIteration.value})`
     case ExecutorStatus.Completed:
-      return `完成 (${currentIteration.value} 次迭代)`
+      return `${t('executor.completed')} (${currentIteration.value})`
     case ExecutorStatus.Cancelled:
-      return '已取消'
+      return t('executor.cancelled')
     case ExecutorStatus.Error:
-      return '错误'
+      return t('executor.error')
     default:
       return status.value
   }
@@ -81,19 +83,24 @@ function handleStop(): void {
         v-if="!isRunning"
         class="control-btn start-btn"
         @click="handleStart"
-        title="开始执行 (F5)"
+        :title="`${t('executor.run')} (F5)`"
       >
-        ▶ 执行
+        ▶ {{ t('executor.run') }}
       </button>
-      <button v-else class="control-btn stop-btn" @click="handleStop" title="停止执行 (Shift+F5)">
-        ■ 停止
+      <button
+        v-else
+        class="control-btn stop-btn"
+        @click="handleStop"
+        :title="`${t('executor.stop')} (Shift+F5)`"
+      >
+        ■ {{ t('executor.stop') }}
       </button>
     </div>
 
     <!-- 延迟设置 -->
     <div class="delay-section">
       <label class="delay-label">
-        迭代延迟:
+        {{ t('executor.delay') }}:
         <input
           v-model.number="delayInput"
           type="number"
@@ -103,13 +110,12 @@ function handleStop(): void {
           class="delay-input"
           :disabled="isRunning"
         />
-        <span class="delay-unit">ms</span>
       </label>
     </div>
 
     <!-- 执行节点数 -->
     <div v-if="isRunning" class="executing-info">
-      执行中: {{ graphStore.executingNodeIds.size }} 个节点
+      {{ t('executor.running') }}: {{ graphStore.executingNodeIds.size }} {{ t('editor.nodes') }}
     </div>
   </div>
 </template>

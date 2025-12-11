@@ -4,12 +4,14 @@
  * 显示当前子图层级路径，支持点击导航
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 
 defineOptions({
   name: 'GraphBreadcrumb',
 })
 
+const { t } = useI18n()
 const graphStore = useGraphStore()
 
 /** 面包屑路径 */
@@ -32,7 +34,12 @@ const canGoBack = computed(() => graphStore.subGraphStack.length > 0)
 <template>
   <div class="breadcrumb">
     <!-- 返回按钮 -->
-    <button v-if="canGoBack" class="back-btn" @click="goBack" title="返回上一级 (Backspace)">
+    <button
+      v-if="canGoBack"
+      class="back-btn"
+      @click="goBack"
+      :title="`${t('breadcrumb.back')} (Backspace)`"
+    >
       ←
     </button>
 

@@ -6,6 +6,7 @@
 import { ref, computed, watch, onMounted, markRaw } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
 import { Background, BackgroundVariant } from '@vue-flow/background'
+import { useI18n } from 'vue-i18n'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
@@ -16,6 +17,7 @@ import BaseNodeView from '../components/BaseNodeView.vue'
 import ExecutorControls from './ExecutorControls.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
+import LocaleSwitcher from './LocaleSwitcher.vue'
 
 // 节点视图注册表
 import { NodeViewRegistry } from '../registry'
@@ -23,6 +25,7 @@ import { NodeViewRegistry } from '../registry'
 // 初始化时设置默认视图
 NodeViewRegistry.setDefaultView(BaseNodeView)
 
+const { t } = useI18n()
 const graphStore = useGraphStore()
 
 // Vue-Flow 实例
@@ -270,7 +273,10 @@ onMounted(() => {
       <Breadcrumb />
       <div class="toolbar-spacer" />
       <ExecutorControls />
-      <button class="toolbar-btn" @click="autoLayout" title="自动布局">⊞ 布局</button>
+      <button class="toolbar-btn" @click="autoLayout" :title="t('editor.autoLayout')">
+        ⊞ {{ t('editor.layout') }}
+      </button>
+      <LocaleSwitcher />
     </div>
 
     <!-- Vue-Flow 画布 -->
@@ -296,9 +302,9 @@ onMounted(() => {
 
     <!-- 底部状态栏 -->
     <div class="editor-statusbar">
-      <span>节点: {{ graphStore.nodes.length }}</span>
-      <span>选中: {{ graphStore.selectedNodeIds.size }}</span>
-      <span>层级: {{ graphStore.subGraphStack.length + 1 }}</span>
+      <span>{{ t('editor.nodes') }}: {{ graphStore.nodes.length }}</span>
+      <span>{{ t('editor.selected') }}: {{ graphStore.selectedNodeIds.size }}</span>
+      <span>{{ t('editor.level') }}: {{ graphStore.subGraphStack.length + 1 }}</span>
     </div>
   </div>
 </template>
