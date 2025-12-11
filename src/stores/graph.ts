@@ -131,6 +131,14 @@ export const useGraphStore = defineStore('graph', () => {
   }
 
   /**
+   * 通知节点已变更（用于触发视图更新）
+   * 当节点属性（如 label、context）被修改时调用
+   */
+  function notifyNodeChanged(_nodeId?: string): void {
+    triggerRef(currentGraph)
+  }
+
+  /**
    * 进入子图
    */
   function enterSubGraph(node: SubGraphNode): void {
@@ -360,6 +368,7 @@ export const useGraphStore = defineStore('graph', () => {
     removeNode,
     addEdge,
     removeEdge,
+    notifyNodeChanged,
     enterSubGraph,
     exitSubGraph,
     navigateToLevel,

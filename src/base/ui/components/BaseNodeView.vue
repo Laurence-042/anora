@@ -42,11 +42,14 @@ function getNodeName(typeId: string): string {
   return t(`nodes.${mod}.${nodeName}`, nodeName ?? typeId)
 }
 
+/** 本地 label 状态（用于响应式更新） */
+const localLabel = ref(node.value.label)
+
 /** 节点显示名称 (i18n) */
 const nodeDisplayName = computed(() => {
   // 如果用户已自定义 label 且不等于 typeId，使用用户定义的
-  if (node.value.label && node.value.label !== node.value.typeId) {
-    return node.value.label
+  if (localLabel.value && localLabel.value !== node.value.typeId) {
+    return localLabel.value
   }
   return getNodeName(node.value.typeId)
 })
@@ -82,7 +85,7 @@ const editingLabelValue = ref('')
 
 /** 开始编辑 label */
 function startEditLabel(): void {
-  editingLabelValue.value = node.value.label
+  editingLabelValue.value = localLabel.value
   isEditingLabel.value = true
   nextTick(() => {
     editLabelInput.value?.focus()
@@ -93,7 +96,9 @@ function startEditLabel(): void {
 /** 完成编辑 label */
 function finishEditLabel(): void {
   if (editingLabelValue.value.trim()) {
-    node.value.label = editingLabelValue.value.trim()
+    const newLabel = editingLabelValue.value.trim()
+    node.value.label = newLabel
+    localLabel.value = newLabel
   }
   isEditingLabel.value = false
 }
