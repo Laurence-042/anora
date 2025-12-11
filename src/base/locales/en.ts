@@ -1,5 +1,5 @@
 /**
- * English language pack
+ * Base module - English language pack
  */
 export default {
   // Common
@@ -57,11 +57,9 @@ export default {
     loadRecording: 'Load Recording',
     export: 'Export',
     step: 'Step',
-    // Shortcuts
     shortcutPlayPause: 'Play/Pause',
     shortcutPrev: 'Previous Step',
     shortcutNext: 'Next Step',
-    // IPC
     ipcInfo: 'External control via post_message',
   },
 
@@ -81,52 +79,22 @@ export default {
     },
   },
 
-  // Node types - key format: nodes.${typeId}
+  // Base nodes
   nodes: {
-    // Base nodes
     'base.SubGraphNode': 'SubGraph',
     'base.SubGraphEntryNode': 'SubGraph Entry',
     'base.SubGraphExitNode': 'SubGraph Exit',
-    // Core nodes
-    'core.ForwardNode': 'Forward',
-    'core.ParameterNode': 'Parameter',
-    'core.DistributeNode': 'Distribute',
-    'core.AggregateNode': 'Aggregate',
-    'core.CompareNode': 'Compare',
-    'core.BranchNode': 'Branch',
-    'core.LogicNode': 'Logic',
-    'core.ArithmeticNode': 'Arithmetic',
-    'core.StringFormatNode': 'String Format',
-    'core.ConsoleLogNode': 'Console Log',
-    'core.NotifyNode': 'Notify',
-    'core.ObjectAccessNode': 'Object Access',
-    'core.ObjectSetNode': 'Object Set',
-    'core.ArrayAccessNode': 'Array Access',
-    'core.ArrayPushNode': 'Array Push',
-    'core.ArrayLengthNode': 'Array Length',
-    // Godot WRY nodes
-    'godot-wry.WryIpcNode': 'WRY IPC',
-    'godot-wry.WryEventNode': 'WRY Event',
   },
 
   // Node categories
   nodeCategories: {
     base: 'Base',
-    core: 'Core',
-    logic: 'Logic',
-    math: 'Math',
-    string: 'String',
-    io: 'I/O',
-    data: 'Data',
-    backend: 'Backend',
     other: 'Other',
   },
 
   // Mod names
   mods: {
     base: 'Base Module',
-    core: 'Core Module',
-    godotWry: 'Godot WRY',
   },
 
   // Ports

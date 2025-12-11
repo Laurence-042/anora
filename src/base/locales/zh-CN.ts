@@ -1,5 +1,5 @@
 /**
- * 中文语言包
+ * Base module - Chinese language pack
  */
 export default {
   // 通用
@@ -57,11 +57,9 @@ export default {
     loadRecording: '加载录制',
     export: '导出',
     step: '步骤',
-    // 快捷键
     shortcutPlayPause: '播放/暂停',
     shortcutPrev: '上一步',
     shortcutNext: '下一步',
-    // IPC
     ipcInfo: '外部可通过 post_message 发送控制命令',
   },
 
@@ -81,52 +79,22 @@ export default {
     },
   },
 
-  // 节点类型 - key 格式: nodes.${typeId}
+  // Base 节点
   nodes: {
-    // Base 节点
     'base.SubGraphNode': '子图',
     'base.SubGraphEntryNode': '子图入口',
     'base.SubGraphExitNode': '子图出口',
-    // Core 节点
-    'core.ForwardNode': '中继',
-    'core.ParameterNode': '参数',
-    'core.DistributeNode': '分发',
-    'core.AggregateNode': '聚合',
-    'core.CompareNode': '比较',
-    'core.BranchNode': '分支',
-    'core.LogicNode': '逻辑运算',
-    'core.ArithmeticNode': '算术运算',
-    'core.StringFormatNode': '字符串格式化',
-    'core.ConsoleLogNode': '控制台输出',
-    'core.NotifyNode': '通知',
-    'core.ObjectAccessNode': '对象取值',
-    'core.ObjectSetNode': '对象设值',
-    'core.ArrayAccessNode': '数组取值',
-    'core.ArrayPushNode': '数组追加',
-    'core.ArrayLengthNode': '数组长度',
-    // Godot WRY 节点
-    'godot-wry.WryIpcNode': 'WRY IPC',
-    'godot-wry.WryEventNode': 'WRY 事件',
   },
 
   // 节点分类
   nodeCategories: {
     base: '基础',
-    core: '核心',
-    logic: '逻辑',
-    math: '运算',
-    string: '字符串',
-    io: '输入输出',
-    data: '数据结构',
-    backend: '后端',
     other: '其他',
   },
 
   // Mod 名称
   mods: {
     base: '基础模块',
-    core: '核心模块',
-    godotWry: 'Godot WRY',
   },
 
   // 端口

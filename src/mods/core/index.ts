@@ -1,6 +1,7 @@
 // ANORA Core Mod
 export * from './runtime'
 export * from './ui'
+export * from './locales'
 
 import { registerCoreNodeViews } from './ui'
 

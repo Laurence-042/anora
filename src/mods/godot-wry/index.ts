@@ -4,6 +4,7 @@
  */
 export * from './runtime'
 export * from './ui'
+export * from './locales'
 
 import { registerGodotWryNodeViews } from './ui'
 
