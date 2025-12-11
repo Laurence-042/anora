@@ -8,9 +8,15 @@ import ElementPlus from 'element-plus'
 
 import App from './App.vue'
 import router from './router'
+
+// 先导入 mods，触发所有 mod 注册到 ModRegistry
+// 这样 i18n 才能获取到所有 mod 的 locale
+import '@/mods'
+
+// 然后创建 i18n（会从 ModRegistry 获取 locale）
 import i18n from './locales'
 
-// 导入并初始化所有 mods（触发装饰器注册 + UI 视图注册）
+// 初始化所有 mods（调用 init 函数注册视图等）
 import { initAllMods } from './mods'
 initAllMods()
 

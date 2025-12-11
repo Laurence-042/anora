@@ -1,11 +1,13 @@
 /**
  * i18n 配置
- * 合并所有模块的 locale
+ *
+ * Locale 来源：
+ * 1. base locale - 基础 UI 翻译
+ * 2. mod locales - 从 ModRegistry 自动获取各 mod 的翻译
  */
 import { createI18n } from 'vue-i18n'
 import { baseLocales, type BaseMessageSchema } from '@/base/locales'
-import { coreLocales } from '@/mods/core/locales'
-import { godotWryLocales } from '@/mods/godot-wry/locales'
+import { ModRegistry } from '@/mods/ModRegistry'
 
 export type MessageSchema = BaseMessageSchema
 export type LocaleType = 'zh-CN' | 'en'
@@ -16,34 +18,33 @@ type AnyObject = Record<string, any>
 /**
  * 深度合并对象
  */
-function deepMerge(target: AnyObject, ...sources: AnyObject[]): AnyObject {
-  for (const source of sources) {
-    for (const key in source) {
-      const targetVal = target[key]
-      const sourceVal = source[key]
-      if (
-        targetVal &&
-        sourceVal &&
-        typeof targetVal === 'object' &&
-        typeof sourceVal === 'object' &&
-        !Array.isArray(targetVal) &&
-        !Array.isArray(sourceVal)
-      ) {
-        target[key] = deepMerge({ ...targetVal }, sourceVal)
-      } else {
-        target[key] = sourceVal
-      }
+function deepMerge(target: AnyObject, source: AnyObject): AnyObject {
+  for (const key in source) {
+    const targetVal = target[key]
+    const sourceVal = source[key]
+    if (
+      targetVal &&
+      sourceVal &&
+      typeof targetVal === 'object' &&
+      typeof sourceVal === 'object' &&
+      !Array.isArray(targetVal) &&
+      !Array.isArray(sourceVal)
+    ) {
+      target[key] = deepMerge({ ...targetVal }, sourceVal)
+    } else {
+      target[key] = sourceVal
     }
   }
   return target
 }
 
 /**
- * 合并所有模块的 locale
+ * 合并 base locale 和所有 mod 的 locale
  */
 function mergeLocales(locale: LocaleType): MessageSchema {
   const base = { ...baseLocales[locale] }
-  return deepMerge(base, coreLocales[locale], godotWryLocales[locale]) as MessageSchema
+  const modLocales = ModRegistry.getMergedLocales(locale)
+  return deepMerge(base, modLocales) as MessageSchema
 }
 
 /**
