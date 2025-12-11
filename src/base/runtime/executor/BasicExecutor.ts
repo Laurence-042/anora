@@ -3,6 +3,7 @@ import type { ExecutorContext } from '../types'
 import { BaseNode } from '../nodes/BaseNode'
 import { AnoraGraph } from '../graph/AnoraGraph'
 import { DEFAULT_EXECUTOR_CONTEXT } from '../types'
+import type { DemoRecorder } from '../demo/DemoRecorder'
 
 /**
  * 检查节点是否为开启直通模式的 ForwardNode
@@ -79,6 +80,16 @@ export class BasicExecutor {
   /** 当前执行的 Promise（用于取消） */
   private currentExecution: Promise<ExecutionResult> | null = null
 
+  /** Demo recorder (optional) */
+  private demoRecorder?: DemoRecorder
+
+  /**
+   * Set demo recorder for recording execution
+   */
+  setDemoRecorder(recorder: DemoRecorder | undefined): void {
+    this.demoRecorder = recorder
+  }
+
   /**
    * 获取当前状态
    */
@@ -154,6 +165,12 @@ export class BasicExecutor {
         }
 
         const results = await this.executeNodes(readyNodes, graph, execContext)
+
+        // Record iteration if demo recorder is active
+        if (this.demoRecorder?.isActive()) {
+          const activatedNodeIds = readyNodes.map((n) => n.id)
+          this.demoRecorder.recordIteration(graph.getAllNodes(), activatedNodeIds)
+        }
 
         // 检查是否有节点失败
         const failed = results.filter((r) => !r.success)
