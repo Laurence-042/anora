@@ -55,11 +55,14 @@ export interface ContextFieldRef<T> {
 
 /**
  * 节点类型约束 - 只需要有 context 相关方法即可
+ * 使用宽松的类型以兼容各种 TContext 泛型
  */
 interface NodeWithContext {
   id: string
-  getContextField<T = unknown>(field: string): T | undefined
-  setContextField(field: string, value: unknown): void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getContextField(field: any): any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setContextField(field: any, value: any): void
   onContextChange(
     listener: (event: {
       nodeId: string

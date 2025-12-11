@@ -83,7 +83,12 @@ function generateMessageId(): string {
  *   - error (null): 调用失败时激活
  */
 @AnoraRegister('godot-wry.WryIpcNode')
-export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
+export class WryIpcNode extends BackendNode<
+  WryIpcInput,
+  WryIpcOutput,
+  Record<string, never>,
+  WryIpcContext
+> {
   /** 超时时间（毫秒） */
   private timeout: number = 30000
 
@@ -105,7 +110,7 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
     this.addOutControlPort('error', new NullPort(this))
 
     // 默认 context（无参数）
-    this._context = { method: '', params: [] } as WryIpcContext
+    this.context = { method: '', params: [] }
 
     // 初始化全局事件监听器
     WryIpcNode.initializeListener()
@@ -115,14 +120,14 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
    * 获取当前方法名
    */
   getMethod(): string {
-    return (this._context as WryIpcContext)?.method ?? ''
+    return this.context?.method ?? ''
   }
 
   /**
    * 获取当前参数列表
    */
   getParams(): WryIpcParam[] {
-    return (this._context as WryIpcContext)?.params ?? []
+    return this.context?.params ?? []
   }
 
   /**
@@ -133,13 +138,13 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
     const oldParams = this.getParams()
 
     // 更新 context
-    this._context = { method, params }
+    this.context = { method, params }
 
     // 同步入 Port
     this._syncInPorts(oldParams, params)
 
     // 触发变更事件
-    this._emitContextChange('method', (this._context as WryIpcContext).method, method)
+    this._emitContextChange('method', this.context.method, method)
     this._emitContextChange('params', oldParams, params)
   }
 
@@ -158,8 +163,8 @@ export class WryIpcNode extends BackendNode<WryIpcInput, WryIpcOutput> {
     const oldParams = this.getParams()
 
     // 更新 context 中的 params
-    this._context = {
-      ...((this._context as WryIpcContext) ?? { method: '' }),
+    this.context = {
+      ...(this.context ?? { method: '' }),
       params,
     }
 

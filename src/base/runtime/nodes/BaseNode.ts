@@ -40,8 +40,14 @@ export type NodeContextChangeListener = (event: NodeContextChangeEvent) => void
  * @template TInput 入 Port 数据类型，键为 Port 名称
  * @template TOutput 出 Port 数据类型，键为 Port 名称
  * @template TControl 控制 Port 数据类型，键为 Port 名称
+ * @template TContext Context 数据类型，子类可指定具体类型
  */
-export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = NodeControl> {
+export abstract class BaseNode<
+  TInput = NodeInput,
+  TOutput = NodeOutput,
+  TControl = NodeControl,
+  TContext = unknown,
+> {
   /** 节点类型标识（子类需要覆盖） */
   static typeId: string = 'BaseNode'
 
@@ -67,7 +73,7 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   readonly outPorts: Map<string, BasePort> = new Map()
 
   /** 上下文：便于节点在多次工作中实现差异行为，也可用于静态配置 */
-  protected _context: unknown = null
+  protected _context: TContext | null = null
 
   /** 节点执行状态 */
   executionStatus: NodeExecutionStatus = NodeExecutionStatus.IDLE
@@ -88,18 +94,20 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
   }
 
   /**
-   * 获取 context（兼容旧代码的读取）
+   * 获取 context
+   * 子类可重写此方法以提供类型安全的访问
    */
-  get context(): unknown {
+  get context(): TContext | null {
     return this._context
   }
 
   /**
-   * 设置整个 context（兼容旧代码）
+   * 设置整个 context
    * 注意：直接设置整个 context 不会触发变更事件
    * 如需触发事件，请使用 setContextField
+   * 子类可重写此方法以提供类型安全的赋值
    */
-  set context(value: unknown) {
+  set context(value: TContext | null) {
     this._context = value
   }
 
@@ -108,8 +116,8 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
    * @param field 字段名
    * @param value 新值
    */
-  setContextField(field: string, value: unknown): void {
-    const oldContext = this._context as Record<string, unknown> | null
+  setContextField<K extends keyof TContext>(field: K, value: TContext[K]): void {
+    const oldContext = this._context as TContext | null
     const oldValue = oldContext?.[field]
 
     // 值相同则不触发
@@ -117,20 +125,19 @@ export abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TContro
 
     // 更新 context
     this._context = {
-      ...((this._context as Record<string, unknown>) ?? {}),
+      ...((this._context as object) ?? {}),
       [field]: value,
-    }
+    } as TContext
 
     // 触发变更事件
-    this._emitContextChange(field, oldValue, value)
+    this._emitContextChange(field as string, oldValue, value)
   }
 
   /**
    * 获取单个 context 字段
    */
-  getContextField<T = unknown>(field: string): T | undefined {
-    const ctx = this._context as Record<string, unknown> | null
-    return ctx?.[field] as T | undefined
+  getContextField<K extends keyof TContext>(field: K): TContext[K] | undefined {
+    return this._context?.[field]
   }
 
   /**

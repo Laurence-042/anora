@@ -10,7 +10,8 @@ export abstract class WebNode<
   TInput = NodeInput,
   TOutput = NodeOutput,
   TControl = NodeControl,
-> extends BaseNode<TInput, TOutput, TControl> {
+  TContext = unknown,
+> extends BaseNode<TInput, TOutput, TControl, TContext> {
   static override typeId: string = 'WebNode'
 }
 
@@ -22,7 +23,8 @@ export abstract class BackendNode<
   TInput = NodeInput,
   TOutput = NodeOutput,
   TControl = NodeControl,
-> extends BaseNode<TInput, TOutput, TControl> {
+  TContext = unknown,
+> extends BaseNode<TInput, TOutput, TControl, TContext> {
   static override typeId: string = 'BackendNode'
 
   /**

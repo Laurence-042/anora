@@ -13,6 +13,13 @@ interface NotifyInput {
 /** 通知类型 */
 export type NotifyType = 'success' | 'warning' | 'info' | 'error'
 
+/** NotifyNode Context 类型 */
+interface NotifyContext {
+  title: string
+  type: NotifyType
+  duration: number
+}
+
 /**
  * NotifyNode - 通知节点
  * 使用 Element Plus ElNotification 显示通知
@@ -22,7 +29,12 @@ export type NotifyType = 'success' | 'warning' | 'info' | 'error'
  * context: { title: string, type: NotifyType, duration: number }
  */
 @AnoraRegister('core.NotifyNode')
-export class NotifyNode extends WebNode<NotifyInput, Record<string, never>> {
+export class NotifyNode extends WebNode<
+  NotifyInput,
+  Record<string, never>,
+  Record<string, never>,
+  NotifyContext
+> {
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Notify')
 
@@ -32,7 +44,7 @@ export class NotifyNode extends WebNode<NotifyInput, Record<string, never>> {
     // 默认配置
     this.context = {
       title: '调试信息',
-      type: 'info' as NotifyType,
+      type: 'info',
       duration: 3000,
     }
   }
@@ -41,45 +53,42 @@ export class NotifyNode extends WebNode<NotifyInput, Record<string, never>> {
    * 设置标题
    */
   setTitle(title: string): void {
-    const ctx = this.context as Record<string, unknown>
-    this.context = { ...ctx, title }
+    this.setContextField('title', title)
   }
 
   /**
    * 获取标题
    */
   getTitle(): string {
-    return (this.context as { title: string })?.title ?? '调试信息'
+    return this.context?.title ?? '调试信息'
   }
 
   /**
    * 设置通知类型
    */
   setType(type: NotifyType): void {
-    const ctx = this.context as Record<string, unknown>
-    this.context = { ...ctx, type }
+    this.setContextField('type', type)
   }
 
   /**
    * 获取通知类型
    */
   getType(): NotifyType {
-    return (this.context as { type: NotifyType })?.type ?? 'info'
+    return this.context?.type ?? 'info'
   }
 
   /**
    * 设置显示时长
    */
   setDuration(duration: number): void {
-    const ctx = this.context as Record<string, unknown>
-    this.context = { ...ctx, duration }
+    this.setContextField('duration', duration)
   }
 
   /**
    * 获取显示时长
    */
   getDuration(): number {
-    return (this.context as { duration: number })?.duration ?? 3000
+    return this.context?.duration ?? 3000
   }
 
   async activateCore(
