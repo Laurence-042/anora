@@ -34,6 +34,17 @@ export interface NodeContextChangeEvent {
 export type NodeContextChangeListener = (event: NodeContextChangeEvent) => void
 
 /**
+ * 节点静态元数据接口
+ * 定义节点的固有属性（图标、分类等）
+ */
+export interface NodeStaticMeta {
+  /** 图标 (emoji 或图标名) */
+  icon?: string
+  /** 分类 (用于节点面板分组) */
+  category?: string
+}
+
+/**
  * 节点基类
  * 节点本质上是函数的抽象
  *
@@ -50,6 +61,9 @@ export abstract class BaseNode<
 > {
   /** 节点类型标识（子类需要覆盖） */
   static typeId: string = 'BaseNode'
+
+  /** 节点静态元数据（子类可覆盖） */
+  static meta: NodeStaticMeta = {}
 
   /** 子类列表（用于注册机制） */
   static subclasses: (typeof BaseNode)[] = []

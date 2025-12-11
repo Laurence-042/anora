@@ -26,6 +26,8 @@ interface StringFormatOutput {
  */
 @AnoraRegister('core.StringFormatNode')
 export class StringFormatNode extends WebNode<StringFormatInput, StringFormatOutput> {
+  static override meta = { icon: '📄', category: 'string' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'StringFormat')
 

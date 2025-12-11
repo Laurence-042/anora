@@ -81,34 +81,32 @@ export default {
     },
   },
 
-  // 节点类型
+  // 节点类型 - key 格式: nodes.${typeId}
   nodes: {
-    base: {
-      subGraph: '子图',
-      subGraphEntry: '子图入口',
-      subGraphExit: '子图出口',
-    },
-    core: {
-      forward: '中继',
-      parameter: '参数',
-      distribute: '分发',
-      aggregate: '聚合',
-      compare: '比较',
-      branch: '分支',
-      logic: '逻辑运算',
-      arithmetic: '算术运算',
-      stringFormat: '字符串格式化',
-      consoleLog: '控制台输出',
-      notify: '通知',
-      objectAccess: '对象取值',
-      objectSet: '对象设值',
-      arrayAccess: '数组取值',
-      arrayPush: '数组追加',
-      arrayLength: '数组长度',
-    },
-    godotWry: {
-      wryIpc: 'WRY IPC',
-    },
+    // Base 节点
+    'base.SubGraphNode': '子图',
+    'base.SubGraphEntryNode': '子图入口',
+    'base.SubGraphExitNode': '子图出口',
+    // Core 节点
+    'core.ForwardNode': '中继',
+    'core.ParameterNode': '参数',
+    'core.DistributeNode': '分发',
+    'core.AggregateNode': '聚合',
+    'core.CompareNode': '比较',
+    'core.BranchNode': '分支',
+    'core.LogicNode': '逻辑运算',
+    'core.ArithmeticNode': '算术运算',
+    'core.StringFormatNode': '字符串格式化',
+    'core.ConsoleLogNode': '控制台输出',
+    'core.NotifyNode': '通知',
+    'core.ObjectAccessNode': '对象取值',
+    'core.ObjectSetNode': '对象设值',
+    'core.ArrayAccessNode': '数组取值',
+    'core.ArrayPushNode': '数组追加',
+    'core.ArrayLengthNode': '数组长度',
+    // Godot WRY 节点
+    'godot-wry.WryIpcNode': 'WRY IPC',
+    'godot-wry.WryEventNode': 'WRY 事件',
   },
 
   // 节点分类

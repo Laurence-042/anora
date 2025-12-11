@@ -37,6 +37,8 @@ interface ArithmeticOutput {
  */
 @AnoraRegister('core.ArithmeticNode')
 export class ArithmeticNode extends WebNode<ArithmeticInput, ArithmeticOutput> {
+  static override meta = { icon: '🔢', category: 'math' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Arithmetic')
 

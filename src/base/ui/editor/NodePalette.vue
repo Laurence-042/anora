@@ -2,12 +2,13 @@
 /**
  * NodePalette - 节点面板
  * 显示可用的节点类型，支持拖放添加
- * 使用 NodeMetaRegistry 获取节点 i18n 信息和图标
+ * 使用 NodeViewRegistry 获取节点 i18n 信息和图标
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElTooltip } from 'element-plus'
-import { NodeRegistry, NodeMetaRegistry } from '@/base/runtime/registry'
+import { NodeRegistry } from '@/base/runtime/registry'
+import { NodeViewRegistry } from '@/base/ui/registry'
 import { BaseNode } from '@/base/runtime/nodes'
 import { useGraphStore } from '@/stores/graph'
 
@@ -34,10 +35,10 @@ const nodeTypes = computed<NodeTypeInfo[]>(() => {
   const types: NodeTypeInfo[] = []
 
   for (const [typeId] of NodeRegistry.getAll()) {
-    const meta = NodeMetaRegistry.getOrDefault(typeId)
+    const meta = NodeViewRegistry.getNodeMeta(typeId)
     const name = t(meta.i18nKey, meta.typeId.split('.').pop() ?? typeId)
     const categoryName = t(meta.categoryI18nKey, meta.category)
-    const icon = meta.icon ?? '◇'
+    const icon = meta.icon
 
     types.push({
       typeId,

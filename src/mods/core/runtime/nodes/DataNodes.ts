@@ -31,6 +31,8 @@ interface ObjectAccessOutput {
  */
 @AnoraRegister('core.ObjectAccessNode')
 export class ObjectAccessNode extends WebNode<ObjectAccessInput, ObjectAccessOutput> {
+  static override meta = { icon: '📦', category: 'data' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ObjectAccess')
 
@@ -78,6 +80,8 @@ interface ObjectSetOutput {
  */
 @AnoraRegister('core.ObjectSetNode')
 export class ObjectSetNode extends WebNode<ObjectSetInput, ObjectSetOutput> {
+  static override meta = { icon: '📦', category: 'data' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ObjectSet')
 
@@ -125,6 +129,8 @@ interface ArrayAccessOutput {
  */
 @AnoraRegister('core.ArrayAccessNode')
 export class ArrayAccessNode extends WebNode<ArrayAccessInput, ArrayAccessOutput> {
+  static override meta = { icon: '📋', category: 'data' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayAccess')
 
@@ -171,6 +177,8 @@ interface ArrayPushOutput {
  */
 @AnoraRegister('core.ArrayPushNode')
 export class ArrayPushNode extends WebNode<ArrayPushInput, ArrayPushOutput> {
+  static override meta = { icon: '📋', category: 'data' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayPush')
 
@@ -215,6 +223,8 @@ interface ArrayLengthOutput {
  */
 @AnoraRegister('core.ArrayLengthNode')
 export class ArrayLengthNode extends WebNode<ArrayLengthInput, ArrayLengthOutput> {
+  static override meta = { icon: '📋', category: 'data' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ArrayLength')
 

@@ -19,6 +19,8 @@ import type { NodeInput, NodeOutput } from './BaseNode'
  */
 @AnoraRegister('base.SubGraphNode')
 export class SubGraphNode extends WebNode<NodeInput, NodeOutput> {
+  static override meta = { icon: '📁', category: 'base' }
+
   /** 内部图 */
   private _graph: AnoraGraph | null = null
 
@@ -183,6 +185,8 @@ interface EntryExitPorts {
  */
 @AnoraRegister('base.SubGraphEntryNode')
 export class SubGraphEntryNode extends WebNode<EntryExitPorts, EntryExitPorts> {
+  static override meta = { icon: '📥', category: 'base' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Entry')
 
@@ -207,6 +211,8 @@ export class SubGraphEntryNode extends WebNode<EntryExitPorts, EntryExitPorts> {
  */
 @AnoraRegister('base.SubGraphExitNode')
 export class SubGraphExitNode extends WebNode<EntryExitPorts, EntryExitPorts> {
+  static override meta = { icon: '📤', category: 'base' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Exit')
 

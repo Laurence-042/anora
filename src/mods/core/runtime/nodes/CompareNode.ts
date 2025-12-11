@@ -39,6 +39,8 @@ interface CompareOutput {
  */
 @AnoraRegister('core.CompareNode')
 export class CompareNode extends WebNode<CompareInput, CompareOutput> {
+  static override meta = { icon: '⚖️', category: 'logic' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Compare')
 

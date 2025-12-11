@@ -89,6 +89,8 @@ export class WryIpcNode extends BackendNode<
   Record<string, never>,
   WryIpcContext
 > {
+  static override meta = { icon: '🎮', category: 'backend' }
+
   /** 超时时间（毫秒） */
   private timeout: number = 30000
 
@@ -366,6 +368,8 @@ export class WryEventNode extends BackendNode<
   Record<string, never>,
   { eventData: unknown; eventType: string }
 > {
+  static override meta = { icon: '📡', category: 'backend' }
+
   /** 事件处理器 */
   private eventHandler: ((event: Event) => void) | null = null
 

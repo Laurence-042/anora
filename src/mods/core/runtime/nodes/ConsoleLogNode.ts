@@ -18,6 +18,8 @@ interface ConsoleLogInput {
  */
 @AnoraRegister('core.ConsoleLogNode')
 export class ConsoleLogNode extends WebNode<ConsoleLogInput, Record<string, never>> {
+  static override meta = { icon: '📤', category: 'io' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'ConsoleLog')
 

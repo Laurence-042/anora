@@ -37,6 +37,8 @@ interface LogicOutput {
  */
 @AnoraRegister('core.LogicNode')
 export class LogicNode extends WebNode<LogicInput, LogicOutput> {
+  static override meta = { icon: '🔣', category: 'logic' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Logic')
 

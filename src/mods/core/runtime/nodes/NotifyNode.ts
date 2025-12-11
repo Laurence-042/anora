@@ -35,6 +35,8 @@ export class NotifyNode extends WebNode<
   Record<string, never>,
   NotifyContext
 > {
+  static override meta = { icon: '🔔', category: 'io' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Notify')
 

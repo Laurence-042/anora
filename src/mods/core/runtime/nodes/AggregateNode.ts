@@ -35,6 +35,8 @@ interface AggregateControl {
  */
 @AnoraRegister('core.AggregateNode')
 export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, AggregateControl> {
+  static override meta = { icon: '🔗', category: 'core' }
+
   /** 收集器 */
   private collector: unknown[] = []
 

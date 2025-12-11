@@ -81,34 +81,32 @@ export default {
     },
   },
 
-  // Node types
+  // Node types - key format: nodes.${typeId}
   nodes: {
-    base: {
-      subGraph: 'SubGraph',
-      subGraphEntry: 'SubGraph Entry',
-      subGraphExit: 'SubGraph Exit',
-    },
-    core: {
-      forward: 'Forward',
-      parameter: 'Parameter',
-      distribute: 'Distribute',
-      aggregate: 'Aggregate',
-      compare: 'Compare',
-      branch: 'Branch',
-      logic: 'Logic',
-      arithmetic: 'Arithmetic',
-      stringFormat: 'String Format',
-      consoleLog: 'Console Log',
-      notify: 'Notify',
-      objectAccess: 'Object Access',
-      objectSet: 'Object Set',
-      arrayAccess: 'Array Access',
-      arrayPush: 'Array Push',
-      arrayLength: 'Array Length',
-    },
-    godotWry: {
-      wryIpc: 'WRY IPC',
-    },
+    // Base nodes
+    'base.SubGraphNode': 'SubGraph',
+    'base.SubGraphEntryNode': 'SubGraph Entry',
+    'base.SubGraphExitNode': 'SubGraph Exit',
+    // Core nodes
+    'core.ForwardNode': 'Forward',
+    'core.ParameterNode': 'Parameter',
+    'core.DistributeNode': 'Distribute',
+    'core.AggregateNode': 'Aggregate',
+    'core.CompareNode': 'Compare',
+    'core.BranchNode': 'Branch',
+    'core.LogicNode': 'Logic',
+    'core.ArithmeticNode': 'Arithmetic',
+    'core.StringFormatNode': 'String Format',
+    'core.ConsoleLogNode': 'Console Log',
+    'core.NotifyNode': 'Notify',
+    'core.ObjectAccessNode': 'Object Access',
+    'core.ObjectSetNode': 'Object Set',
+    'core.ArrayAccessNode': 'Array Access',
+    'core.ArrayPushNode': 'Array Push',
+    'core.ArrayLengthNode': 'Array Length',
+    // Godot WRY nodes
+    'godot-wry.WryIpcNode': 'WRY IPC',
+    'godot-wry.WryEventNode': 'WRY Event',
   },
 
   // Node categories

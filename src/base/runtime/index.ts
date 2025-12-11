@@ -25,7 +25,7 @@ export type {
 export { BasePort, ContainerPort, NullPort } from './ports'
 
 // Node 系统
-export { BaseNode, WebNode, BackendNode, registerBaseNodeMetas } from './nodes'
+export { BaseNode, WebNode, BackendNode, type NodeStaticMeta } from './nodes'
 
 // Graph 系统
 export { AnoraGraph } from './graph'

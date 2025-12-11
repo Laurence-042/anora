@@ -24,6 +24,8 @@ interface ParameterOutput {
  */
 @AnoraRegister('core.ParameterNode')
 export class ParameterNode extends WebNode<Record<string, never>, ParameterOutput> {
+  static override meta = { icon: '📝', category: 'core' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Parameter')
 

@@ -9,7 +9,7 @@ import { ElTooltip } from 'element-plus'
 import type { NodeProps } from '@vue-flow/core'
 import type { BaseNode } from '@/base/runtime/nodes'
 import { NodeExecutionStatus } from '@/base/runtime/types'
-import { NodeMetaRegistry } from '@/base/runtime/registry'
+import { NodeViewRegistry } from '@/base/ui/registry'
 import BasePortView from './BasePortView.vue'
 import { useGraphStore } from '@/stores/graph'
 import { useNodeInput } from '@/base/ui/composables'
@@ -31,7 +31,7 @@ const { inputClass, onKeydown } = useNodeInput()
 const node = computed(() => props.data.node)
 
 /** 节点元数据 */
-const nodeMeta = computed(() => NodeMetaRegistry.getOrDefault(node.value.typeId))
+const nodeMeta = computed(() => NodeViewRegistry.getNodeMeta(node.value.typeId))
 
 /** 节点显示名称 (i18n) */
 const nodeDisplayName = computed(() => {
@@ -45,7 +45,7 @@ const nodeDisplayName = computed(() => {
 })
 
 /** 节点图标 */
-const nodeIcon = computed(() => nodeMeta.value.icon ?? '◇')
+const nodeIcon = computed(() => nodeMeta.value.icon)
 
 /** 是否被选中 */
 const isSelected = computed(() => graphStore.isNodeSelected(node.value.id))

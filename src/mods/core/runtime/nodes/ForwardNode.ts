@@ -26,6 +26,8 @@ interface ForwardOutput {
  */
 @AnoraRegister('core.ForwardNode')
 export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
+  static override meta = { icon: '➡️', category: 'core' }
+
   /** 是否启用直通模式（由 Executor 检查并特殊处理） */
   directThrough: boolean = true
 

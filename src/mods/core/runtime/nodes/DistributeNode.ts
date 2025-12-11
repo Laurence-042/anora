@@ -29,6 +29,8 @@ interface DistributeOutput {
  */
 @AnoraRegister('core.DistributeNode')
 export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
+  static override meta = { icon: '🔀', category: 'core' }
+
   /** 当前正在处理的数组 */
   private currentArray: unknown[] = []
 

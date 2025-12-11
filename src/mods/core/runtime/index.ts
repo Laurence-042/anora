@@ -20,9 +20,6 @@ export {
   ArrayLengthNode,
 } from './nodes'
 
-// Node Metas
-export { coreModMeta, coreNodeMetas, registerCoreNodeMetas } from './nodeMetas'
-
 // Core Ports
 export {
   StringPort,

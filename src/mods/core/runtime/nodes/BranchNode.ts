@@ -19,6 +19,8 @@ interface BranchInput {
  */
 @AnoraRegister('core.BranchNode')
 export class BranchNode extends WebNode<BranchInput, Record<string, never>> {
+  static override meta = { icon: '🔀', category: 'logic' }
+
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Branch')
 
