@@ -2,24 +2,18 @@
  * ANORA Mods 入口
  *
  * 自动加载机制：
- * - 每个 mod 在导入时自动注册到 ModRegistry
- * - 只需在此文件 import mod 即可完成加载
- * - 新增 mod 时只需添加一行 import
+ * - 使用 Vite glob import 自动发现并加载所有 mod
+ * - 每个 mod 目录必须包含 index.ts，其中调用 ModRegistry.register()
+ * - 新增 mod 只需在 src/mods/ 下创建目录，无需修改此文件
  */
 
 // Mod 注册表
 export { ModRegistry, type ModDefinition, type ModLocales } from './ModRegistry'
 
-// ============ 加载所有 Mods ============
-// 每个 mod 在导入时会自动注册到 ModRegistry
-import './core'
-import './godot-wry'
-// 新增 mod 时在此添加 import
-// import './your-new-mod'
-
-// Re-export mods
-export * from './core'
-export * from './godot-wry'
+// ============ 自动发现并加载所有 Mods ============
+// Vite glob import: 自动导入 src/mods/*/index.ts
+// 每个 mod 的 index.ts 在导入时会自动执行 ModRegistry.register()
+const _modModules = import.meta.glob('./*/index.ts', { eager: true })
 
 import { ModRegistry } from './ModRegistry'
 

@@ -103,7 +103,7 @@ Follow `src/mods/README.md`. Each mod has:
 - `runtime/nodes/`, `runtime/ports/` - Node and Port implementations
 - `ui/nodes/` - Optional custom Vue views
 
-**Adding a new mod**: Import it in `src/mods/index.ts`
+**Adding a new mod**: Create directory `src/mods/{mod-name}/` with `index.ts` that calls `ModRegistry.register()`. Mods are auto-discovered via Vite glob import—no manual imports needed.
 
 ## i18n Conventions
 
