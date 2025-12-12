@@ -45,33 +45,27 @@ const operationOptions = [
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
     <template #controls>
-      <div class="control-section">
-        <ElSelect
-          v-model="currentOperation"
-          placeholder="选择运算"
-          :class="['operation-select', inputClass]"
-          @keydown="onKeydown"
-        >
-          <ElOption
-            v-for="op in operationOptions"
-            :key="op.value"
-            :label="op.label"
-            :value="op.value"
-          />
-        </ElSelect>
-      </div>
+      <ElSelect
+        v-model="currentOperation"
+        placeholder="选择运算"
+        size="small"
+        :class="['operation-select', inputClass]"
+        @keydown="onKeydown"
+      >
+        <ElOption
+          v-for="op in operationOptions"
+          :key="op.value"
+          :label="op.label"
+          :value="op.value"
+        />
+      </ElSelect>
     </template>
   </BaseNodeView>
 </template>
 
 <style scoped>
 /* ArithmeticNode 特有样式 */
-.control-section {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--node-border, #3a3a5c);
-}
-
 .operation-select {
-  width: 100%;
+  min-width: 80px;
 }
 </style>

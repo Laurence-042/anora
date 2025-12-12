@@ -117,11 +117,10 @@ const currentTypeColor = computed(() => {
 
 <style scoped>
 .notify-controls {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--node-border, #3a3a5c);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-width: 110px;
 }
 
 .control-row {
@@ -134,10 +133,12 @@ const currentTypeColor = computed(() => {
   font-size: 11px;
   color: var(--node-text-muted, #94a3b8);
   min-width: 32px;
+  flex-shrink: 0;
 }
 
 .type-select {
   flex: 1;
+  min-width: 80px;
 }
 
 .type-option {
@@ -154,11 +155,13 @@ const currentTypeColor = computed(() => {
 
 .duration-input {
   flex: 1;
+  min-width: 60px;
 }
 
 .duration-unit {
   font-size: 10px;
   color: var(--node-text-dim, #6b7280);
+  flex-shrink: 0;
 }
 
 .type-indicator {
@@ -183,14 +186,6 @@ const currentTypeColor = computed(() => {
 }
 
 /* Element Plus 样式覆盖 */
-:deep(.el-input__inner),
-:deep(.el-select .el-input__inner) {
-  background: var(--node-input-bg, rgba(37, 37, 66, 0.6)) !important;
-  border-color: var(--node-border, #3a3a5c) !important;
-  color: var(--node-text, #e2e8f0) !important;
-  font-size: 12px;
-}
-
 :deep(.el-input-number) {
   width: 100%;
 }

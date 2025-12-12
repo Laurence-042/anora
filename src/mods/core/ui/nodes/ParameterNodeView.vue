@@ -8,7 +8,7 @@ import type { NodeProps } from '@vue-flow/core'
 import type { ParameterNode } from '@/mods/core/runtime/nodes/ParameterNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
 import { useNodeInput, useContextField } from '@/base/ui/composables'
-import { ElInput } from 'element-plus'
+import { ElInput, ElBadge } from 'element-plus'
 
 interface ParameterNodeProps extends NodeProps {
   data: {
@@ -45,7 +45,7 @@ const parsedPreview = computed(() => {
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
     <template #controls>
-      <div class="value-section">
+      <ElBadge :value="parsedPreview" class="type-badge" type="primary">
         <ElInput
           v-model="editValue"
           type="textarea"
@@ -54,38 +54,25 @@ const parsedPreview = computed(() => {
           :class="['value-textarea', inputClass]"
           @keydown="onKeydown"
         />
-        <div class="value-hint">
-          <span class="type-badge">{{ parsedPreview }}</span>
-        </div>
-      </div>
+      </ElBadge>
     </template>
   </BaseNodeView>
 </template>
 
 <style scoped>
 /* ParameterNode 特有样式 */
-.value-section {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--node-border, #3a3a5c);
-}
-
-.value-hint {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 6px;
+.value-textarea {
+  min-width: 100px;
 }
 
 .type-badge {
-  font-size: 10px;
-  color: #a78bfa !important;
-  background: rgba(139, 92, 246, 0.2) !important;
-  padding: 2px 6px;
-  border-radius: 4px;
+  margin-top: 4px;
 }
 
-.hint-text {
-  font-size: 10px;
-  color: var(--node-text-dim, #6b7280);
+/* Badge 样式覆盖 */
+.type-badge :deep(.el-badge__content) {
+  background: rgba(139, 92, 246, 0.8);
+  border: none;
+  right: calc(0px + var(--el-badge-size) * 2);
 }
 </style>

@@ -259,7 +259,7 @@
 
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
-  color: var(--node-text-dim) !important;
+  color: var(--node-text) !important;
 }
 
 /* 禁用 textarea resize 防止节点漂移 */
@@ -267,7 +267,49 @@
   resize: none !important;
 }
 
-/* Select */
+/* Select - 统一与 Input 样式 */
+.el-select {
+  width: 100%;
+}
+
+.el-select .el-select__wrapper {
+  background: var(--node-input-bg) !important;
+  border: 1px solid var(--node-border) !important;
+  box-shadow: none !important;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.el-select .el-select__wrapper:hover {
+  border-color: var(--node-accent) !important;
+}
+
+.el-select .el-select__wrapper.is-focused {
+  border-color: var(--node-accent) !important;
+  box-shadow: none !important;
+}
+
+.el-select .el-select__selection {
+  color: var(--node-text) !important;
+}
+
+.el-select .el-select__selected-item {
+  color: var(--node-text) !important;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.el-select .el-select__placeholder {
+  color: var(--node-text) !important;
+}
+
+.el-select .el-select__suffix,
+.el-select .el-select__caret,
+.el-select .el-icon {
+  color: var(--node-text) !important;
+}
+
+/* 旧版 Select 兼容 */
 .el-select .el-input__wrapper {
   background: var(--node-input-bg) !important;
   border: 1px solid var(--node-border) !important;
@@ -278,11 +320,6 @@
   color: var(--node-text) !important;
 }
 
-.el-select .el-input__suffix,
-.el-select .el-select__caret {
-  color: var(--node-text-dim) !important;
-}
-
 /* Select Dropdown (全局弹出层) */
 .el-select-dropdown {
   background: var(--node-bg) !important;
@@ -291,14 +328,19 @@
 
 .el-select-dropdown__item {
   color: var(--node-text) !important;
+  font-size: 12px;
+  height: 28px;
+  line-height: 28px;
 }
 
 .el-select-dropdown__item:hover,
-.el-select-dropdown__item.hover {
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item.is-hovering {
   background: rgba(96, 165, 250, 0.15) !important;
 }
 
-.el-select-dropdown__item.selected {
+.el-select-dropdown__item.selected,
+.el-select-dropdown__item.is-selected {
   color: var(--node-accent) !important;
   background: rgba(96, 165, 250, 0.1) !important;
 }

@@ -8,6 +8,8 @@ import type { NodeProps } from '@vue-flow/core'
 import type { ForwardNode } from '@/mods/core/runtime/nodes/ForwardNode'
 import BaseNodeView from '@/base/ui/components/BaseNodeView.vue'
 import { useContextField } from '@/base/ui/composables'
+import { ElIcon } from 'element-plus'
+import { Promotion, Sort } from '@element-plus/icons-vue'
 
 interface ForwardNodeProps extends NodeProps {
   data: {
@@ -26,18 +28,25 @@ const { value: directThrough } = useContextField(node, {
   field: 'directThrough',
   defaultValue: true,
 })
+
+/** 切换模式 */
+function toggleMode(): void {
+  directThrough.value = !directThrough.value
+}
 </script>
 
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入直通模式控件 -->
   <BaseNodeView v-bind="props as any">
     <template #controls>
-      <div class="control-section direct-through-control">
-        <label class="direct-through-label">
-          <input type="checkbox" v-model="directThrough" class="direct-through-checkbox" />
-          <span class="direct-through-icon" :class="{ active: directThrough }">⚡</span>
-          <span class="direct-through-text">直通模式</span>
-        </label>
+      <div class="direct-through-control" @click="toggleMode">
+        <ElIcon class="mode-icon" :class="{ active: directThrough }">
+          <Promotion v-if="directThrough" />
+          <Sort v-else />
+        </ElIcon>
+        <span class="mode-text" :class="{ active: directThrough }">
+          {{ directThrough ? '直通模式' : '队列模式' }}
+        </span>
       </div>
     </template>
   </BaseNodeView>
@@ -45,46 +54,38 @@ const { value: directThrough } = useContextField(node, {
 
 <style scoped>
 /* ForwardNode 特有样式 */
-.control-section {
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--node-border, #3a3a5c);
-}
-
 .direct-through-control {
-  display: flex;
-  align-items: center;
-}
-
-.direct-through-label {
   display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 11px;
-  color: var(--node-text-muted, #94a3b8);
   user-select: none;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
-.direct-through-label:hover {
-  color: var(--node-text, #e2e8f0);
+.direct-through-control:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.direct-through-checkbox {
-  display: none;
-}
-
-.direct-through-icon {
-  font-size: 14px;
-  opacity: 0.4;
+.mode-icon {
+  font-size: 16px;
+  color: var(--node-text-dim, #6b7280);
   transition: all 0.2s;
 }
 
-.direct-through-icon.active {
-  opacity: 1;
+.mode-icon.active {
   color: var(--node-warning, #fbbf24);
 }
 
-.direct-through-text {
+.mode-text {
+  font-size: 11px;
+  color: var(--node-text-dim, #6b7280);
   transition: color 0.2s;
+}
+
+.mode-text.active {
+  color: var(--node-warning, #fbbf24);
 }
 </style>
