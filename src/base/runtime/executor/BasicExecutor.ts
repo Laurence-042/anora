@@ -4,6 +4,50 @@ import { BaseNode } from '../nodes/BaseNode'
 import { AnoraGraph } from '../graph/AnoraGraph'
 import { DEFAULT_EXECUTOR_CONTEXT } from '../types'
 import type { DemoRecorder } from '../demo/DemoRecorder'
+import Bluebird from 'bluebird'
+
+// 启用 Bluebird 的取消功能
+Bluebird.config({ cancellation: true })
+
+/**
+ * 创建可取消的延迟 Promise
+ * 使用 Bluebird 的取消机制，不需要轮询检查
+ */
+function cancellableDelay(ms: number): Bluebird<void> {
+  return new Bluebird<void>((resolve, _reject, onCancel) => {
+    const timer = setTimeout(resolve, ms)
+    onCancel?.(() => {
+      clearTimeout(timer)
+    })
+  })
+}
+
+/**
+ * 可取消的 Promise.allSettled
+ * 当 Promise 被取消时，所有待处理的 Promise 也会被取消
+ */
+function cancellableAllSettled<T>(promises: Promise<T>[]): Bluebird<PromiseSettledResult<T>[]> {
+  // 将普通 Promise 包装为 Bluebird Promise
+  const bluebirdPromises = promises.map((p) => Bluebird.resolve(p).reflect())
+
+  return new Bluebird<PromiseSettledResult<T>[]>((resolve, _reject, onCancel) => {
+    onCancel?.(() => {
+      // 取消所有子 Promise
+      bluebirdPromises.forEach((p) => p.cancel())
+    })
+
+    Bluebird.all(bluebirdPromises).then((inspections) => {
+      const results: PromiseSettledResult<T>[] = inspections.map((inspection) => {
+        if (inspection.isFulfilled()) {
+          return { status: 'fulfilled' as const, value: inspection.value() }
+        } else {
+          return { status: 'rejected' as const, reason: inspection.reason() }
+        }
+      })
+      resolve(results)
+    })
+  })
+}
 
 /**
  * 检查节点是否为开启直通模式的 ForwardNode
@@ -71,14 +115,11 @@ export class BasicExecutor {
   /** 执行状态 */
   private _status: ExecutorStatus = ExecutorStatus.Idle
 
-  /** 是否已取消 */
-  private cancelled: boolean = false
+  /** 当前执行的 Bluebird Promise（用于取消） */
+  private currentExecution: Bluebird<ExecutionResult> | null = null
 
   /** 事件监听器 */
   private listeners: Set<ExecutorEventListener> = new Set()
-
-  /** 当前执行的 Promise（用于取消） */
-  private currentExecution: Promise<ExecutionResult> | null = null
 
   /** Demo recorder (optional) */
   private demoRecorder?: DemoRecorder
@@ -142,7 +183,6 @@ export class BasicExecutor {
 
     const startTime = Date.now()
     this._status = ExecutorStatus.Running
-    this.cancelled = false
 
     const execContext: ExecutorContext = context ?? DEFAULT_EXECUTOR_CONTEXT
 
@@ -154,65 +194,102 @@ export class BasicExecutor {
     this.emit({ type: 'start' })
 
     let iterations = 0
+    let cancelled = false
 
-    try {
-      // 迭代阶段：循环直到没有就绪节点或用户取消
-      // 不使用最大迭代次数限制，支持环结构做周期性触发器
-      while (!this.cancelled) {
-        iterations++
-        this.emit({ type: 'iteration', iteration: iterations })
+    // 创建可取消的执行 Promise
+    this.currentExecution = new Bluebird<ExecutionResult>(async (resolve, reject, onCancel) => {
+      // 设置取消回调
+      onCancel?.(() => {
+        cancelled = true
+      })
 
-        const readyNodes = this.findReadyNodes(graph)
+      try {
+        // 迭代阶段：循环直到没有就绪节点或用户取消
+        while (!cancelled) {
+          iterations++
+          this.emit({ type: 'iteration', iteration: iterations })
 
-        if (readyNodes.length === 0) {
-          // 没有就绪节点，执行完成
-          break
+          // 迭代开始前的延迟（跳过第一次迭代）
+          if (iterations > 1 && execContext.iterationDelay && execContext.iterationDelay > 0) {
+            const delayPromise = cancellableDelay(execContext.iterationDelay)
+
+            // 监听取消信号
+            if (cancelled) {
+              delayPromise.cancel()
+              break
+            }
+
+            try {
+              await delayPromise
+            } catch {
+              // 延迟被取消
+              if (cancelled) break
+            }
+          }
+
+          // 检查取消状态
+          if (cancelled) break
+
+          const readyNodes = this.findReadyNodes(graph)
+
+          if (readyNodes.length === 0) {
+            // 没有就绪节点，执行完成
+            break
+          }
+
+          const results = await this.executeNodes(readyNodes, graph, execContext, cancelled)
+
+          // 检查取消状态
+          if (cancelled) break
+
+          // Record iteration if demo recorder is active
+          if (this.demoRecorder?.isActive()) {
+            const activatedNodeIds = readyNodes.map((n) => n.id)
+            this.demoRecorder.recordIteration(graph.getAllNodes(), activatedNodeIds)
+          }
+
+          // 检查是否有节点失败
+          const failed = results.filter((r) => !r.success)
+          if (failed.length > 0) {
+            const errorMessages = failed.map((f) => f.error?.message || 'Unknown error').join('; ')
+            throw new Error(`Nodes failed: ${errorMessages}`)
+          }
         }
 
-        const results = await this.executeNodes(readyNodes, graph, execContext)
-
-        // Record iteration if demo recorder is active
-        if (this.demoRecorder?.isActive()) {
-          const activatedNodeIds = readyNodes.map((n) => n.id)
-          this.demoRecorder.recordIteration(graph.getAllNodes(), activatedNodeIds)
+        if (cancelled) {
+          this._status = ExecutorStatus.Cancelled
+          this.emit({ type: 'cancelled' })
+          resolve({
+            status: ExecutorStatus.Cancelled,
+            iterations,
+            duration: Date.now() - startTime,
+          })
+          return
         }
 
-        // 检查是否有节点失败
-        const failed = results.filter((r) => !r.success)
-        if (failed.length > 0) {
-          const errorMessages = failed.map((f) => f.error?.message || 'Unknown error').join('; ')
-          throw new Error(`Nodes failed: ${errorMessages}`)
-        }
-      }
-
-      if (this.cancelled) {
-        this._status = ExecutorStatus.Cancelled
-        this.emit({ type: 'cancelled' })
-        return {
-          status: ExecutorStatus.Cancelled,
+        this._status = ExecutorStatus.Completed
+        const result: ExecutionResult = {
+          status: ExecutorStatus.Completed,
           iterations,
           duration: Date.now() - startTime,
         }
+        this.emit({ type: 'complete', result })
+        resolve(result)
+      } catch (error) {
+        this._status = ExecutorStatus.Error
+        const err = error instanceof Error ? error : new Error(String(error))
+        this.emit({ type: 'error', error: err })
+        resolve({
+          status: ExecutorStatus.Error,
+          error: err,
+          iterations,
+          duration: Date.now() - startTime,
+        })
       }
+    })
 
-      this._status = ExecutorStatus.Completed
-      const result: ExecutionResult = {
-        status: ExecutorStatus.Completed,
-        iterations,
-        duration: Date.now() - startTime,
-      }
-      this.emit({ type: 'complete', result })
-      return result
-    } catch (error) {
-      this._status = ExecutorStatus.Error
-      const err = error instanceof Error ? error : new Error(String(error))
-      this.emit({ type: 'error', error: err })
-      return {
-        status: ExecutorStatus.Error,
-        error: err,
-        iterations,
-        duration: Date.now() - startTime,
-      }
+    try {
+      return await this.currentExecution
     } finally {
       this.currentExecution = null
     }
@@ -222,8 +299,8 @@ export class BasicExecutor {
    * 取消执行
    */
   cancel(): void {
-    if (this._status === ExecutorStatus.Running) {
-      this.cancelled = true
+    if (this._status === ExecutorStatus.Running && this.currentExecution) {
+      this.currentExecution.cancel()
     }
   }
 
@@ -235,7 +312,6 @@ export class BasicExecutor {
       throw new Error('Cannot reset while running')
     }
     this._status = ExecutorStatus.Idle
-    this.cancelled = false
   }
 
   /**
@@ -287,6 +363,7 @@ export class BasicExecutor {
     nodes: BaseNode[],
     graph: AnoraGraph,
     context: ExecutorContext,
+    cancelled: boolean,
   ): Promise<NodeExecutionResult[]> {
     const results: NodeExecutionResult[] = []
 
@@ -304,7 +381,8 @@ export class BasicExecutor {
       }
     })
 
-    const settledResults = await Promise.allSettled(promises)
+    // 使用可取消的 allSettled
+    const settledResults = await cancellableAllSettled(promises)
 
     // 收集执行结果
     for (let i = 0; i < settledResults.length; i++) {
@@ -319,6 +397,11 @@ export class BasicExecutor {
           error: result.reason as Error,
         })
       }
+    }
+
+    // 如果已取消，直接返回
+    if (cancelled) {
+      return results
     }
 
     // 对成功执行的节点：清空入 Port，传播出 Port 数据

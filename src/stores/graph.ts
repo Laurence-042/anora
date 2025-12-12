@@ -289,8 +289,14 @@ export const useGraphStore = defineStore('graph', () => {
     // 注册事件监听
     const unsubscribe = executor.value.on(handleExecutorEvent)
 
+    // 将迭代延迟传递给执行器上下文
+    const context: ExecutorContext = {
+      ...executorContext.value,
+      iterationDelay: iterationDelay.value,
+    }
+
     try {
-      await executor.value.execute(currentGraph.value, executorContext.value)
+      await executor.value.execute(currentGraph.value, context)
     } finally {
       unsubscribe()
     }

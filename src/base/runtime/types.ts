@@ -126,6 +126,8 @@ export type IExecutorConstructor = new (...args: unknown[]) => IExecutor
 export type ExecutorContext = {
   /** 后端 IPC 类型标识 */
   ipcTypeId: string
+  /** 迭代间延迟（毫秒，用于调试） */
+  iterationDelay?: number
   /** 其他的可能由节点访问的属性 */
   [key: string]: unknown
 }
@@ -135,6 +137,7 @@ export type ExecutorContext = {
  */
 export const DEFAULT_EXECUTOR_CONTEXT: ExecutorContext = {
   ipcTypeId: 'postMessage',
+  iterationDelay: 0,
 }
 
 // ==================== 序列化 ====================
