@@ -42,8 +42,38 @@ function getNodeName(typeId: string): string {
   return t(`nodes.${mod}.${nodeName}`, nodeName ?? typeId)
 }
 
-/** 本地 label 状态（用于响应式更新） */
+/** 本地 label 状态（用于响应式更新，避免 markRaw 导致的不响应） */
 const localLabel = ref(node.value.label)
+
+/** Label 编辑状态 */
+const isEditingLabel = ref(false)
+const editLabelInput = ref<HTMLInputElement | null>(null)
+const editingLabelValue = ref('')
+
+/** 开始编辑 label */
+function startEditLabel(): void {
+  editingLabelValue.value = localLabel.value
+  isEditingLabel.value = true
+  nextTick(() => {
+    editLabelInput.value?.focus()
+    editLabelInput.value?.select()
+  })
+}
+
+/** 完成编辑 label */
+function finishEditLabel(): void {
+  if (editingLabelValue.value.trim()) {
+    const newLabel = editingLabelValue.value.trim()
+    node.value.label = newLabel
+    localLabel.value = newLabel
+  }
+  isEditingLabel.value = false
+}
+
+/** 取消编辑 label */
+function cancelEditLabel(): void {
+  isEditingLabel.value = false
+}
 
 /** 节点显示名称 (i18n) */
 const nodeDisplayName = computed(() => {
@@ -76,36 +106,6 @@ function togglePortExpand(portId: string): void {
   } else {
     expandedPorts.value.add(portId)
   }
-}
-
-/** Label 编辑状态 */
-const isEditingLabel = ref(false)
-const editLabelInput = ref<HTMLInputElement | null>(null)
-const editingLabelValue = ref('')
-
-/** 开始编辑 label */
-function startEditLabel(): void {
-  editingLabelValue.value = localLabel.value
-  isEditingLabel.value = true
-  nextTick(() => {
-    editLabelInput.value?.focus()
-    editLabelInput.value?.select()
-  })
-}
-
-/** 完成编辑 label */
-function finishEditLabel(): void {
-  if (editingLabelValue.value.trim()) {
-    const newLabel = editingLabelValue.value.trim()
-    node.value.label = newLabel
-    localLabel.value = newLabel
-  }
-  isEditingLabel.value = false
-}
-
-/** 取消编辑 label */
-function cancelEditLabel(): void {
-  isEditingLabel.value = false
 }
 
 /** 状态边框颜色 */

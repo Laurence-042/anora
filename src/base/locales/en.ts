@@ -31,6 +31,10 @@ export default {
     nodes: 'Nodes',
     selected: 'Selected',
     level: 'Level',
+    export: 'Export',
+    import: 'Import',
+    exportGraph: 'Export Graph',
+    importGraph: 'Import Graph',
   },
 
   // Executor
@@ -121,5 +125,6 @@ export default {
     connectionFailed: 'Connection failed',
     executionFailed: 'Execution failed',
     invalidOperation: 'Invalid operation',
+    invalidGraph: 'Invalid graph file',
   },
 }

@@ -31,6 +31,10 @@ export default {
     nodes: '节点',
     selected: '选中',
     level: '层级',
+    export: '导出',
+    import: '导入',
+    exportGraph: '导出逻辑图',
+    importGraph: '导入逻辑图',
   },
 
   // 执行器
@@ -121,5 +125,6 @@ export default {
     connectionFailed: '连接失败',
     executionFailed: '执行失败',
     invalidOperation: '无效操作',
+    invalidGraph: '无效的逻辑图文件',
   },
 }

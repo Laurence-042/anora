@@ -28,11 +28,20 @@ interface ForwardOutput {
 export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
   static override meta = { icon: '➡️', category: 'core' }
 
-  /** 是否启用直通模式（由 Executor 检查并特殊处理） */
-  directThrough: boolean = true
+  /** 是否启用直通模式（存储在 context 中，由 Executor 检查并特殊处理） */
+  get directThrough(): boolean {
+    return this.getContextField('directThrough') ?? true
+  }
+
+  set directThrough(value: boolean) {
+    this.setContextField('directThrough', value)
+  }
 
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Forward')
+
+    // 初始化 context 默认值
+    this.context = { directThrough: true }
 
     // 入 Port - 接受任意类型（使用 NullPort）
     this.addInPort(ForwardNodePorts.IN.VALUE, new NullPort(this))
