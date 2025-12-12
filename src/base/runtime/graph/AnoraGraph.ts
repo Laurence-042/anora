@@ -248,6 +248,13 @@ export class AnoraGraph {
   }
 
   /**
+   * 根据 Port ID 获取所属 Node
+   */
+  getNodeByPortId(portId: string): BaseNode | undefined {
+    return this.portToNode.get(portId)
+  }
+
+  /**
    * 获取与指定 Port 连接的 Port 列表
    */
   getConnectedPorts(port: BasePort): BasePort[] {
@@ -362,6 +369,13 @@ export class AnoraGraph {
   }
 
   // ==================== 序列化 ====================
+
+  /**
+   * 获取所有边
+   */
+  getAllEdges(): Array<{ fromPortId: string; toPortId: string }> {
+    return [...this.edges]
+  }
 
   /**
    * 序列化图

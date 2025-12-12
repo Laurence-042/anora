@@ -6,6 +6,8 @@
  * Types of operations that can be recorded
  */
 export enum DemoOperationType {
+  /** Initial graph state when recording starts */
+  INITIAL_STATE = 'initial_state',
   /** Executor completed an iteration */
   ITERATION = 'iteration',
   /** Node was added to the graph */
@@ -132,9 +134,32 @@ export interface DataPropagateOperation extends DemoOperation {
 }
 
 /**
+ * Initial graph state operation - records all nodes and edges when recording starts
+ */
+export interface InitialStateOperation extends DemoOperation {
+  type: DemoOperationType.INITIAL_STATE
+  /** All nodes in the graph */
+  nodes: Array<{
+    nodeId: string
+    nodeType: string
+    label: string
+    position: { x: number; y: number }
+    context?: unknown
+  }>
+  /** All edges in the graph */
+  edges: Array<{
+    fromNodeId: string
+    fromPortName: string
+    toNodeId: string
+    toPortName: string
+  }>
+}
+
+/**
  * Union type of all operations
  */
 export type AnyDemoOperation =
+  | InitialStateOperation
   | IterationOperation
   | NodeAddedOperation
   | NodeRemovedOperation

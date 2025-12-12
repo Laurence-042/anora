@@ -6,6 +6,7 @@ import type {
   AnyDemoOperation,
   DemoRecording,
   IterationOperation,
+  InitialStateOperation,
   NodeAddedOperation,
   NodeRemovedOperation,
   EdgeAddedOperation,
@@ -22,7 +23,7 @@ export class DemoRecorder {
   private operations: AnyDemoOperation[] = []
   private stepCounter = 0
   private isRecording = false
-  
+
   /** Callback when an operation is recorded */
   onOperationRecorded?: (count: number) => void
 
@@ -55,6 +56,36 @@ export class DemoRecorder {
    */
   isActive(): boolean {
     return this.isRecording
+  }
+
+  /**
+   * Record the initial state of the graph when recording starts
+   */
+  recordInitialState(
+    nodes: Array<{
+      nodeId: string
+      nodeType: string
+      label: string
+      position: { x: number; y: number }
+      context?: unknown
+    }>,
+    edges: Array<{
+      fromNodeId: string
+      fromPortName: string
+      toNodeId: string
+      toPortName: string
+    }>,
+  ): void {
+    if (!this.isRecording) return
+
+    const operation: InitialStateOperation = {
+      type: 'initial_state' as DemoOperationType.INITIAL_STATE,
+      stepIndex: this.stepCounter++,
+      nodes,
+      edges,
+    }
+
+    this.pushOperation(operation)
   }
 
   /**

@@ -52,6 +52,42 @@ async function applyDemoOperation(operation: AnyDemoOperation): Promise<void> {
   highlightedNodeIds.value.clear()
 
   switch (operation.type) {
+    case DemoOperationType.INITIAL_STATE: {
+      // 清空当前图
+      for (const node of [...graphStore.nodes]) {
+        graphStore.removeNode(node.id)
+      }
+      nodePositions.value.clear()
+
+      // 添加所有节点
+      for (const nodeData of operation.nodes) {
+        const node = NodeRegistry.createNode(nodeData.nodeType, nodeData.nodeId)
+        if (node) {
+          const baseNode = node as BaseNode
+          baseNode.label = nodeData.label
+          if (nodeData.context && baseNode.context) {
+            Object.assign(baseNode.context, nodeData.context)
+          }
+          graphStore.addNode(baseNode)
+          nodePositions.value.set(nodeData.nodeId, { ...nodeData.position })
+        }
+      }
+
+      // 添加所有边
+      for (const edgeData of operation.edges) {
+        const fromNode = graphStore.currentGraph.getNode(edgeData.fromNodeId)
+        const toNode = graphStore.currentGraph.getNode(edgeData.toNodeId)
+        if (fromNode && toNode) {
+          const fromPort = fromNode.outPorts.get(edgeData.fromPortName)
+          const toPort = toNode.inPorts.get(edgeData.toPortName)
+          if (fromPort && toPort) {
+            graphStore.currentGraph.addEdge(fromPort.id, toPort.id)
+          }
+        }
+      }
+      break
+    }
+
     case DemoOperationType.ITERATION:
       for (const nodeState of operation.nodeStates) {
         const node = graphStore.currentGraph.getNode(nodeState.nodeId)
@@ -121,6 +157,22 @@ async function applyDemoOperation(operation: AnyDemoOperation): Promise<void> {
     case DemoOperationType.NODE_MOVED:
       nodePositions.value.set(operation.nodeId, { ...operation.position })
       highlightedNodeIds.value.add(operation.nodeId)
+      break
+
+    case DemoOperationType.NODE_ACTIVATED:
+      // 高亮激活的节点
+      highlightedNodeIds.value.add(operation.nodeId)
+      break
+
+    case DemoOperationType.DATA_PROPAGATE:
+      // 数据传播 - 高亮涉及的节点
+      for (const transfer of operation.transfers) {
+        // 找到源端口和目标端口所属的节点并高亮
+        const sourceNode = graphStore.currentGraph.getNodeByPortId(transfer.sourcePortId)
+        const targetNode = graphStore.currentGraph.getNodeByPortId(transfer.targetPortId)
+        if (sourceNode) highlightedNodeIds.value.add(sourceNode.id)
+        if (targetNode) highlightedNodeIds.value.add(targetNode.id)
+      }
       break
   }
 }

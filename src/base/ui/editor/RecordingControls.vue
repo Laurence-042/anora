@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import { DemoRecorder } from '@/base/runtime/demo'
 
-defineProps<{
+const props = defineProps<{
   /** 节点位置映射（用于录制节点位置） */
   nodePositions: Map<string, { x: number; y: number }>
 }>()
@@ -34,6 +34,50 @@ function startRecording(): void {
   isRecording.value = true
   operationCount.value = 0
   graphStore.executor.setDemoRecorder(recorder)
+
+  // 记录初始图状态
+  const graph = graphStore.currentGraph
+  const nodes = graph.getAllNodes().map((node) => {
+    const pos = props.nodePositions.get(node.id) || { x: 0, y: 0 }
+    return {
+      nodeId: node.id,
+      nodeType: node.typeId,
+      label: node.label,
+      position: pos,
+      context: node.context,
+    }
+  })
+
+  // 构建 portId -> { node, portName } 的映射
+  const portIdToInfo = new Map<string, { nodeId: string; portName: string }>()
+  for (const node of graph.getAllNodes()) {
+    for (const [name, port] of node.inPorts) {
+      portIdToInfo.set(port.id, { nodeId: node.id, portName: name })
+    }
+    for (const [name, port] of node.outPorts) {
+      portIdToInfo.set(port.id, { nodeId: node.id, portName: name })
+    }
+    // exec ports
+    if (node.inExecPort) {
+      portIdToInfo.set(node.inExecPort.id, { nodeId: node.id, portName: 'exec' })
+    }
+    if (node.outExecPort) {
+      portIdToInfo.set(node.outExecPort.id, { nodeId: node.id, portName: 'exec' })
+    }
+  }
+
+  const edges = graph.getAllEdges().map((edge) => {
+    const fromInfo = portIdToInfo.get(edge.fromPortId)
+    const toInfo = portIdToInfo.get(edge.toPortId)
+    return {
+      fromNodeId: fromInfo?.nodeId || '',
+      fromPortName: fromInfo?.portName || '',
+      toNodeId: toInfo?.nodeId || '',
+      toPortName: toInfo?.portName || '',
+    }
+  })
+
+  recorder.recordInitialState(nodes, edges)
 }
 
 /** 停止录制 */
