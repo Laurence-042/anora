@@ -3,7 +3,7 @@
  * EdgeView - 自定义边组件
  * 使用贝塞尔曲线，支持动画效果和数据传递显示
  */
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref } from 'vue'
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@vue-flow/core'
 import { useGraphStore } from '@/stores/graph'
 import { storeToRefs } from 'pinia'
@@ -23,20 +23,6 @@ const parsedHandleIds = computed(() => {
   return { sourceHandleId: undefined, targetHandleId: undefined }
 })
 
-// 调试：监听 edgeDataTransfers 变化
-watchEffect(() => {
-  const map = edgeDataTransfers.value
-  const size = map.size
-  if (size > 0) {
-    const { sourceHandleId, targetHandleId } = parsedHandleIds.value
-    if (sourceHandleId && targetHandleId) {
-      const edgeKey = `${sourceHandleId}->${targetHandleId}`
-      const hasData = map.has(edgeKey)
-      console.log('[EdgeView watchEffect]', props.id, 'edgeKey:', edgeKey, 'hasData:', hasData, 'mapSize:', size)
-    }
-  }
-})
-
 /** 是否正在执行（用于动画） */
 const isActive = computed(() => {
   // 检查源节点是否正在执行
@@ -54,26 +40,16 @@ const isSelected = computed(() => graphStore.selectedEdges.has(edgeKey.value))
 const hasDataTransfer = computed(() => {
   const { sourceHandleId, targetHandleId } = parsedHandleIds.value
   if (!sourceHandleId || !targetHandleId) return false
-  // 使用 storeToRefs 解构的响应式引用
   const edgeKey = `${sourceHandleId}->${targetHandleId}`
-  const result = edgeDataTransfers.value.has(edgeKey)
-  if (result) {
-    console.log('[EdgeView] hasDataTransfer:', props.id, 'edgeKey:', edgeKey, result)
-  }
-  return result
+  return edgeDataTransfers.value.has(edgeKey)
 })
 
 /** 传递的数据 */
 const transferData = computed(() => {
   const { sourceHandleId, targetHandleId } = parsedHandleIds.value
   if (!sourceHandleId || !targetHandleId) return undefined
-  // 使用 storeToRefs 解构的响应式引用
   const edgeKey = `${sourceHandleId}->${targetHandleId}`
-  const data = edgeDataTransfers.value.get(edgeKey)
-  if (data) {
-    console.log('[EdgeView] transferData:', props.id, 'edgeKey:', edgeKey, data)
-  }
-  return data
+  return edgeDataTransfers.value.get(edgeKey)
 })
 
 /** 格式化显示的数据 */
@@ -118,7 +94,13 @@ const pathData = computed(() => {
 
 /** 边的样式 */
 const edgeStyle = computed(() => ({
-  stroke: hasDataTransfer.value ? '#22c55e' : isActive.value ? '#fbbf24' : isSelected.value ? '#60a5fa' : '#64748b',
+  stroke: hasDataTransfer.value
+    ? '#22c55e'
+    : isActive.value
+      ? '#fbbf24'
+      : isSelected.value
+        ? '#60a5fa'
+        : '#64748b',
   strokeWidth: hasDataTransfer.value ? 3 : isActive.value ? 3 : 2,
 }))
 
@@ -143,7 +125,7 @@ const fullDataContent = computed(() => {
     :path="pathData[0]"
     :class="{ 'edge-active': isActive, 'edge-data-transfer': hasDataTransfer }"
   />
-  
+
   <!-- 数据传递标签 -->
   <EdgeLabelRenderer v-if="showLabel">
     <div

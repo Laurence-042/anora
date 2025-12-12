@@ -277,15 +277,12 @@ export const useGraphStore = defineStore('graph', () => {
       case 'data-propagate':
         // 记录边上传递的数据（创建新 Map 以触发响应式更新）
         {
-          console.log('[graph.ts] data-propagate event:', event.transfers)
           const newMap = new Map(edgeDataTransfers.value)
           for (const transfer of event.transfers) {
             const edgeKey = `${transfer.fromPortId}->${transfer.toPortId}`
-            console.log('[graph.ts] storing edge data:', edgeKey, transfer.data)
             newMap.set(edgeKey, transfer)
           }
           edgeDataTransfers.value = newMap
-          console.log('[graph.ts] edgeDataTransfers size:', edgeDataTransfers.value.size)
         }
         break
 
