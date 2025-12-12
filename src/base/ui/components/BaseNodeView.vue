@@ -177,12 +177,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
       </div>
     </div>
 
-    <!-- 节点控制区域（供子组件覆盖使用的插槽） -->
-    <div class="node-controls">
-      <slot name="controls" :node="node"></slot>
-    </div>
-
-    <!-- 节点主体：Ports -->
+    <!-- 节点主体：三栏布局（左 Ports / 中 Controls / 右 Ports） -->
     <div class="node-body">
       <!-- 左侧：输入 Ports -->
       <div class="ports-column ports-left">
@@ -211,6 +206,11 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           :expanded="expandedPorts.has(port.id)"
           @toggle-expand="togglePortExpand(port.id)"
         />
+      </div>
+
+      <!-- 中间：控制区域（供子组件覆盖使用的插槽） -->
+      <div class="node-controls">
+        <slot name="controls" :node="node"></slot>
       </div>
 
       <!-- 右侧：输出 Ports -->
@@ -310,23 +310,32 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   color: var(--node-warning, #fbbf24);
 }
 
-/* 控制区域 */
-.node-controls:empty {
-  display: none;
+/* 控制区域 - 位于中间列 */
+.node-controls {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
 }
 
-/* 节点主体 */
+.node-controls:empty {
+  display: none;
+  padding: 0;
+}
+
+/* 节点主体 - 三栏布局 */
 .node-body {
   display: flex;
-  justify-content: space-between;
+  align-items: flex-start; /* 顶部对齐 */
   padding: 8px 0;
   min-height: 40px;
+  gap: 4px;
 }
 
 .ports-column {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex-shrink: 0; /* 防止 ports 被压缩 */
 }
 
 .ports-left {
@@ -335,6 +344,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 
 .ports-right {
   align-items: flex-end;
+  margin-left: auto; /* 推到右边 */
 }
 
 /* 错误信息 */
