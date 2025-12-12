@@ -25,6 +25,7 @@ const operationCount = ref(0)
 /** 开始录制 */
 function startRecording(): void {
   recorder.clear()
+  recorder.startRecording()
   isRecording.value = true
   operationCount.value = 0
   graphStore.executor.setDemoRecorder(recorder)
@@ -32,6 +33,7 @@ function startRecording(): void {
 
 /** 停止录制 */
 function stopRecording(): void {
+  recorder.stopRecording()
   isRecording.value = false
   graphStore.executor.setDemoRecorder(undefined)
 }
