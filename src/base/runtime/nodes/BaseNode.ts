@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import { ActivationReadyStatus, NodeExecutionStatus } from '../types'
-import type { ExecutorContext, SerializedNode, RealDataType } from '../types'
+import type { ExecutorContext, SerializedNode, SerializedPort, RealDataType } from '../types'
 import { BasePort, NullPort } from '../ports'
 
 /**
@@ -466,6 +466,52 @@ export abstract class BaseNode<
       outControlPorts: serializePorts(this.outControlPorts) as Record<string, never>,
       inPorts: serializePorts(this.inPorts) as Record<string, never>,
       outPorts: serializePorts(this.outPorts) as Record<string, never>,
+    }
+  }
+
+  /**
+   * 从序列化数据恢复端口 ID
+   * @param serialized 序列化的节点数据
+   */
+  restorePortIds(serialized: SerializedNode): void {
+    const restorePortMapIds = (
+      portMap: Map<string, BasePort>,
+      serializedPorts: Record<string, SerializedPort>,
+    ) => {
+      for (const [name, port] of portMap) {
+        const serializedPort = serializedPorts[name]
+        if (serializedPort?.id) {
+          port.restoreId(serializedPort.id)
+        }
+      }
+    }
+
+    // 恢复 exec ports
+    if (serialized.inExecPort?.id) {
+      this.inExecPort.restoreId(serialized.inExecPort.id)
+    }
+    if (serialized.outExecPort?.id) {
+      this.outExecPort.restoreId(serialized.outExecPort.id)
+    }
+
+    // 恢复各类 ports
+    if (serialized.inControlPorts) {
+      restorePortMapIds(
+        this.inControlPorts,
+        serialized.inControlPorts as Record<string, SerializedPort>,
+      )
+    }
+    if (serialized.outControlPorts) {
+      restorePortMapIds(
+        this.outControlPorts,
+        serialized.outControlPorts as Record<string, SerializedPort>,
+      )
+    }
+    if (serialized.inPorts) {
+      restorePortMapIds(this.inPorts, serialized.inPorts as Record<string, SerializedPort>)
+    }
+    if (serialized.outPorts) {
+      restorePortMapIds(this.outPorts, serialized.outPorts as Record<string, SerializedPort>)
     }
   }
 }

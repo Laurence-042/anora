@@ -14,6 +14,11 @@ interface ForwardOutput {
   [ForwardNodePorts.OUT.VALUE]: unknown
 }
 
+/** ForwardNode context 类型 */
+interface ForwardContext {
+  directThrough: boolean
+}
+
 /**
  * ForwardNode - 中继节点
  * 接受任意数据类型并原样输出
@@ -25,7 +30,7 @@ interface ForwardOutput {
  * 在数据传播阶段立即执行而非等待下一迭代
  */
 @AnoraRegister('core.ForwardNode')
-export class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
+export class ForwardNode extends WebNode<ForwardInput, ForwardOutput, object, ForwardContext> {
   static override meta = { icon: '➡️', category: 'core' }
 
   /** 是否启用直通模式（存储在 context 中，由 Executor 检查并特殊处理） */

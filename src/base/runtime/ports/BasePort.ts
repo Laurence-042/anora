@@ -3,7 +3,7 @@ import { DataType, TYPE_COMPATIBILITY_MATRIX } from '../types'
 import type { RealDataType, SerializedPort, ConversionResult } from '../types'
 
 // 前向声明类型 - 使用 any 泛型以避免循环依赖问题
- 
+
 import type { BaseNode } from '../nodes/BaseNode'
 
 /** Port 可以关联的节点类型 */
@@ -16,7 +16,20 @@ type AnyNode = BaseNode<any, any, any>
  */
 export abstract class BasePort {
   /** UUID */
-  readonly id: string
+  private _id: string
+
+  /** 获取 Port ID */
+  get id(): string {
+    return this._id
+  }
+
+  /**
+   * 恢复 Port ID（仅用于反序列化）
+   * @param id 要恢复的 ID
+   */
+  restoreId(id: string): void {
+    this._id = id
+  }
 
   /** 反查所属节点 */
   parentNode: AnyNode
@@ -34,7 +47,7 @@ export abstract class BasePort {
   protected _hasData: boolean = false
 
   constructor(parentNode: AnyNode, parentPort?: ContainerPort, keyInParent?: string | number) {
-    this.id = uuidv4()
+    this._id = uuidv4()
     this.parentNode = parentNode
     this.parentPort = parentPort
     this.keyInParent = keyInParent

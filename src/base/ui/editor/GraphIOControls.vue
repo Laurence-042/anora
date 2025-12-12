@@ -86,7 +86,7 @@ function loadGraphFromData(data: SerializedGraph): void {
   graphStore.currentGraph.clear()
   const newPositions = new Map<string, { x: number; y: number }>()
 
-  // 创建节点
+  // 创建节点并恢复 Port ID
   for (const nodeData of data.nodes) {
     const node = NodeRegistry.createNode(nodeData.typeId, nodeData.id, nodeData.label) as
       | BaseNode
@@ -96,7 +96,12 @@ function loadGraphFromData(data: SerializedGraph): void {
       if (nodeData.context !== undefined) {
         node.context = nodeData.context
       }
+
+      // 恢复端口 ID（确保边连接能正确恢复）
+      node.restorePortIds(nodeData)
+
       graphStore.currentGraph.addNode(node)
+
       // 恢复位置
       if (nodeData.position) {
         newPositions.set(nodeData.id, { x: nodeData.position.x, y: nodeData.position.y })
@@ -106,7 +111,7 @@ function loadGraphFromData(data: SerializedGraph): void {
     }
   }
 
-  // 创建边
+  // 创建边（直接使用原始 Port ID，因为已恢复）
   for (const edgeData of data.edges) {
     graphStore.currentGraph.addEdge(edgeData.fromPortId, edgeData.toPortId)
   }
