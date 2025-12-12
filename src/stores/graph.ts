@@ -301,6 +301,7 @@ export const useGraphStore = defineStore('graph', () => {
       case 'error':
         executorStatus.value = ExecutorStatus.Error
         executingNodeIds.value.clear()
+        console.error('[Executor Error]', event.error.message, event.error.stack)
         break
     }
   }

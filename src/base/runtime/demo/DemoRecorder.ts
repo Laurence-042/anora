@@ -11,6 +11,8 @@ import type {
   EdgeAddedOperation,
   EdgeRemovedOperation,
   NodeMovedOperation,
+  NodeActivatedOperation,
+  DataPropagateOperation,
   SerializedNodeState,
   DemoOperationType,
 } from './types'
@@ -20,6 +22,17 @@ export class DemoRecorder {
   private operations: AnyDemoOperation[] = []
   private stepCounter = 0
   private isRecording = false
+  
+  /** Callback when an operation is recorded */
+  onOperationRecorded?: (count: number) => void
+
+  /**
+   * Push operation and notify callback
+   */
+  private pushOperation(operation: AnyDemoOperation): void {
+    this.operations.push(operation)
+    this.onOperationRecorded?.(this.operations.length)
+  }
 
   /**
    * Start recording
@@ -63,7 +76,7 @@ export class DemoRecorder {
       activatedNodeIds,
     }
 
-    this.operations.push(operation)
+    this.pushOperation(operation)
   }
 
   /**
@@ -86,7 +99,7 @@ export class DemoRecorder {
       context,
     }
 
-    this.operations.push(operation)
+    this.pushOperation(operation)
   }
 
   /**
@@ -101,7 +114,7 @@ export class DemoRecorder {
       nodeId,
     }
 
-    this.operations.push(operation)
+    this.pushOperation(operation)
   }
 
   /**
@@ -124,7 +137,7 @@ export class DemoRecorder {
       toPortName,
     }
 
-    this.operations.push(operation)
+    this.pushOperation(operation)
   }
 
   /**
@@ -147,7 +160,7 @@ export class DemoRecorder {
       toPortName,
     }
 
-    this.operations.push(operation)
+    this.pushOperation(operation)
   }
 
   /**
@@ -163,7 +176,45 @@ export class DemoRecorder {
       position,
     }
 
-    this.operations.push(operation)
+    this.pushOperation(operation)
+  }
+
+  /**
+   * Record node activation during execution
+   */
+  recordNodeActivated(nodeId: string, success: boolean, error?: string): void {
+    if (!this.isRecording) return
+
+    const operation: NodeActivatedOperation = {
+      type: 'node_activated' as DemoOperationType.NODE_ACTIVATED,
+      stepIndex: this.stepCounter++,
+      nodeId,
+      success,
+      error,
+    }
+
+    this.pushOperation(operation)
+  }
+
+  /**
+   * Record data propagation through edges
+   */
+  recordDataPropagate(
+    transfers: Array<{ sourcePortId: string; targetPortId: string; data: unknown }>,
+  ): void {
+    if (!this.isRecording) return
+
+    const operation: DataPropagateOperation = {
+      type: 'data_propagate' as DemoOperationType.DATA_PROPAGATE,
+      stepIndex: this.stepCounter++,
+      transfers: transfers.map((t) => ({
+        sourcePortId: t.sourcePortId,
+        targetPortId: t.targetPortId,
+        data: t.data,
+      })),
+    }
+
+    this.pushOperation(operation)
   }
 
   /**

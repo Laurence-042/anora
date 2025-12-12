@@ -22,6 +22,11 @@ const recorder = new DemoRecorder()
 const isRecording = ref(false)
 const operationCount = ref(0)
 
+// 设置录制回调，实时更新操作计数
+recorder.onOperationRecorded = (count: number) => {
+  operationCount.value = count
+}
+
 /** 开始录制 */
 function startRecording(): void {
   recorder.clear()
@@ -35,6 +40,8 @@ function startRecording(): void {
 function stopRecording(): void {
   recorder.stopRecording()
   isRecording.value = false
+  // 更新操作计数（确保最终值同步）
+  operationCount.value = recorder.getOperationCount()
   graphStore.executor.setDemoRecorder(undefined)
 }
 

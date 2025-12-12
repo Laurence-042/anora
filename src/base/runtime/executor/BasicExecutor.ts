@@ -379,6 +379,8 @@ export class BasicExecutor {
         const err = error instanceof Error ? error : new Error(String(error))
         // 失败时立即发送 node-complete
         this.emit({ type: 'node-complete', node, success: false, error: err })
+        // 录制节点激活失败
+        this.demoRecorder?.recordNodeActivated(node.id, false, err.message)
         return { node, success: false, error: err } as NodeExecutionResult
       }
     })
@@ -430,6 +432,8 @@ export class BasicExecutor {
     for (const result of results) {
       if (result.success) {
         this.emit({ type: 'node-complete', node: result.node, success: true })
+        // 录制节点激活
+        this.demoRecorder?.recordNodeActivated(result.node.id, true)
       }
     }
 
@@ -496,6 +500,14 @@ export class BasicExecutor {
     // 发送数据传播事件
     if (transfers.length > 0) {
       this.emit({ type: 'data-propagate', transfers })
+      // 录制数据传播
+      this.demoRecorder?.recordDataPropagate(
+        transfers.map((t) => ({
+          sourcePortId: t.fromPortId,
+          targetPortId: t.toPortId,
+          data: t.data,
+        })),
+      )
     }
 
     // 检查受影响的节点是否有直通节点需要立即执行
@@ -529,6 +541,8 @@ export class BasicExecutor {
       this.emit({ type: 'node-start', node })
       await node.activate(context)
       this.emit({ type: 'node-complete', node, success: true })
+      // 录制直通节点激活
+      this.demoRecorder?.recordNodeActivated(node.id, true)
 
       // 清空入 Port
       this.clearNodeInputPorts(node)
@@ -538,6 +552,8 @@ export class BasicExecutor {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
       this.emit({ type: 'node-complete', node, success: false, error: err })
+      // 录制直通节点激活失败
+      this.demoRecorder?.recordNodeActivated(node.id, false, err.message)
       throw err
     }
   }

@@ -18,6 +18,10 @@ export enum DemoOperationType {
   EDGE_REMOVED = 'edge_removed',
   /** Node position changed */
   NODE_MOVED = 'node_moved',
+  /** Node activated during execution */
+  NODE_ACTIVATED = 'node_activated',
+  /** Data propagated through an edge */
+  DATA_PROPAGATE = 'data_propagate',
 }
 
 /**
@@ -103,6 +107,31 @@ export interface NodeMovedOperation extends DemoOperation {
 }
 
 /**
+ * Node activation operation during execution
+ */
+export interface NodeActivatedOperation extends DemoOperation {
+  type: DemoOperationType.NODE_ACTIVATED
+  nodeId: string
+  /** Whether the activation was successful */
+  success: boolean
+  /** Error message if failed */
+  error?: string
+}
+
+/**
+ * Data propagation operation - records data flowing through edges
+ */
+export interface DataPropagateOperation extends DemoOperation {
+  type: DemoOperationType.DATA_PROPAGATE
+  /** Data transfers on edges */
+  transfers: Array<{
+    sourcePortId: string
+    targetPortId: string
+    data: unknown
+  }>
+}
+
+/**
  * Union type of all operations
  */
 export type AnyDemoOperation =
@@ -112,6 +141,8 @@ export type AnyDemoOperation =
   | EdgeAddedOperation
   | EdgeRemovedOperation
   | NodeMovedOperation
+  | NodeActivatedOperation
+  | DataPropagateOperation
 
 /**
  * Complete demo recording
