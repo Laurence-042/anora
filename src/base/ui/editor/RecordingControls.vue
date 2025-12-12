@@ -1,42 +1,141 @@
 <script setup lang="ts">
 /**
  * RecordingControls - 录制控制组件
- * 用于在主编辑器中录制操作序列，导出供演示模式使用
+ * 录制操作序列，导出供演示模式使用
+ * 自包含录制逻辑，通过 props 接收外部事件
  */
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useGraphStore } from '@/stores/graph'
+import { DemoRecorder } from '@/base/runtime/demo'
+
+defineProps<{
+  /** 节点位置映射（用于录制节点位置） */
+  nodePositions: Map<string, { x: number; y: number }>
+}>()
 
 const { t } = useI18n()
+const graphStore = useGraphStore()
 
-interface Props {
-  isRecording: boolean
-  operationCount: number
+// ========== 录制状态 ==========
+const recorder = new DemoRecorder()
+const isRecording = ref(false)
+const operationCount = ref(0)
+
+/** 开始录制 */
+function startRecording(): void {
+  recorder.clear()
+  isRecording.value = true
+  operationCount.value = 0
+  graphStore.executor.setDemoRecorder(recorder)
 }
 
-interface Emits {
-  (e: 'start-recording'): void
-  (e: 'stop-recording'): void
-  (e: 'download'): void
-  (e: 'upload', file: File): void
+/** 停止录制 */
+function stopRecording(): void {
+  isRecording.value = false
+  graphStore.executor.setDemoRecorder(undefined)
 }
 
-defineProps<Props>()
-const emit = defineEmits<Emits>()
+/** 下载录制文件 */
+function downloadRecording(): void {
+  const data = recorder.exportRecording()
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `anora-demo-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
+/** 上传录制文件并跳转到演示页面 */
+function uploadRecording(file: File): void {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const content = e.target?.result as string
+    try {
+      const data = JSON.parse(content)
+      sessionStorage.setItem('anora-demo-data', JSON.stringify(data))
+      window.location.href = '/demo'
+    } catch (err) {
+      console.error('Failed to parse demo file:', err)
+      alert(t('errors.invalidOperation'))
+    }
+  }
+  reader.readAsText(file)
+}
+
+// ========== 录制方法（供外部调用） ==========
+
+/** 录制：节点添加 */
+function recordNodeAdded(nodeId: string, typeId: string, position: { x: number; y: number }): void {
+  if (isRecording.value) {
+    const node = graphStore.currentGraph.getNode(nodeId)
+    recorder.recordNodeAdded(nodeId, typeId, position, node?.context)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+/** 录制：节点移除 */
+function recordNodeRemoved(nodeId: string): void {
+  if (isRecording.value) {
+    recorder.recordNodeRemoved(nodeId)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+/** 录制：边添加 */
+function recordEdgeAdded(
+  fromNodeId: string,
+  fromPortName: string,
+  toNodeId: string,
+  toPortName: string,
+): void {
+  if (isRecording.value) {
+    recorder.recordEdgeAdded(fromNodeId, fromPortName, toNodeId, toPortName)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+/** 录制：节点移动 */
+function recordNodeMoved(nodeId: string, position: { x: number; y: number }): void {
+  if (isRecording.value) {
+    recorder.recordNodeMoved(nodeId, position)
+    operationCount.value = recorder.getOperationCount()
+  }
+}
+
+// 暴露录制方法给父组件
+defineExpose({
+  isRecording,
+  recordNodeAdded,
+  recordNodeRemoved,
+  recordEdgeAdded,
+  recordNodeMoved,
+})
+
+// ========== UI ==========
 const fileInput = ref<HTMLInputElement>()
 
-function handleUpload() {
+function handleUpload(): void {
   fileInput.value?.click()
 }
 
-function handleFileChange(event: Event) {
+function handleFileChange(event: Event): void {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
-    emit('upload', file)
+    uploadRecording(file)
     target.value = ''
   }
 }
+
+// 清理
+onUnmounted(() => {
+  if (isRecording.value) {
+    stopRecording()
+  }
+})
 </script>
 
 <template>
@@ -52,23 +151,19 @@ function handleFileChange(event: Event) {
     <button
       v-if="!isRecording"
       class="control-btn record-btn"
-      @click="emit('start-recording')"
+      @click="startRecording"
       :title="t('demo.startRecording')"
     >
       <span class="icon">⏺</span>
     </button>
 
     <template v-else>
-      <button
-        class="control-btn stop-btn"
-        @click="emit('stop-recording')"
-        :title="t('demo.stopRecording')"
-      >
+      <button class="control-btn stop-btn" @click="stopRecording" :title="t('demo.stopRecording')">
         <span class="icon">⏹</span>
       </button>
       <button
         class="control-btn download-btn"
-        @click="emit('download')"
+        @click="downloadRecording"
         :title="t('demo.export')"
         :disabled="operationCount === 0"
       >
@@ -76,7 +171,7 @@ function handleFileChange(event: Event) {
       </button>
     </template>
 
-    <!-- 加载录制文件（非录制状态可用） -->
+    <!-- 加载录制文件 -->
     <button
       v-if="!isRecording"
       class="control-btn upload-btn"

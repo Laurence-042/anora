@@ -2,7 +2,6 @@
 /**
  * GraphEditor - 图编辑器主组件
  * 整合 Vue-Flow、节点、边、控制面板等
- * 支持录制操作序列供演示模式使用
  */
 import { ref, computed, watch, onMounted, onUnmounted, markRaw } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
@@ -13,7 +12,6 @@ import '@vue-flow/core/dist/theme-default.css'
 
 import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
-import { BaseNode } from '@/base/runtime/nodes'
 
 import BaseNodeView from '../components/BaseNodeView.vue'
 import ExecutorControls from './ExecutorControls.vue'
@@ -21,9 +19,7 @@ import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
 import LocaleSwitcher from './LocaleSwitcher.vue'
 import RecordingControls from './RecordingControls.vue'
-
-// Demo 录制
-import { DemoRecorder } from '@/base/runtime/demo'
+import GraphIOControls from './GraphIOControls.vue'
 
 // 节点视图注册表
 import { NodeViewRegistry } from '../registry'
@@ -40,184 +36,13 @@ const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueF
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
-// ========== 录制功能 ==========
-const recorder = new DemoRecorder()
-const isRecording = ref(false)
-const operationCount = ref(0)
+/** 录制控制组件 ref */
+/** 录制控制组件 ref */
+const recordingControlsRef = ref<InstanceType<typeof RecordingControls> | null>(null)
 
-function startRecording(): void {
-  recorder.clear()
-  isRecording.value = true
-  operationCount.value = 0
-  // 连接执行器录制
-  graphStore.executor.setDemoRecorder(recorder)
-}
-
-function stopRecording(): void {
-  isRecording.value = false
-  graphStore.executor.setDemoRecorder(undefined)
-}
-
-function downloadRecording(): void {
-  const data = recorder.exportRecording()
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `anora-demo-${Date.now()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function uploadRecording(file: File): void {
-  // 上传后跳转到演示页面
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    const content = e.target?.result as string
-    try {
-      const data = JSON.parse(content)
-      // 存储到 sessionStorage，演示页面读取
-      sessionStorage.setItem('anora-demo-data', JSON.stringify(data))
-      // 跳转到演示页面
-      window.location.href = '/demo'
-    } catch (err) {
-      console.error('Failed to parse demo file:', err)
-      alert(t('errors.invalidOperation'))
-    }
-  }
-  reader.readAsText(file)
-}
-
-/** 录制：节点添加 */
-function recordNodeAdded(nodeId: string, typeId: string, position: { x: number; y: number }): void {
-  if (isRecording.value) {
-    const node = graphStore.currentGraph.getNode(nodeId)
-    recorder.recordNodeAdded(nodeId, typeId, position, node?.context)
-    operationCount.value = recorder.getOperationCount()
-  }
-}
-
-/** 录制：节点移除 */
-function recordNodeRemoved(nodeId: string): void {
-  if (isRecording.value) {
-    recorder.recordNodeRemoved(nodeId)
-    operationCount.value = recorder.getOperationCount()
-  }
-}
-
-/** 录制：边添加 */
-function recordEdgeAdded(
-  fromNodeId: string,
-  fromPortName: string,
-  toNodeId: string,
-  toPortName: string,
-): void {
-  if (isRecording.value) {
-    recorder.recordEdgeAdded(fromNodeId, fromPortName, toNodeId, toPortName)
-    operationCount.value = recorder.getOperationCount()
-  }
-}
-
-/** 录制：节点移动 */
-function recordNodeMoved(nodeId: string, position: { x: number; y: number }): void {
-  if (isRecording.value) {
-    recorder.recordNodeMoved(nodeId, position)
-    operationCount.value = recorder.getOperationCount()
-  }
-}
-
-// ========== 图导出/导入功能 ==========
-import { NodeRegistry } from '@/base/runtime/registry'
-import type { SerializedGraph } from '@/base/runtime/types'
-
-/** 导出图到 JSON 文件 */
-function exportGraph(): void {
-  const graph = graphStore.currentGraph
-  const serialized = graph.serialize()
-
-  // 将节点位置加入序列化数据
-  for (const nodeData of serialized.nodes) {
-    const pos = nodePositions.value.get(nodeData.id)
-    if (pos) {
-      nodeData.position = { x: pos.x, y: pos.y }
-    }
-  }
-
-  const blob = new Blob([JSON.stringify(serialized, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `anora-graph-${Date.now()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-/** 导入图 */
-function importGraph(file: File): void {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    const content = e.target?.result as string
-    try {
-      const data = JSON.parse(content) as SerializedGraph
-      if (!data.schemaVersion || !data.nodes || !data.edges) {
-        throw new Error('Invalid graph format')
-      }
-      loadGraphFromData(data)
-    } catch (err) {
-      console.error('Failed to parse graph file:', err)
-      alert(t('errors.invalidGraph') || 'Invalid graph file')
-    }
-  }
-  reader.readAsText(file)
-}
-
-/** 从序列化数据加载图 */
-function loadGraphFromData(data: SerializedGraph): void {
-  // 清空当前图
-  graphStore.currentGraph.clear()
-  nodePositions.value.clear()
-
-  // 创建节点
-  for (const nodeData of data.nodes) {
-    const node = NodeRegistry.createNode(nodeData.typeId, nodeData.id, nodeData.label) as
-      | BaseNode
-      | undefined
-    if (node) {
-      // 恢复 context
-      if (nodeData.context !== undefined) {
-        node.context = nodeData.context
-      }
-      graphStore.currentGraph.addNode(node)
-      // 恢复位置
-      if (nodeData.position) {
-        nodePositions.value.set(nodeData.id, { x: nodeData.position.x, y: nodeData.position.y })
-      }
-    } else {
-      console.warn(`[GraphEditor] Unknown node type during import: ${nodeData.typeId}`)
-    }
-  }
-
-  // 创建边
-  for (const edgeData of data.edges) {
-    graphStore.currentGraph.addEdge(edgeData.fromPortId, edgeData.toPortId)
-  }
-
-  // 刷新视图
-  graphStore.notifyNodeChanged()
-}
-
-/** 触发文件选择 */
-const graphFileInputRef = ref<HTMLInputElement | null>(null)
-function triggerGraphImport(): void {
-  graphFileInputRef.value?.click()
-}
-
-function onGraphFileSelected(event: Event): void {
-  const input = event.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    importGraph(input.files[0])
-    input.value = '' // 清空以便再次选择同一文件
-  }
+/** 处理图导入完成 */
+function onGraphImported(positions: Map<string, { x: number; y: number }>): void {
+  nodePositions.value = positions
 }
 
 /** 根据节点 typeId 获取对应的视图组件类型 */
@@ -338,7 +163,12 @@ onConnect((connection: Connection) => {
           ([, p]) => p.id === connection.targetHandle,
         )?.[0]
         if (sourcePortName && targetPortName) {
-          recordEdgeAdded(sourceNode.id, sourcePortName, targetNode.id, targetPortName)
+          recordingControlsRef.value?.recordEdgeAdded(
+            sourceNode.id,
+            sourcePortName,
+            targetNode.id,
+            targetPortName,
+          )
         }
       }
     } else {
@@ -364,7 +194,7 @@ onPaneClick(() => {
 function onNodeDragStop(event: { node: Node }): void {
   const newPos = { ...event.node.position }
   nodePositions.value.set(event.node.id, newPos)
-  recordNodeMoved(event.node.id, newPos)
+  recordingControlsRef.value?.recordNodeMoved(event.node.id, newPos)
 }
 
 /** 处理节点变更（选择、删除等） */
@@ -380,7 +210,7 @@ function onNodesChange(changes: unknown[]): void {
     }
     // 处理节点删除
     if (c.type === 'remove' && c.id !== undefined) {
-      recordNodeRemoved(c.id)
+      recordingControlsRef.value?.recordNodeRemoved(c.id)
       graphStore.removeNode(c.id)
       nodePositions.value.delete(c.id)
     }
@@ -427,7 +257,7 @@ function autoLayout(): void {
 /** 删除选中的节点 */
 function deleteSelected(): void {
   for (const nodeId of graphStore.selectedNodeIds) {
-    recordNodeRemoved(nodeId)
+    recordingControlsRef.value?.recordNodeRemoved(nodeId)
     graphStore.removeNode(nodeId)
     nodePositions.value.delete(nodeId)
   }
@@ -487,7 +317,7 @@ watch(
         }
         nodePositions.value.set(node.id, pos)
         // 录制节点添加
-        recordNodeAdded(node.id, node.typeId, pos)
+        recordingControlsRef.value?.recordNodeAdded(node.id, node.typeId, pos)
       }
     }
   },
@@ -500,10 +330,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
-  // 清理录制状态
-  if (isRecording.value) {
-    stopRecording()
-  }
 })
 </script>
 
@@ -515,33 +341,12 @@ onUnmounted(() => {
       <div class="toolbar-spacer" />
 
       <!-- 图导出/导入 -->
-      <div class="graph-io-controls">
-        <button class="toolbar-btn" @click="exportGraph" :title="t('editor.exportGraph')">
-          📤 {{ t('editor.export') }}
-        </button>
-        <button class="toolbar-btn" @click="triggerGraphImport" :title="t('editor.importGraph')">
-          📥 {{ t('editor.import') }}
-        </button>
-        <input
-          ref="graphFileInputRef"
-          type="file"
-          accept=".json"
-          style="display: none"
-          @change="onGraphFileSelected"
-        />
-      </div>
+      <GraphIOControls :node-positions="nodePositions" @imported="onGraphImported" />
 
       <div class="toolbar-divider" />
 
       <!-- 录制控制 -->
-      <RecordingControls
-        :is-recording="isRecording"
-        :operation-count="operationCount"
-        @start-recording="startRecording"
-        @stop-recording="stopRecording"
-        @download="downloadRecording"
-        @upload="uploadRecording"
-      />
+      <RecordingControls ref="recordingControlsRef" :node-positions="nodePositions" />
 
       <div class="toolbar-divider" />
 
