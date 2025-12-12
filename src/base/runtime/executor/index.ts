@@ -6,4 +6,5 @@ export {
   type NodeExecutionResult,
   type ExecutorEvent,
   type ExecutorEventListener,
+  type EdgeDataTransfer,
 } from './BasicExecutor'

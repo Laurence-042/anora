@@ -86,6 +86,18 @@ export interface NodeExecutionResult {
 }
 
 /**
+ * 边数据传递记录
+ */
+export interface EdgeDataTransfer {
+  /** 源 Port ID */
+  fromPortId: string
+  /** 目标 Port ID */
+  toPortId: string
+  /** 传递的数据 */
+  data: unknown
+}
+
+/**
  * 执行器事件
  */
 export type ExecutorEvent =
@@ -93,6 +105,7 @@ export type ExecutorEvent =
   | { type: 'iteration'; iteration: number }
   | { type: 'node-start'; node: BaseNode }
   | { type: 'node-complete'; node: BaseNode; success: boolean; error?: Error }
+  | { type: 'data-propagate'; transfers: EdgeDataTransfer[] }
   | { type: 'complete'; result: ExecutionResult }
   | { type: 'cancelled' }
   | { type: 'error'; error: Error }
@@ -209,23 +222,10 @@ export class BasicExecutor {
           iterations++
           this.emit({ type: 'iteration', iteration: iterations })
 
-          // 迭代开始前的延迟（跳过第一次迭代）
-          if (iterations > 1 && execContext.iterationDelay && execContext.iterationDelay > 0) {
-            const delayPromise = cancellableDelay(execContext.iterationDelay)
-
-            // 监听取消信号
-            if (cancelled) {
-              delayPromise.cancel()
-              break
-            }
-
-            try {
-              await delayPromise
-            } catch {
-              // 延迟被取消
-              if (cancelled) break
-            }
-          }
+          // 迭代开始前的延迟（跳过第一次迭代）- 移到数据传播后
+          // if (iterations > 1 && execContext.iterationDelay && execContext.iterationDelay > 0) {
+          //   ...
+          // }
 
           // 检查取消状态
           if (cancelled) break
@@ -358,6 +358,7 @@ export class BasicExecutor {
    * 2. 执行后清空节点的入 Port
    * 3. 传播出 Port 数据到下游入 Port
    * 4. 如果下游入 Port 是直通节点，立即执行并继续传播
+   * 5. 如果有延迟设置，等待延迟后再发送 node-complete 事件
    */
   private async executeNodes(
     nodes: BaseNode[],
@@ -367,15 +368,16 @@ export class BasicExecutor {
   ): Promise<NodeExecutionResult[]> {
     const results: NodeExecutionResult[] = []
 
-    // 并行执行所有节点
+    // 并行执行所有节点（先只发送 node-start，暂不发送 node-complete）
     const promises = nodes.map(async (node) => {
       try {
         this.emit({ type: 'node-start', node })
         await node.activate(context)
-        this.emit({ type: 'node-complete', node, success: true })
-        return { node, success: true } as NodeExecutionResult
+        // 暂不发送 node-complete，等数据传播和延迟后再发送
+        return { node, success: true, error: undefined } as NodeExecutionResult
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
+        // 失败时立即发送 node-complete
         this.emit({ type: 'node-complete', node, success: false, error: err })
         return { node, success: false, error: err } as NodeExecutionResult
       }
@@ -415,6 +417,22 @@ export class BasicExecutor {
       }
     }
 
+    // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
+    if (context.iterationDelay && context.iterationDelay > 0) {
+      try {
+        await cancellableDelay(context.iterationDelay)
+      } catch {
+        // 延迟被取消，忽略
+      }
+    }
+
+    // 延迟结束后，发送成功节点的 node-complete 事件
+    for (const result of results) {
+      if (result.success) {
+        this.emit({ type: 'node-complete', node: result.node, success: true })
+      }
+    }
+
     return results
   }
 
@@ -445,6 +463,9 @@ export class BasicExecutor {
     // 收集所有被写入数据的目标节点
     const affectedNodes = new Set<BaseNode>()
 
+    // 收集数据传递记录（用于调试/演示）
+    const transfers: EdgeDataTransfer[] = []
+
     for (const outPort of outputPorts) {
       const connectedPorts = graph.getConnectedPorts(outPort)
 
@@ -456,6 +477,13 @@ export class BasicExecutor {
         if (data !== undefined) {
           targetPort.write(data)
 
+          // 记录数据传递
+          transfers.push({
+            fromPortId: outPort.id,
+            toPortId: targetPort.id,
+            data,
+          })
+
           // 记录受影响的节点
           const targetNode = graph.getNodeByPort(targetPort)
           if (targetNode) {
@@ -463,6 +491,11 @@ export class BasicExecutor {
           }
         }
       }
+    }
+
+    // 发送数据传播事件
+    if (transfers.length > 0) {
+      this.emit({ type: 'data-propagate', transfers })
     }
 
     // 检查受影响的节点是否有直通节点需要立即执行

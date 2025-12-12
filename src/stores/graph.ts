@@ -5,7 +5,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef, triggerRef } from 'vue'
 import { AnoraGraph } from '@/base/runtime/graph'
-import { BasicExecutor, type ExecutorEvent } from '@/base/runtime/executor'
+import { BasicExecutor, type ExecutorEvent, type EdgeDataTransfer } from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { ExecutorStatus, DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
@@ -59,6 +59,9 @@ export const useGraphStore = defineStore('graph', () => {
 
   /** 迭代间延迟（毫秒，用于调试） */
   const iterationDelay = ref<number>(0)
+
+  /** 边上传递的数据（用于调试/演示显示） */
+  const edgeDataTransfers = ref<Map<string, EdgeDataTransfer>>(new Map())
 
   // ==================== 计算属性 ====================
 
@@ -248,18 +251,42 @@ export const useGraphStore = defineStore('graph', () => {
         executorStatus.value = ExecutorStatus.Running
         currentIteration.value = 0
         executingNodeIds.value.clear()
+        edgeDataTransfers.value.clear()
         break
 
       case 'iteration':
         currentIteration.value = event.iteration
+        // 新迭代开始时清除上一迭代的边数据
+        edgeDataTransfers.value.clear()
         break
 
       case 'node-start':
-        executingNodeIds.value.add(event.node.id)
+        // 创建新 Set 以触发响应式更新
+        executingNodeIds.value = new Set([...executingNodeIds.value, event.node.id])
         break
 
       case 'node-complete':
-        executingNodeIds.value.delete(event.node.id)
+        // 创建新 Set 以触发响应式更新
+        {
+          const newSet = new Set(executingNodeIds.value)
+          newSet.delete(event.node.id)
+          executingNodeIds.value = newSet
+        }
+        break
+
+      case 'data-propagate':
+        // 记录边上传递的数据（创建新 Map 以触发响应式更新）
+        {
+          console.log('[graph.ts] data-propagate event:', event.transfers)
+          const newMap = new Map(edgeDataTransfers.value)
+          for (const transfer of event.transfers) {
+            const edgeKey = `${transfer.fromPortId}->${transfer.toPortId}`
+            console.log('[graph.ts] storing edge data:', edgeKey, transfer.data)
+            newMap.set(edgeKey, transfer)
+          }
+          edgeDataTransfers.value = newMap
+          console.log('[graph.ts] edgeDataTransfers size:', edgeDataTransfers.value.size)
+        }
         break
 
       case 'complete':
@@ -271,6 +298,7 @@ export const useGraphStore = defineStore('graph', () => {
       case 'cancelled':
         executorStatus.value = ExecutorStatus.Cancelled
         executingNodeIds.value.clear()
+        edgeDataTransfers.value.clear()
         break
 
       case 'error':
@@ -343,6 +371,20 @@ export const useGraphStore = defineStore('graph', () => {
     return incompatibleEdges.value.has(`${fromPortId}->${toPortId}`)
   }
 
+  /**
+   * 获取边上传递的数据
+   */
+  function getEdgeDataTransfer(fromPortId: string, toPortId: string): EdgeDataTransfer | undefined {
+    return edgeDataTransfers.value.get(`${fromPortId}->${toPortId}`)
+  }
+
+  /**
+   * 检查边是否有数据传递（用于高亮）
+   */
+  function hasEdgeDataTransfer(fromPortId: string, toPortId: string): boolean {
+    return edgeDataTransfers.value.has(`${fromPortId}->${toPortId}`)
+  }
+
   // ==================== 初始化 ====================
 
   // 创建初始图
@@ -362,6 +404,7 @@ export const useGraphStore = defineStore('graph', () => {
     executingNodeIds,
     executorContext,
     iterationDelay,
+    edgeDataTransfers,
 
     // 计算属性
     nodes,
@@ -394,5 +437,9 @@ export const useGraphStore = defineStore('graph', () => {
     // 边兼容性检查
     checkNodeEdgesCompatibility,
     isEdgeIncompatible,
+
+    // 边数据传递
+    getEdgeDataTransfer,
+    hasEdgeDataTransfer,
   }
 })

@@ -14,6 +14,7 @@ import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 
 import BaseNodeView from '../components/BaseNodeView.vue'
+import EdgeView from '../components/EdgeView.vue'
 import ExecutorControls from './ExecutorControls.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
@@ -142,6 +143,11 @@ watch(
 
 /** 自定义节点类型（从注册表获取） */
 const nodeTypes = computed(() => NodeViewRegistry.getNodeTypes())
+
+/** 自定义边类型 */
+const edgeTypes = {
+  default: markRaw(EdgeView),
+}
 
 /** 处理连接 */
 onConnect((connection: Connection) => {
@@ -363,6 +369,7 @@ onUnmounted(() => {
         :nodes="vfNodes"
         :edges="vfEdges"
         :node-types="nodeTypes"
+        :edge-types="edgeTypes"
         :default-edge-options="{ type: 'default' }"
         :snap-to-grid="true"
         :snap-grid="[20, 20]"
