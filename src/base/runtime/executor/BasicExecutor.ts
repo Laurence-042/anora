@@ -408,9 +408,12 @@ export class BasicExecutor {
       return results
     }
 
-    // 对成功执行的节点：清空入 Port，传播出 Port 数据
+    // 对成功执行的节点：先录制激活事件，再清空入 Port，最后传播出 Port 数据
     for (const result of results) {
       if (result.success) {
+        // 先录制节点激活成功（在数据传播之前）
+        this.demoRecorder?.recordNodeActivated(result.node.id, true)
+
         // 清空执行后节点的入 Port（避免下一次激活时残留脏数据）
         this.clearNodeInputPorts(result.node)
 
@@ -432,8 +435,6 @@ export class BasicExecutor {
     for (const result of results) {
       if (result.success) {
         this.emit({ type: 'node-complete', node: result.node, success: true })
-        // 录制节点激活
-        this.demoRecorder?.recordNodeActivated(result.node.id, true)
       }
     }
 
