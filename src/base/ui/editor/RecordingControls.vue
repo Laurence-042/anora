@@ -2,20 +2,25 @@
 /**
  * RecordingControls - 录制与回放控制组件
  *
- * 新架构：录制/回放逻辑集中在 store 中，组件只负责 UI
- * - 录制模式：监听 Executor 事件，自动记录
- * - 回放模式：使用 ReplayExecutor 回放事件，前端组件自动响应
+ * 新架构：直接操作 DemoRecorder 和 ReplayExecutor
+ * - 录制：绑定 executor/graph，调用 recorder 方法
+ * - 回放：加载录制，使用 replayExecutor 播放
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
+import { AnoraGraph } from '@/base/runtime/graph'
 import { ReplayState } from '@/base/runtime/demo'
 import type { DemoRecording } from '@/base/runtime/demo'
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
-// ========== 状态 ==========
+// ========== 从 store 获取实例 ==========
+const recorder = computed(() => graphStore.demoRecorder)
+const replayExec = computed(() => graphStore.replayExecutor)
+
+// ========== 状态（直接映射到 store） ==========
 const isRecording = computed(() => graphStore.isRecording)
 const recordedEventCount = computed(() => graphStore.recordedEventCount)
 const isReplayMode = computed(() => graphStore.isReplayMode)
@@ -26,18 +31,37 @@ const isRunning = computed(() => graphStore.isRunning)
 // 回放是否正在播放
 const isPlaying = computed(() => replayState.value === ReplayState.Playing)
 
+// ========== 初始化 ==========
+onMounted(() => {
+  // 设置录制器状态同步回调
+  recorder.value.onRecordingChange = (recording, count) => {
+    graphStore.isRecording = recording
+    graphStore.recordedEventCount = count
+  }
+})
+
 // ========== 录制操作 ==========
 
 function startRecording(): void {
-  graphStore.startRecording()
+  if (isRecording.value || isReplayMode.value) return
+
+  // 绑定当前的 executor 和 graph
+  recorder.value.bindExecutor(graphStore.executor)
+  recorder.value.bindGraph(graphStore.currentGraph)
+
+  // 开始录制
+  recorder.value.startRecording(graphStore.nodePositions)
 }
 
 function stopRecording(): void {
-  graphStore.stopRecording()
+  if (!isRecording.value) return
+  recorder.value.stopRecording()
 }
 
 function downloadRecording(): void {
-  const data = graphStore.exportRecording()
+  const data = recorder.value.exportRecording({
+    iterationDelay: graphStore.iterationDelay,
+  })
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -62,7 +86,26 @@ function loadRecording(file: File): void {
         return
       }
 
-      graphStore.loadRecording(data)
+      // 反序列化图
+      const graph = new AnoraGraph()
+      graph.deserialize(data.initialGraph)
+
+      // 进入回放模式
+      graphStore.enterReplayMode(graph, data.nodePositions)
+
+      // 配置 replayExecutor
+      replayExec.value.onStateChange = (state) => {
+        graphStore.replayState = state
+      }
+      replayExec.value.onProgressChange = (current, total) => {
+        graphStore.replayProgress = { current, total }
+      }
+
+      // 加载录制数据
+      replayExec.value.loadRecording(data, graphStore.currentGraph)
+
+      // 注册事件监听（使用与正常执行相同的处理逻辑）
+      replayExec.value.on(graphStore.handleExecutorEvent)
     } catch (err) {
       console.error('Failed to parse demo file:', err)
       alert(t('errors.invalidDemoFile'))
@@ -76,11 +119,18 @@ function exitReplay(): void {
 }
 
 function togglePlayPause(): void {
-  graphStore.toggleReplay()
+  if (!isReplayMode.value) return
+
+  if (replayState.value === ReplayState.Playing) {
+    replayExec.value.pause()
+  } else {
+    replayExec.value.play()
+  }
 }
 
 function stepForward(): void {
-  graphStore.replayStepForward()
+  if (!isReplayMode.value) return
+  replayExec.value.stepForward()
 }
 
 // ========== UI ==========
@@ -105,7 +155,7 @@ const currentSpeed = ref(1)
 
 function setSpeed(speed: number): void {
   currentSpeed.value = speed
-  graphStore.setReplaySpeed(speed)
+  replayExec.value.playbackSpeed = speed
 }
 </script>
 

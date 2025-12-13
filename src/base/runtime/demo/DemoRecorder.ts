@@ -7,10 +7,13 @@
  * - 自行管理事件订阅
  * - 外部只需调用 startRecording / stopRecording
  */
-import type { AnoraGraph, SerializedGraph } from '../graph'
+import type { AnoraGraph } from '../graph'
+import type { SerializedGraph } from '../types'
 import type { BasicExecutor, ExecutorEvent } from '../executor'
 import type { DemoRecording, SerializedExecutorEvent, TimestampedEvent } from './types'
-import { DEMO_FORMAT_VERSION } from './types'
+
+/** Demo 格式版本 */
+const DEMO_FORMAT_VERSION = '2.0.0' as const
 
 export class DemoRecorder {
   /** 录制的事件列表 */
@@ -166,6 +169,8 @@ export class DemoRecorder {
         return {
           type: 'node-complete',
           nodeId: event.node.id,
+          success: event.success,
+          error: event.error?.message,
         }
 
       case 'data-propagate':
@@ -184,8 +189,8 @@ export class DemoRecorder {
           result: {
             status: event.result.status,
             iterations: event.result.iterations,
-            activatedNodeIds: [...event.result.activatedNodeIds],
-            error: event.result.error,
+            duration: event.result.duration,
+            error: event.result.error?.message,
           },
         }
 
@@ -195,10 +200,7 @@ export class DemoRecorder {
       case 'error':
         return {
           type: 'error',
-          error: {
-            message: event.error.message,
-            stack: event.error.stack,
-          },
+          error: event.error.message,
         }
     }
   }
@@ -215,20 +217,19 @@ export class DemoRecorder {
       throw new Error('No recording data available')
     }
 
+    const lastEvent = this.events[this.events.length - 1]
     return {
       version: DEMO_FORMAT_VERSION,
+      initialGraph: this.initialGraph,
+      nodePositions: this.nodePositions,
+      events: [...this.events],
       metadata: {
         title: metadata?.title ?? 'Untitled Recording',
         description: metadata?.description ?? '',
         createdAt: new Date().toISOString(),
-        duration: this.events.length > 0 ? this.events[this.events.length - 1].timestamp : 0,
-      },
-      settings: {
         iterationDelay: metadata?.iterationDelay ?? 0,
+        duration: lastEvent ? lastEvent.timestamp : 0,
       },
-      initialGraph: this.initialGraph,
-      nodePositions: this.nodePositions,
-      events: [...this.events],
     }
   }
 

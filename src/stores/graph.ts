@@ -11,7 +11,6 @@ import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { ExecutorStatus, DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
 import type { ExecutorContext } from '@/base/runtime/types'
 import { DemoRecorder, ReplayExecutor, ReplayState } from '@/base/runtime/demo'
-import type { DemoRecording } from '@/base/runtime/demo'
 
 /**
  * 子图栈项
@@ -67,10 +66,10 @@ export const useGraphStore = defineStore('graph', () => {
 
   // ==================== 录制/回放状态 ====================
 
-  /** 录制器实例 */
+  /** 录制器实例 - 由 RecordingControls 直接操作 */
   const demoRecorder = shallowRef<DemoRecorder>(new DemoRecorder())
 
-  /** 回放执行器实例 */
+  /** 回放执行器实例 - 由 RecordingControls 直接操作 */
   const replayExecutor = shallowRef<ReplayExecutor>(new ReplayExecutor())
 
   /** 是否正在录制 */
@@ -88,7 +87,7 @@ export const useGraphStore = defineStore('graph', () => {
   /** 回放进度 */
   const replayProgress = ref({ current: 0, total: 0 })
 
-  /** 节点位置（用于录制和回放） */
+  /** 节点位置（用于录制和回放，由 GraphEditor 维护） */
   const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
   // ==================== 计算属性 ====================
@@ -414,86 +413,22 @@ export const useGraphStore = defineStore('graph', () => {
     return edgeDataTransfers.value.has(`${fromPortId}->${toPortId}`)
   }
 
-  // ==================== 录制操作 ====================
+  // ==================== 录制/回放辅助 ====================
 
   /**
-   * 初始化录制器
-   * 绑定执行器和图，设置状态同步回调
-   */
-  function initializeRecorder(): void {
-    const recorder = demoRecorder.value
-
-    // 绑定执行器和图
-    recorder.bindExecutor(executor.value)
-    recorder.bindGraph(currentGraph.value)
-
-    // 设置状态同步回调
-    recorder.onRecordingChange = (recording, count) => {
-      isRecording.value = recording
-      recordedEventCount.value = count
-    }
-  }
-
-  /**
-   * 更新节点位置（供外部调用）
+   * 更新节点位置（供 GraphEditor 调用）
    */
   function updateNodePosition(nodeId: string, position: { x: number; y: number }): void {
     nodePositions.value.set(nodeId, { ...position })
   }
 
   /**
-   * 开始录制
+   * 进入回放模式（由 RecordingControls 调用）
    */
-  function startRecording(): void {
-    if (isRecording.value || isReplayMode.value) return
-
-    // 确保录制器绑定了最新的执行器和图
-    initializeRecorder()
-
-    // 录制器自行管理事件订阅
-    demoRecorder.value.startRecording(nodePositions.value)
-  }
-
-  /**
-   * 停止录制
-   */
-  function stopRecording(): void {
-    if (!isRecording.value) return
-
-    // 录制器自行管理事件取消订阅
-    demoRecorder.value.stopRecording()
-  }
-
-  /**
-   * 导出录制
-   */
-  function exportRecording(metadata?: { title?: string; description?: string }): DemoRecording {
-    return demoRecorder.value.exportRecording({
-      ...metadata,
-      iterationDelay: iterationDelay.value,
-    })
-  }
-
-  /**
-   * 清空录制
-   */
-  function clearRecording(): void {
-    demoRecorder.value.clear()
-    recordedEventCount.value = 0
-  }
-
-  // ==================== 回放操作 ====================
-
-  /**
-   * 加载录制并进入回放模式
-   */
-  function loadRecording(recording: DemoRecording): void {
-    if (isRecording.value || isRunning.value) return
-
-    // 反序列化初始图
-    const graph = new AnoraGraph()
-    graph.deserialize(recording.initialGraph)
-
+  function enterReplayMode(
+    graph: AnoraGraph,
+    positions: Record<string, { x: number; y: number }>,
+  ): void {
     // 替换当前图
     currentGraph.value = graph
     rootSubGraph.value.setGraph(graph)
@@ -502,30 +437,16 @@ export const useGraphStore = defineStore('graph', () => {
 
     // 恢复节点位置
     nodePositions.value.clear()
-    for (const [nodeId, pos] of Object.entries(recording.nodePositions)) {
+    for (const [nodeId, pos] of Object.entries(positions)) {
       nodePositions.value.set(nodeId, { ...pos })
     }
-
-    // 设置回放执行器
-    replayExecutor.value.onStateChange = (state) => {
-      replayState.value = state
-    }
-    replayExecutor.value.onProgressChange = (current, total) => {
-      replayProgress.value = { current, total }
-    }
-
-    // 加载录制到回放执行器
-    replayExecutor.value.loadRecording(recording, currentGraph.value)
-
-    // 注册事件监听（使用与正常执行相同的处理逻辑）
-    replayExecutor.value.on(handleExecutorEvent)
 
     isReplayMode.value = true
     replayState.value = ReplayState.Idle
   }
 
   /**
-   * 退出回放模式
+   * 退出回放模式（由 RecordingControls 调用）
    */
   function exitReplayMode(): void {
     if (!isReplayMode.value) return
@@ -537,53 +458,6 @@ export const useGraphStore = defineStore('graph', () => {
 
     // 重置图
     initializeRootGraph()
-  }
-
-  /**
-   * 回放：播放/暂停切换
-   */
-  function toggleReplay(): void {
-    if (!isReplayMode.value) return
-
-    if (replayState.value === ReplayState.Playing) {
-      replayExecutor.value.pause()
-    } else {
-      replayExecutor.value.play()
-    }
-  }
-
-  /**
-   * 回放：单步前进
-   */
-  function replayStepForward(): void {
-    if (!isReplayMode.value) return
-    replayExecutor.value.stepForward()
-  }
-
-  /**
-   * 回放：跳转到指定位置
-   */
-  async function replaySeekTo(index: number): Promise<void> {
-    if (!isReplayMode.value) return
-    await replayExecutor.value.seekTo(index)
-  }
-
-  /**
-   * 回放：重置到开始
-   */
-  function replayReset(): void {
-    if (!isReplayMode.value) return
-    replayExecutor.value.stop()
-
-    // 重新加载初始图状态
-    // 需要重新反序列化
-  }
-
-  /**
-   * 设置回放速度
-   */
-  function setReplaySpeed(speed: number): void {
-    replayExecutor.value.playbackSpeed = speed
   }
 
   // ==================== 初始化 ====================
@@ -607,7 +481,9 @@ export const useGraphStore = defineStore('graph', () => {
     iterationDelay,
     edgeDataTransfers,
 
-    // 录制/回放状态
+    // 录制/回放状态与实例
+    demoRecorder,
+    replayExecutor,
     isRecording,
     recordedEventCount,
     isReplayMode,
@@ -652,20 +528,9 @@ export const useGraphStore = defineStore('graph', () => {
     getEdgeDataTransfer,
     hasEdgeDataTransfer,
 
-    // 录制操作
+    // 录制/回放辅助
     updateNodePosition,
-    startRecording,
-    stopRecording,
-    exportRecording,
-    clearRecording,
-
-    // 回放操作
-    loadRecording,
+    enterReplayMode,
     exitReplayMode,
-    toggleReplay,
-    replayStepForward,
-    replaySeekTo,
-    replayReset,
-    setReplaySpeed,
   }
 })
