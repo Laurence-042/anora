@@ -1,296 +1,244 @@
 /**
- * DemoRecorder - Records graph operations and node states for demo playback
+ * Demo 录制器
+ * 负责录制图的执行过程，将执行器事件序列化保存
+ *
+ * 设计原则：DemoRecorder 主动控制录制流程
+ * - 持有对 executor 的引用
+ * - 自行管理事件订阅
+ * - 外部只需调用 startRecording / stopRecording
  */
-
-import type {
-  AnyDemoOperation,
-  DemoRecording,
-  IterationOperation,
-  InitialStateOperation,
-  NodeAddedOperation,
-  NodeRemovedOperation,
-  EdgeAddedOperation,
-  EdgeRemovedOperation,
-  NodeMovedOperation,
-  NodeActivatedOperation,
-  DataPropagateOperation,
-  SerializedNodeState,
-  DemoOperationType,
-} from './types'
-import type { BaseNode } from '../nodes/BaseNode'
+import type { AnoraGraph, SerializedGraph } from '../graph'
+import type { BasicExecutor, ExecutorEvent } from '../executor'
+import type { DemoRecording, SerializedExecutorEvent, TimestampedEvent } from './types'
+import { DEMO_FORMAT_VERSION } from './types'
 
 export class DemoRecorder {
-  private operations: AnyDemoOperation[] = []
-  private stepCounter = 0
-  private isRecording = false
+  /** 录制的事件列表 */
+  private events: TimestampedEvent[] = []
 
-  /** Callback when an operation is recorded */
-  onOperationRecorded?: (count: number) => void
+  /** 录制开始时间 */
+  private startTime: number = 0
 
-  /**
-   * Push operation and notify callback
-   */
-  private pushOperation(operation: AnyDemoOperation): void {
-    this.operations.push(operation)
-    this.onOperationRecorded?.(this.operations.length)
+  /** 是否正在录制 */
+  private _isRecording: boolean = false
+
+  /** 初始图状态 */
+  private initialGraph: SerializedGraph | null = null
+
+  /** 节点位置快照 */
+  private nodePositions: Record<string, { x: number; y: number }> = {}
+
+  /** 被绑定的执行器 */
+  private executor: BasicExecutor | null = null
+
+  /** 被绑定的图 */
+  private graph: AnoraGraph | null = null
+
+  /** 事件订阅取消函数 */
+  private unsubscribe: (() => void) | null = null
+
+  /** 录制状态变更回调 */
+  onRecordingChange?: (isRecording: boolean, eventCount: number) => void
+
+  /** 获取是否正在录制 */
+  get isRecording(): boolean {
+    return this._isRecording
+  }
+
+  /** 获取已录制的事件数量 */
+  get eventCount(): number {
+    return this.events.length
   }
 
   /**
-   * Start recording
+   * 绑定执行器
+   * 录制器需要知道要监听哪个执行器的事件
    */
-  startRecording(): void {
-    this.isRecording = true
-    this.operations = []
-    this.stepCounter = 0
+  bindExecutor(executor: BasicExecutor): void {
+    // 如果正在录制，先停止
+    if (this._isRecording) {
+      this.stopRecording()
+    }
+    this.executor = executor
   }
 
   /**
-   * Stop recording
+   * 绑定图
+   * 录制器需要知道要序列化哪个图
+   */
+  bindGraph(graph: AnoraGraph): void {
+    this.graph = graph
+  }
+
+  /**
+   * 开始录制
+   * @param nodePositions 节点位置映射（从外部传入，因为位置信息在 UI 层）
+   */
+  startRecording(nodePositions: Map<string, { x: number; y: number }>): void {
+    if (this._isRecording) return
+    if (!this.executor) {
+      console.warn('[DemoRecorder] No executor bound, call bindExecutor first')
+      return
+    }
+    if (!this.graph) {
+      console.warn('[DemoRecorder] No graph bound, call bindGraph first')
+      return
+    }
+
+    // 清空之前的录制
+    this.clear()
+
+    // 保存初始状态
+    this.initialGraph = this.graph.serialize()
+
+    // 转换节点位置为普通对象
+    this.nodePositions = {}
+    for (const [nodeId, pos] of nodePositions) {
+      this.nodePositions[nodeId] = { x: pos.x, y: pos.y }
+    }
+
+    // 订阅执行器事件
+    this.unsubscribe = this.executor.on((event) => {
+      this.recordEvent(event)
+    })
+
+    this._isRecording = true
+    this.startTime = Date.now()
+    this.onRecordingChange?.(true, 0)
+
+    console.log('[DemoRecorder] Recording started')
+  }
+
+  /**
+   * 停止录制
    */
   stopRecording(): void {
-    this.isRecording = false
+    if (!this._isRecording) return
+
+    // 取消事件订阅
+    this.unsubscribe?.()
+    this.unsubscribe = null
+
+    this._isRecording = false
+    this.onRecordingChange?.(false, this.events.length)
+
+    console.log(`[DemoRecorder] Recording stopped, ${this.events.length} events captured`)
   }
 
   /**
-   * Check if currently recording
+   * 记录执行器事件（内部使用）
    */
-  isActive(): boolean {
-    return this.isRecording
+  private recordEvent(event: ExecutorEvent): void {
+    if (!this._isRecording) return
+
+    const timestamp = Date.now() - this.startTime
+    const serialized = this.serializeEvent(event)
+
+    this.events.push({
+      timestamp,
+      event: serialized,
+    })
+
+    this.onRecordingChange?.(true, this.events.length)
   }
 
   /**
-   * Record the initial state of the graph when recording starts
+   * 序列化执行器事件
    */
-  recordInitialState(
-    nodes: Array<{
-      nodeId: string
-      nodeType: string
-      label: string
-      position: { x: number; y: number }
-      context?: unknown
-    }>,
-    edges: Array<{
-      fromNodeId: string
-      fromPortName: string
-      toNodeId: string
-      toPortName: string
-    }>,
-  ): void {
-    if (!this.isRecording) return
+  private serializeEvent(event: ExecutorEvent): SerializedExecutorEvent {
+    switch (event.type) {
+      case 'start':
+        return { type: 'start' }
 
-    const operation: InitialStateOperation = {
-      type: 'initial_state' as DemoOperationType.INITIAL_STATE,
-      stepIndex: this.stepCounter++,
-      nodes,
-      edges,
+      case 'iteration':
+        return {
+          type: 'iteration',
+          iteration: event.iteration,
+        }
+
+      case 'node-start':
+        return {
+          type: 'node-start',
+          nodeId: event.node.id,
+        }
+
+      case 'node-complete':
+        return {
+          type: 'node-complete',
+          nodeId: event.node.id,
+        }
+
+      case 'data-propagate':
+        return {
+          type: 'data-propagate',
+          transfers: event.transfers.map((t) => ({
+            fromPortId: t.fromPortId,
+            toPortId: t.toPortId,
+            data: t.data,
+          })),
+        }
+
+      case 'complete':
+        return {
+          type: 'complete',
+          result: {
+            status: event.result.status,
+            iterations: event.result.iterations,
+            activatedNodeIds: [...event.result.activatedNodeIds],
+            error: event.result.error,
+          },
+        }
+
+      case 'cancelled':
+        return { type: 'cancelled' }
+
+      case 'error':
+        return {
+          type: 'error',
+          error: {
+            message: event.error.message,
+            stack: event.error.stack,
+          },
+        }
+    }
+  }
+
+  /**
+   * 导出录制数据
+   */
+  exportRecording(metadata?: {
+    title?: string
+    description?: string
+    iterationDelay?: number
+  }): DemoRecording {
+    if (!this.initialGraph) {
+      throw new Error('No recording data available')
     }
 
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record an iteration with node states
-   */
-  recordIteration(nodes: BaseNode[], activatedNodeIds: string[]): void {
-    if (!this.isRecording) return
-
-    const nodeStates: SerializedNodeState[] = nodes.map((node) => ({
-      nodeId: node.id,
-      outPorts: this.serializeNodeOutPorts(node),
-      status: 'success', // TODO: track actual execution status
-    }))
-
-    const operation: IterationOperation = {
-      type: 'iteration' as DemoOperationType.ITERATION,
-      stepIndex: this.stepCounter++,
-      nodeStates,
-      activatedNodeIds,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record node addition
-   */
-  recordNodeAdded(
-    nodeId: string,
-    nodeType: string,
-    position: { x: number; y: number },
-    context?: unknown,
-  ): void {
-    if (!this.isRecording) return
-
-    const operation: NodeAddedOperation = {
-      type: 'node_added' as DemoOperationType.NODE_ADDED,
-      stepIndex: this.stepCounter++,
-      nodeId,
-      nodeType,
-      position,
-      context,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record node removal
-   */
-  recordNodeRemoved(nodeId: string): void {
-    if (!this.isRecording) return
-
-    const operation: NodeRemovedOperation = {
-      type: 'node_removed' as DemoOperationType.NODE_REMOVED,
-      stepIndex: this.stepCounter++,
-      nodeId,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record edge addition
-   */
-  recordEdgeAdded(
-    fromNodeId: string,
-    fromPortName: string,
-    toNodeId: string,
-    toPortName: string,
-  ): void {
-    if (!this.isRecording) return
-
-    const operation: EdgeAddedOperation = {
-      type: 'edge_added' as DemoOperationType.EDGE_ADDED,
-      stepIndex: this.stepCounter++,
-      fromNodeId,
-      fromPortName,
-      toNodeId,
-      toPortName,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record edge removal
-   */
-  recordEdgeRemoved(
-    fromNodeId: string,
-    fromPortName: string,
-    toNodeId: string,
-    toPortName: string,
-  ): void {
-    if (!this.isRecording) return
-
-    const operation: EdgeRemovedOperation = {
-      type: 'edge_removed' as DemoOperationType.EDGE_REMOVED,
-      stepIndex: this.stepCounter++,
-      fromNodeId,
-      fromPortName,
-      toNodeId,
-      toPortName,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record node movement
-   */
-  recordNodeMoved(nodeId: string, position: { x: number; y: number }): void {
-    if (!this.isRecording) return
-
-    const operation: NodeMovedOperation = {
-      type: 'node_moved' as DemoOperationType.NODE_MOVED,
-      stepIndex: this.stepCounter++,
-      nodeId,
-      position,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record node activation during execution
-   */
-  recordNodeActivated(nodeId: string, success: boolean, error?: string): void {
-    if (!this.isRecording) return
-
-    const operation: NodeActivatedOperation = {
-      type: 'node_activated' as DemoOperationType.NODE_ACTIVATED,
-      stepIndex: this.stepCounter++,
-      nodeId,
-      success,
-      error,
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Record data propagation through edges
-   */
-  recordDataPropagate(
-    transfers: Array<{ sourcePortId: string; targetPortId: string; data: unknown }>,
-  ): void {
-    if (!this.isRecording) return
-
-    const operation: DataPropagateOperation = {
-      type: 'data_propagate' as DemoOperationType.DATA_PROPAGATE,
-      stepIndex: this.stepCounter++,
-      transfers: transfers.map((t) => ({
-        sourcePortId: t.sourcePortId,
-        targetPortId: t.targetPortId,
-        data: t.data,
-      })),
-    }
-
-    this.pushOperation(operation)
-  }
-
-  /**
-   * Export recording
-   */
-  exportRecording(metadata?: { title?: string; description?: string }): DemoRecording {
     return {
-      version: '1.0.0',
-      operations: [...this.operations],
+      version: DEMO_FORMAT_VERSION,
       metadata: {
-        ...metadata,
+        title: metadata?.title ?? 'Untitled Recording',
+        description: metadata?.description ?? '',
         createdAt: new Date().toISOString(),
+        duration: this.events.length > 0 ? this.events[this.events.length - 1].timestamp : 0,
       },
+      settings: {
+        iterationDelay: metadata?.iterationDelay ?? 0,
+      },
+      initialGraph: this.initialGraph,
+      nodePositions: this.nodePositions,
+      events: [...this.events],
     }
   }
 
   /**
-   * Clear all recorded operations
+   * 清空录制数据
    */
   clear(): void {
-    this.operations = []
-    this.stepCounter = 0
-  }
-
-  /**
-   * Get the number of recorded operations
-   */
-  getOperationCount(): number {
-    return this.operations.length
-  }
-
-  /**
-   * Serialize node's output ports
-   */
-  private serializeNodeOutPorts(node: BaseNode): { [portName: string]: unknown } {
-    const result: { [portName: string]: unknown } = {}
-
-    for (const [portName, port] of node.outPorts.entries()) {
-      try {
-        result[portName] = port.serialize()
-      } catch {
-        result[portName] = null
-      }
-    }
-
-    return result
+    this.events = []
+    this.startTime = 0
+    this.initialGraph = null
+    this.nodePositions = {}
   }
 }

@@ -4,4 +4,4 @@
 
 export * from './types'
 export * from './DemoRecorder'
-export * from './DemoPlayer'
+export * from './ReplayExecutor'

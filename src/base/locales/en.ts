@@ -61,10 +61,20 @@ export default {
     loadRecording: 'Load Recording',
     export: 'Export',
     step: 'Step',
+    play: 'Play',
+    pause: 'Pause',
+    stepForward: 'Step Forward',
+    exitReplay: 'Exit Replay',
+    unsupportedVersion: 'Unsupported recording version: {version}',
     shortcutPlayPause: 'Play/Pause',
     shortcutPrev: 'Previous Step',
     shortcutNext: 'Next Step',
     ipcInfo: 'External control via post_message',
+  },
+
+  // Errors
+  errors: {
+    invalidDemoFile: 'Invalid demo file format',
   },
 
   // Node palette

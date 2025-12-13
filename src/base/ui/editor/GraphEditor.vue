@@ -37,9 +37,8 @@ const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueF
 /** 节点位置存储（独立于 AnoraNode） */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
-/** 录制控制组件 ref */
-/** 录制控制组件 ref */
-const recordingControlsRef = ref<InstanceType<typeof RecordingControls> | null>(null)
+/** 是否处于回放模式（只读） */
+const isReplayMode = computed(() => graphStore.isReplayMode)
 
 /** 处理图导入完成 */
 function onGraphImported(positions: Map<string, { x: number; y: number }>): void {
@@ -54,13 +53,19 @@ function getNodeViewType(typeId: string): string {
 /** 将 AnoraGraph 转换为 Vue-Flow 节点 */
 const vfNodes = computed<Node[]>(() => {
   const nodes: Node[] = []
+  // 回放模式下使用 store 中的位置
+  const positions = isReplayMode.value ? graphStore.nodePositions : nodePositions.value
+
   for (const node of graphStore.nodes) {
-    const pos = nodePositions.value.get(node.id) ?? { x: 0, y: 0 }
+    const pos = positions.get(node.id) ?? { x: 0, y: 0 }
     nodes.push({
       id: node.id,
       type: getNodeViewType(node.typeId),
       position: pos,
       data: { node: markRaw(node) },
+      // 回放模式下禁用拖拽和选择
+      draggable: !isReplayMode.value,
+      selectable: !isReplayMode.value,
     })
   }
   return nodes
@@ -151,33 +156,12 @@ const edgeTypes = {
 
 /** 处理连接 */
 onConnect((connection: Connection) => {
+  // 回放模式下禁止编辑
+  if (isReplayMode.value) return
+
   if (connection.sourceHandle && connection.targetHandle) {
     const success = graphStore.addEdge(connection.sourceHandle, connection.targetHandle)
-    if (success) {
-      // 录制边添加
-      const sourceNode = graphStore.nodes.find((n) =>
-        Array.from(n.outPorts.values()).some((p) => p.id === connection.sourceHandle),
-      )
-      const targetNode = graphStore.nodes.find((n) =>
-        Array.from(n.inPorts.values()).some((p) => p.id === connection.targetHandle),
-      )
-      if (sourceNode && targetNode) {
-        const sourcePortName = Array.from(sourceNode.outPorts.entries()).find(
-          ([, p]) => p.id === connection.sourceHandle,
-        )?.[0]
-        const targetPortName = Array.from(targetNode.inPorts.entries()).find(
-          ([, p]) => p.id === connection.targetHandle,
-        )?.[0]
-        if (sourcePortName && targetPortName) {
-          recordingControlsRef.value?.recordEdgeAdded(
-            sourceNode.id,
-            sourcePortName,
-            targetNode.id,
-            targetPortName,
-          )
-        }
-      }
-    } else {
+    if (!success) {
       console.warn('Failed to create edge: incompatible types')
     }
   }
@@ -198,9 +182,13 @@ onPaneClick(() => {
 
 /** 处理节点位置变化 */
 function onNodeDragStop(event: { node: Node }): void {
+  // 回放模式下禁止拖拽
+  if (isReplayMode.value) return
+
   const newPos = { ...event.node.position }
   nodePositions.value.set(event.node.id, newPos)
-  recordingControlsRef.value?.recordNodeMoved(event.node.id, newPos)
+  // 同步到 store（用于录制）
+  graphStore.updateNodePosition(event.node.id, newPos)
 }
 
 /** 处理节点变更（选择、删除等） */
@@ -214,9 +202,8 @@ function onNodesChange(changes: unknown[]): void {
         graphStore.deselectNode(c.id)
       }
     }
-    // 处理节点删除
-    if (c.type === 'remove' && c.id !== undefined) {
-      recordingControlsRef.value?.recordNodeRemoved(c.id)
+    // 处理节点删除（回放模式下禁止）
+    if (c.type === 'remove' && c.id !== undefined && !isReplayMode.value) {
       graphStore.removeNode(c.id)
       nodePositions.value.delete(c.id)
     }
@@ -225,6 +212,9 @@ function onNodesChange(changes: unknown[]): void {
 
 /** 处理边变更（删除等） */
 function onEdgesChange(changes: unknown[]): void {
+  // 回放模式下禁止删除边
+  if (isReplayMode.value) return
+
   for (const change of changes) {
     const c = change as { id?: string; type?: string }
     // 处理边删除
@@ -233,7 +223,6 @@ function onEdgesChange(changes: unknown[]): void {
       const [fromPortId, toPortId] = c.id.split('->')
       if (fromPortId && toPortId) {
         graphStore.removeEdge(fromPortId, toPortId)
-        // TODO: 录制边删除操作
       }
     }
   }
@@ -262,8 +251,10 @@ function autoLayout(): void {
 
 /** 删除选中的节点 */
 function deleteSelected(): void {
+  // 回放模式下禁止删除
+  if (isReplayMode.value) return
+
   for (const nodeId of graphStore.selectedNodeIds) {
-    recordingControlsRef.value?.recordNodeRemoved(nodeId)
     graphStore.removeNode(nodeId)
     nodePositions.value.delete(nodeId)
   }
@@ -322,8 +313,8 @@ watch(
           y: 100 + Math.floor(existingCount / 5) * 180,
         }
         nodePositions.value.set(node.id, pos)
-        // 录制节点添加
-        recordingControlsRef.value?.recordNodeAdded(node.id, node.typeId, pos)
+        // 同步到 store
+        graphStore.updateNodePosition(node.id, pos)
       }
     }
   },
@@ -352,7 +343,7 @@ onUnmounted(() => {
       <div class="toolbar-divider" />
 
       <!-- 录制控制 -->
-      <RecordingControls ref="recordingControlsRef" :node-positions="nodePositions" />
+      <RecordingControls />
 
       <div class="toolbar-divider" />
 

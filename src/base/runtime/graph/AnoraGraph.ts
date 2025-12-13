@@ -1,7 +1,8 @@
 import { BaseNode } from '../nodes/BaseNode'
 import { BasePort, ContainerPort } from '../ports'
 import { areTypesCompatible } from '../types'
-import type { SerializedGraph, SerializedEdge } from '../types'
+import type { SerializedGraph, SerializedEdge, SerializedNode } from '../types'
+import { NodeRegistry } from '../registry'
 
 /**
  * 边的内部表示
@@ -390,6 +391,82 @@ export class AnoraGraph {
       schemaVersion: 1,
       nodes: Array.from(this.nodes.values()).map((node) => node.serialize()),
       edges: serializedEdges,
+    }
+  }
+
+  /**
+   * 从序列化数据恢复图
+   */
+  deserialize(data: SerializedGraph): void {
+    // 清空当前图
+    this.clear()
+
+    // 恢复节点
+    for (const nodeData of data.nodes) {
+      const node = this.deserializeNode(nodeData)
+      if (node) {
+        this.addNode(node)
+      }
+    }
+
+    // 恢复边
+    for (const edgeData of data.edges) {
+      this.addEdge(edgeData.fromPortId, edgeData.toPortId)
+    }
+  }
+
+  /**
+   * 反序列化单个节点
+   */
+  private deserializeNode(data: SerializedNode): BaseNode | null {
+    const node = NodeRegistry.createNode(data.typeId, data.id, data.label)
+    if (!node) {
+      console.warn(`[AnoraGraph] Failed to create node of type: ${data.typeId}`)
+      return null
+    }
+
+    const baseNode = node as BaseNode
+
+    // 恢复 context
+    if (data.context && baseNode.context) {
+      Object.assign(baseNode.context, data.context)
+    }
+
+    // 恢复 position
+    baseNode.position = { ...data.position }
+
+    // 恢复端口数据
+    this.deserializePorts(baseNode, data)
+
+    return baseNode
+  }
+
+  /**
+   * 反序列化节点的端口数据
+   */
+  private deserializePorts(node: BaseNode, data: SerializedNode): void {
+    // 恢复入端口数据
+    for (const [portName, portData] of Object.entries(data.inPorts)) {
+      const port = node.inPorts.get(portName)
+      if (port && portData.data !== null) {
+        try {
+          port.deserialize(portData)
+        } catch (e) {
+          console.warn(`[AnoraGraph] Failed to deserialize inPort ${portName}:`, e)
+        }
+      }
+    }
+
+    // 恢复出端口数据
+    for (const [portName, portData] of Object.entries(data.outPorts)) {
+      const port = node.outPorts.get(portName)
+      if (port && portData.data !== null) {
+        try {
+          port.deserialize(portData)
+        } catch (e) {
+          console.warn(`[AnoraGraph] Failed to deserialize outPort ${portName}:`, e)
+        }
+      }
     }
   }
 

@@ -156,6 +156,15 @@ export abstract class BasePort {
       keyInParent: this.keyInParent,
     }
   }
+
+  /**
+   * 反序列化
+   */
+  deserialize(data: SerializedPort): void {
+    if (data.data !== null && data.data !== undefined) {
+      this.write(data.data as string | number | boolean | object | null)
+    }
+  }
 }
 
 /**

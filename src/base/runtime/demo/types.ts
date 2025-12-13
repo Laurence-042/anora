@@ -1,205 +1,94 @@
 /**
- * Demo mode types for recording and replaying graph operations
+ * Demo Recording Types
+ *
+ * 新架构：直接记录 Executor 事件，回放时 emit 相同的事件给前端组件
+ * 这样录制和回放共用同一套前端组件逻辑，避免重复实现
  */
 
+import type { SerializedGraph } from '../types'
+
 /**
- * Types of operations that can be recorded
+ * 带时间戳的执行器事件
  */
-export enum DemoOperationType {
-  /** Initial graph state when recording starts */
-  INITIAL_STATE = 'initial_state',
-  /** Executor completed an iteration */
-  ITERATION = 'iteration',
-  /** Node was added to the graph */
-  NODE_ADDED = 'node_added',
-  /** Node was removed from the graph */
-  NODE_REMOVED = 'node_removed',
-  /** Edge was added to the graph */
-  EDGE_ADDED = 'edge_added',
-  /** Edge was removed from the graph */
-  EDGE_REMOVED = 'edge_removed',
-  /** Node position changed */
-  NODE_MOVED = 'node_moved',
-  /** Node activated during execution */
-  NODE_ACTIVATED = 'node_activated',
-  /** Data propagated through an edge */
-  DATA_PROPAGATE = 'data_propagate',
+export interface TimestampedEvent {
+  /** 事件发生的相对时间（毫秒，从录制开始） */
+  timestamp: number
+  /** 执行器事件（序列化版本，不含对象引用） */
+  event: SerializedExecutorEvent
 }
 
 /**
- * Serialized node state after execution
+ * 序列化的执行器事件
+ * 将 BaseNode 引用替换为 nodeId，便于存储和传输
  */
-export interface SerializedNodeState {
-  nodeId: string
-  /** Port values after execution */
-  outPorts: { [portName: string]: unknown }
-  /** Execution status */
-  status: 'success' | 'error' | 'not_executed'
-  /** Error message if failed */
-  error?: string
-}
+export type SerializedExecutorEvent =
+  | { type: 'start' }
+  | { type: 'iteration'; iteration: number }
+  | { type: 'node-start'; nodeId: string }
+  | { type: 'node-complete'; nodeId: string; success: boolean; error?: string }
+  | {
+      type: 'data-propagate'
+      transfers: Array<{
+        fromPortId: string
+        toPortId: string
+        data: unknown
+      }>
+    }
+  | {
+      type: 'complete'
+      result: {
+        status: string
+        error?: string
+        iterations: number
+        duration: number
+      }
+    }
+  | { type: 'cancelled' }
+  | { type: 'error'; error: string }
 
 /**
- * Base operation interface
- */
-export interface DemoOperation {
-  type: DemoOperationType
-  stepIndex: number
-}
-
-/**
- * Iteration operation - records node states after execution
- */
-export interface IterationOperation extends DemoOperation {
-  type: DemoOperationType.ITERATION
-  /** States of all nodes after this iteration */
-  nodeStates: SerializedNodeState[]
-  /** Nodes that were activated in this iteration */
-  activatedNodeIds: string[]
-}
-
-/**
- * Node addition operation
- */
-export interface NodeAddedOperation extends DemoOperation {
-  type: DemoOperationType.NODE_ADDED
-  nodeId: string
-  nodeType: string
-  position: { x: number; y: number }
-  context?: unknown
-}
-
-/**
- * Node removal operation
- */
-export interface NodeRemovedOperation extends DemoOperation {
-  type: DemoOperationType.NODE_REMOVED
-  nodeId: string
-}
-
-/**
- * Edge addition operation
- */
-export interface EdgeAddedOperation extends DemoOperation {
-  type: DemoOperationType.EDGE_ADDED
-  fromNodeId: string
-  fromPortName: string
-  toNodeId: string
-  toPortName: string
-}
-
-/**
- * Edge removal operation
- */
-export interface EdgeRemovedOperation extends DemoOperation {
-  type: DemoOperationType.EDGE_REMOVED
-  fromNodeId: string
-  fromPortName: string
-  toNodeId: string
-  toPortName: string
-}
-
-/**
- * Node movement operation
- */
-export interface NodeMovedOperation extends DemoOperation {
-  type: DemoOperationType.NODE_MOVED
-  nodeId: string
-  position: { x: number; y: number }
-}
-
-/**
- * Node activation operation during execution
- */
-export interface NodeActivatedOperation extends DemoOperation {
-  type: DemoOperationType.NODE_ACTIVATED
-  nodeId: string
-  /** Whether the activation was successful */
-  success: boolean
-  /** Error message if failed */
-  error?: string
-}
-
-/**
- * Data propagation operation - records data flowing through edges
- */
-export interface DataPropagateOperation extends DemoOperation {
-  type: DemoOperationType.DATA_PROPAGATE
-  /** Data transfers on edges */
-  transfers: Array<{
-    sourcePortId: string
-    targetPortId: string
-    data: unknown
-  }>
-}
-
-/**
- * Initial graph state operation - records all nodes and edges when recording starts
- */
-export interface InitialStateOperation extends DemoOperation {
-  type: DemoOperationType.INITIAL_STATE
-  /** All nodes in the graph */
-  nodes: Array<{
-    nodeId: string
-    nodeType: string
-    label: string
-    position: { x: number; y: number }
-    context?: unknown
-  }>
-  /** All edges in the graph */
-  edges: Array<{
-    fromNodeId: string
-    fromPortName: string
-    toNodeId: string
-    toPortName: string
-  }>
-}
-
-/**
- * Union type of all operations
- */
-export type AnyDemoOperation =
-  | InitialStateOperation
-  | IterationOperation
-  | NodeAddedOperation
-  | NodeRemovedOperation
-  | EdgeAddedOperation
-  | EdgeRemovedOperation
-  | NodeMovedOperation
-  | NodeActivatedOperation
-  | DataPropagateOperation
-
-/**
- * Complete demo recording
+ * Demo 录制文件格式
  */
 export interface DemoRecording {
-  version: string
-  operations: AnyDemoOperation[]
+  /** 格式版本 */
+  version: '2.0.0'
+  /** 初始图状态（使用标准序列化格式） */
+  initialGraph: SerializedGraph
+  /** 节点位置信息 */
+  nodePositions: Record<string, { x: number; y: number }>
+  /** 事件序列 */
+  events: TimestampedEvent[]
+  /** 元数据 */
   metadata?: {
     title?: string
     description?: string
     createdAt?: string
+    /** 录制时的迭代延迟设置 */
+    iterationDelay?: number
     [key: string]: unknown
   }
 }
 
 /**
- * Demo player state
+ * 回放状态
  */
-export enum DemoPlayerState {
-  IDLE = 'idle',
-  PLAYING = 'playing',
-  PAUSED = 'paused',
+export enum ReplayState {
+  /** 空闲（未加载或已停止） */
+  Idle = 'idle',
+  /** 播放中 */
+  Playing = 'playing',
+  /** 已暂停 */
+  Paused = 'paused',
 }
 
 /**
- * Demo player control commands
+ * 回放控制命令
  */
-export enum DemoControlCommand {
-  PLAY = 'play',
-  PAUSE = 'pause',
-  STOP = 'stop',
-  NEXT = 'next',
-  PREVIOUS = 'previous',
-  GOTO = 'goto',
+export enum ReplayCommand {
+  Play = 'play',
+  Pause = 'pause',
+  Stop = 'stop',
+  StepForward = 'step-forward',
+  StepBackward = 'step-backward',
+  SeekTo = 'seek-to',
 }

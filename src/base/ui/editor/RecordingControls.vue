@@ -1,97 +1,43 @@
 <script setup lang="ts">
 /**
- * RecordingControls - 录制控制组件
- * 录制操作序列，导出供演示模式使用
- * 自包含录制逻辑，通过 props 接收外部事件
+ * RecordingControls - 录制与回放控制组件
+ *
+ * 新架构：录制/回放逻辑集中在 store 中，组件只负责 UI
+ * - 录制模式：监听 Executor 事件，自动记录
+ * - 回放模式：使用 ReplayExecutor 回放事件，前端组件自动响应
  */
-import { ref, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
-import { DemoRecorder } from '@/base/runtime/demo'
-
-const props = defineProps<{
-  /** 节点位置映射（用于录制节点位置） */
-  nodePositions: Map<string, { x: number; y: number }>
-}>()
+import { ReplayState } from '@/base/runtime/demo'
+import type { DemoRecording } from '@/base/runtime/demo'
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
-// ========== 录制状态 ==========
-const recorder = new DemoRecorder()
-const isRecording = ref(false)
-const operationCount = ref(0)
+// ========== 状态 ==========
+const isRecording = computed(() => graphStore.isRecording)
+const recordedEventCount = computed(() => graphStore.recordedEventCount)
+const isReplayMode = computed(() => graphStore.isReplayMode)
+const replayState = computed(() => graphStore.replayState)
+const replayProgress = computed(() => graphStore.replayProgress)
+const isRunning = computed(() => graphStore.isRunning)
 
-// 设置录制回调，实时更新操作计数
-recorder.onOperationRecorded = (count: number) => {
-  operationCount.value = count
-}
+// 回放是否正在播放
+const isPlaying = computed(() => replayState.value === ReplayState.Playing)
 
-/** 开始录制 */
+// ========== 录制操作 ==========
+
 function startRecording(): void {
-  recorder.clear()
-  recorder.startRecording()
-  isRecording.value = true
-  operationCount.value = 0
-  graphStore.executor.setDemoRecorder(recorder)
-
-  // 记录初始图状态
-  const graph = graphStore.currentGraph
-  const nodes = graph.getAllNodes().map((node) => {
-    const pos = props.nodePositions.get(node.id) || { x: 0, y: 0 }
-    return {
-      nodeId: node.id,
-      nodeType: node.typeId,
-      label: node.label,
-      position: pos,
-      context: node.context,
-    }
-  })
-
-  // 构建 portId -> { node, portName } 的映射
-  const portIdToInfo = new Map<string, { nodeId: string; portName: string }>()
-  for (const node of graph.getAllNodes()) {
-    for (const [name, port] of node.inPorts) {
-      portIdToInfo.set(port.id, { nodeId: node.id, portName: name })
-    }
-    for (const [name, port] of node.outPorts) {
-      portIdToInfo.set(port.id, { nodeId: node.id, portName: name })
-    }
-    // exec ports
-    if (node.inExecPort) {
-      portIdToInfo.set(node.inExecPort.id, { nodeId: node.id, portName: 'exec' })
-    }
-    if (node.outExecPort) {
-      portIdToInfo.set(node.outExecPort.id, { nodeId: node.id, portName: 'exec' })
-    }
-  }
-
-  const edges = graph.getAllEdges().map((edge) => {
-    const fromInfo = portIdToInfo.get(edge.fromPortId)
-    const toInfo = portIdToInfo.get(edge.toPortId)
-    return {
-      fromNodeId: fromInfo?.nodeId || '',
-      fromPortName: fromInfo?.portName || '',
-      toNodeId: toInfo?.nodeId || '',
-      toPortName: toInfo?.portName || '',
-    }
-  })
-
-  recorder.recordInitialState(nodes, edges)
+  graphStore.startRecording()
 }
 
-/** 停止录制 */
 function stopRecording(): void {
-  recorder.stopRecording()
-  isRecording.value = false
-  // 更新操作计数（确保最终值同步）
-  operationCount.value = recorder.getOperationCount()
-  graphStore.executor.setDemoRecorder(undefined)
+  graphStore.stopRecording()
 }
 
-/** 下载录制文件 */
 function downloadRecording(): void {
-  const data = recorder.exportRecording()
+  const data = graphStore.exportRecording()
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -101,71 +47,41 @@ function downloadRecording(): void {
   URL.revokeObjectURL(url)
 }
 
-/** 上传录制文件并跳转到演示页面 */
-function uploadRecording(file: File): void {
+// ========== 回放操作 ==========
+
+function loadRecording(file: File): void {
   const reader = new FileReader()
   reader.onload = (e) => {
     const content = e.target?.result as string
     try {
-      const data = JSON.parse(content)
-      sessionStorage.setItem('anora-demo-data', JSON.stringify(data))
-      window.location.href = '/demo'
+      const data = JSON.parse(content) as DemoRecording
+
+      // 检查版本
+      if (data.version !== '2.0.0') {
+        alert(t('demo.unsupportedVersion', { version: data.version }))
+        return
+      }
+
+      graphStore.loadRecording(data)
     } catch (err) {
       console.error('Failed to parse demo file:', err)
-      alert(t('errors.invalidOperation'))
+      alert(t('errors.invalidDemoFile'))
     }
   }
   reader.readAsText(file)
 }
 
-// ========== 录制方法（供外部调用） ==========
-
-/** 录制：节点添加 */
-function recordNodeAdded(nodeId: string, typeId: string, position: { x: number; y: number }): void {
-  if (isRecording.value) {
-    const node = graphStore.currentGraph.getNode(nodeId)
-    recorder.recordNodeAdded(nodeId, typeId, position, node?.context)
-    operationCount.value = recorder.getOperationCount()
-  }
+function exitReplay(): void {
+  graphStore.exitReplayMode()
 }
 
-/** 录制：节点移除 */
-function recordNodeRemoved(nodeId: string): void {
-  if (isRecording.value) {
-    recorder.recordNodeRemoved(nodeId)
-    operationCount.value = recorder.getOperationCount()
-  }
+function togglePlayPause(): void {
+  graphStore.toggleReplay()
 }
 
-/** 录制：边添加 */
-function recordEdgeAdded(
-  fromNodeId: string,
-  fromPortName: string,
-  toNodeId: string,
-  toPortName: string,
-): void {
-  if (isRecording.value) {
-    recorder.recordEdgeAdded(fromNodeId, fromPortName, toNodeId, toPortName)
-    operationCount.value = recorder.getOperationCount()
-  }
+function stepForward(): void {
+  graphStore.replayStepForward()
 }
-
-/** 录制：节点移动 */
-function recordNodeMoved(nodeId: string, position: { x: number; y: number }): void {
-  if (isRecording.value) {
-    recorder.recordNodeMoved(nodeId, position)
-    operationCount.value = recorder.getOperationCount()
-  }
-}
-
-// 暴露录制方法给父组件
-defineExpose({
-  isRecording,
-  recordNodeAdded,
-  recordNodeRemoved,
-  recordEdgeAdded,
-  recordNodeMoved,
-})
 
 // ========== UI ==========
 const fileInput = ref<HTMLInputElement>()
@@ -178,69 +94,124 @@ function handleFileChange(event: Event): void {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
-    uploadRecording(file)
+    loadRecording(file)
     target.value = ''
   }
 }
 
-// 清理
-onUnmounted(() => {
-  if (isRecording.value) {
-    stopRecording()
-  }
-})
+// 回放速度选项
+const speedOptions = [0.5, 1, 1.5, 2, 4]
+const currentSpeed = ref(1)
+
+function setSpeed(speed: number): void {
+  currentSpeed.value = speed
+  graphStore.setReplaySpeed(speed)
+}
 </script>
 
 <template>
   <div class="recording-controls">
-    <!-- 录制状态指示 -->
-    <div v-if="isRecording" class="recording-indicator">
-      <span class="recording-dot"></span>
-      <span class="recording-text">{{ t('demo.recording') }}</span>
-      <span class="operation-count">{{ operationCount }}</span>
-    </div>
+    <!-- 回放模式 UI -->
+    <template v-if="isReplayMode">
+      <div class="replay-controls">
+        <!-- 进度显示 -->
+        <div class="replay-progress">
+          <span class="progress-text">
+            {{ replayProgress.current }} / {{ replayProgress.total }}
+          </span>
+        </div>
 
-    <!-- 控制按钮 -->
-    <button
-      v-if="!isRecording"
-      class="control-btn record-btn"
-      @click="startRecording"
-      :title="t('demo.startRecording')"
-    >
-      <span class="icon">⏺</span>
-    </button>
+        <!-- 播放控制 -->
+        <button
+          class="control-btn"
+          @click="togglePlayPause"
+          :title="isPlaying ? t('demo.pause') : t('demo.play')"
+        >
+          <span class="icon">{{ isPlaying ? '⏸' : '▶' }}</span>
+        </button>
 
-    <template v-else>
-      <button class="control-btn stop-btn" @click="stopRecording" :title="t('demo.stopRecording')">
-        <span class="icon">⏹</span>
-      </button>
-      <button
-        class="control-btn download-btn"
-        @click="downloadRecording"
-        :title="t('demo.export')"
-        :disabled="operationCount === 0"
-      >
-        <span class="icon">💾</span>
-      </button>
+        <button
+          class="control-btn"
+          @click="stepForward"
+          :disabled="isPlaying"
+          :title="t('demo.stepForward')"
+        >
+          <span class="icon">⏭</span>
+        </button>
+
+        <!-- 速度控制 -->
+        <select
+          class="speed-select"
+          :value="currentSpeed"
+          @change="setSpeed(Number(($event.target as HTMLSelectElement).value))"
+        >
+          <option v-for="speed in speedOptions" :key="speed" :value="speed">{{ speed }}x</option>
+        </select>
+
+        <!-- 退出回放 -->
+        <button class="control-btn exit-btn" @click="exitReplay" :title="t('demo.exitReplay')">
+          <span class="icon">✕</span>
+        </button>
+      </div>
     </template>
 
-    <!-- 加载录制文件 -->
-    <button
-      v-if="!isRecording"
-      class="control-btn upload-btn"
-      @click="handleUpload"
-      :title="t('demo.loadRecording')"
-    >
-      <span class="icon">📂</span>
-    </button>
+    <!-- 正常模式 UI -->
+    <template v-else>
+      <!-- 录制状态指示 -->
+      <div v-if="isRecording" class="recording-indicator">
+        <span class="recording-dot"></span>
+        <span class="recording-text">{{ t('demo.recording') }}</span>
+        <span class="event-count">{{ recordedEventCount }}</span>
+      </div>
 
-    <input
-      ref="fileInput"
-      type="file"
-      accept=".json"
-      style="display: none"
-      @change="handleFileChange"
-    />
+      <!-- 控制按钮 -->
+      <button
+        v-if="!isRecording"
+        class="control-btn record-btn"
+        @click="startRecording"
+        :disabled="isRunning"
+        :title="t('demo.startRecording')"
+      >
+        <span class="icon">⏺</span>
+      </button>
+
+      <template v-else>
+        <button
+          class="control-btn stop-btn"
+          @click="stopRecording"
+          :title="t('demo.stopRecording')"
+        >
+          <span class="icon">⏹</span>
+        </button>
+        <button
+          class="control-btn download-btn"
+          @click="downloadRecording"
+          :title="t('demo.export')"
+          :disabled="recordedEventCount === 0"
+        >
+          <span class="icon">💾</span>
+        </button>
+      </template>
+
+      <!-- 加载录制文件 -->
+      <button
+        v-if="!isRecording"
+        class="control-btn upload-btn"
+        @click="handleUpload"
+        :disabled="isRunning"
+        :title="t('demo.loadRecording')"
+      >
+        <span class="icon">📂</span>
+      </button>
+
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".json"
+        style="display: none"
+        @change="handleFileChange"
+      />
+    </template>
   </div>
 </template>
 
@@ -249,6 +220,38 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 4px;
+}
+
+.replay-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.speed-select {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e2e8f0;
+  cursor: pointer;
 }
 
 .recording-indicator {
@@ -285,7 +288,7 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.operation-count {
+.event-count {
   font-size: 10px;
   color: #94a3b8;
   background: rgba(0, 0, 0, 0.2);
@@ -328,6 +331,11 @@ onUnmounted(() => {
 
 .stop-btn:hover {
   background: rgba(220, 38, 38, 0.25);
+}
+
+.exit-btn:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.2);
+  border-color: rgba(220, 38, 38, 0.4);
 }
 
 .icon {

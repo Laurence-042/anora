@@ -2,15 +2,10 @@
 /**
  * LocaleSwitcher - 语言切换组件
  */
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { availableLocales, setLocale, type LocaleType } from '@/locales'
 
 const { locale } = useI18n()
-
-const currentLocale = computed(() => {
-  return availableLocales.find((l) => l.code === locale.value)?.name ?? locale.value
-})
 
 function switchLocale(code: LocaleType): void {
   setLocale(code)

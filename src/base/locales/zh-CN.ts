@@ -61,10 +61,20 @@ export default {
     loadRecording: '加载录制',
     export: '导出',
     step: '步骤',
+    play: '播放',
+    pause: '暂停',
+    stepForward: '单步前进',
+    exitReplay: '退出回放',
+    unsupportedVersion: '不支持的录制版本: {version}',
     shortcutPlayPause: '播放/暂停',
     shortcutPrev: '上一步',
     shortcutNext: '下一步',
     ipcInfo: '外部可通过 post_message 发送控制命令',
+  },
+
+  // 错误
+  errors: {
+    invalidDemoFile: '无效的演示文件格式',
   },
 
   // 节点面板

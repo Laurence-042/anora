@@ -3,7 +3,6 @@ import type { ExecutorContext } from '../types'
 import { BaseNode } from '../nodes/BaseNode'
 import { AnoraGraph } from '../graph/AnoraGraph'
 import { DEFAULT_EXECUTOR_CONTEXT } from '../types'
-import type { DemoRecorder } from '../demo/DemoRecorder'
 import Bluebird from 'bluebird'
 
 // 启用 Bluebird 的取消功能
@@ -134,16 +133,6 @@ export class BasicExecutor {
   /** 事件监听器 */
   private listeners: Set<ExecutorEventListener> = new Set()
 
-  /** Demo recorder (optional) */
-  private demoRecorder?: DemoRecorder
-
-  /**
-   * Set demo recorder for recording execution
-   */
-  setDemoRecorder(recorder: DemoRecorder | undefined): void {
-    this.demoRecorder = recorder
-  }
-
   /**
    * 获取当前状态
    */
@@ -241,12 +230,6 @@ export class BasicExecutor {
 
           // 检查取消状态
           if (cancelled) break
-
-          // Record iteration if demo recorder is active
-          if (this.demoRecorder?.isActive()) {
-            const activatedNodeIds = readyNodes.map((n) => n.id)
-            this.demoRecorder.recordIteration(graph.getAllNodes(), activatedNodeIds)
-          }
 
           // 检查是否有节点失败
           const failed = results.filter((r) => !r.success)
@@ -379,8 +362,6 @@ export class BasicExecutor {
         const err = error instanceof Error ? error : new Error(String(error))
         // 失败时立即发送 node-complete
         this.emit({ type: 'node-complete', node, success: false, error: err })
-        // 录制节点激活失败
-        this.demoRecorder?.recordNodeActivated(node.id, false, err.message)
         return { node, success: false, error: err } as NodeExecutionResult
       }
     })
@@ -408,12 +389,9 @@ export class BasicExecutor {
       return results
     }
 
-    // 对成功执行的节点：先录制激活事件，再清空入 Port，最后传播出 Port 数据
+    // 对成功执行的节点：清空入 Port，然后传播出 Port 数据
     for (const result of results) {
       if (result.success) {
-        // 先录制节点激活成功（在数据传播之前）
-        this.demoRecorder?.recordNodeActivated(result.node.id, true)
-
         // 清空执行后节点的入 Port（避免下一次激活时残留脏数据）
         this.clearNodeInputPorts(result.node)
 
@@ -501,14 +479,6 @@ export class BasicExecutor {
     // 发送数据传播事件
     if (transfers.length > 0) {
       this.emit({ type: 'data-propagate', transfers })
-      // 录制数据传播
-      this.demoRecorder?.recordDataPropagate(
-        transfers.map((t) => ({
-          sourcePortId: t.fromPortId,
-          targetPortId: t.toPortId,
-          data: t.data,
-        })),
-      )
     }
 
     // 检查受影响的节点是否有直通节点需要立即执行
@@ -542,8 +512,6 @@ export class BasicExecutor {
       this.emit({ type: 'node-start', node })
       await node.activate(context)
       this.emit({ type: 'node-complete', node, success: true })
-      // 录制直通节点激活
-      this.demoRecorder?.recordNodeActivated(node.id, true)
 
       // 清空入 Port
       this.clearNodeInputPorts(node)
@@ -553,8 +521,6 @@ export class BasicExecutor {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
       this.emit({ type: 'node-complete', node, success: false, error: err })
-      // 录制直通节点激活失败
-      this.demoRecorder?.recordNodeActivated(node.id, false, err.message)
       throw err
     }
   }
