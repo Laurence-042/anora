@@ -8,10 +8,9 @@
  * - 使用 graphStore 管理所有状态
  * - 回放进度控制
  */
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
 import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
 import { ReplayExecutor } from '@/base/runtime/demo'
@@ -43,6 +42,20 @@ const totalDuration = ref(0)
 /** 播放速度 */
 const playbackSpeed = ref(1)
 
+/** 关键帧列表 */
+const keyframes = ref<
+  Array<{ time: number; startIndex: number; endIndex: number; percentage: number }>
+>([])
+
+/** 播放开始的真实时间 */
+const playStartRealTime = ref(0)
+
+/** 播放开始时的录制时间 */
+const playStartRecordTime = ref(0)
+
+/** 动画帧 ID */
+let animationFrameId: number | null = null
+
 /** AnoraGraphView 引用 */
 const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
 
@@ -56,7 +69,7 @@ const isPaused = computed(() => replayExecutor.value?.isPaused ?? false)
 const isIdle = computed(() => replayExecutor.value?.executorState === ExecutorState.Idle)
 const totalEvents = computed(() => recording.value?.events.length ?? 0)
 const progress = computed(() =>
-  totalDuration.value > 0 ? Math.round((currentTime.value / totalDuration.value) * 100) : 0,
+  totalDuration.value > 0 ? (currentTime.value / totalDuration.value) * 100 : 0,
 )
 const isCompleted = computed(
   () => isIdle.value && currentEventIndex.value >= totalEvents.value && totalEvents.value > 0,
@@ -133,6 +146,9 @@ async function loadRecordingFile(file: File): Promise<void> {
     // 初始化总时长
     totalDuration.value = executor.totalDuration
 
+    // 生成关键帧
+    keyframes.value = executor.getKeyframes(13)
+
     // 监听事件
     executor.on(handleExecutorEvent)
 
@@ -188,14 +204,59 @@ function handleExecutorEvent(event: ExecutorEvent): void {
       // 播放结束，清除执行状态
       graphStore.executingNodeIds = new Set()
       graphStore.edgeDataTransfers = new Map()
+      stopProgressAnimation()
       break
 
     case ExecutorEventType.Error:
       graphStore.executingNodeIds = new Set()
       graphStore.edgeDataTransfers = new Map()
+      stopProgressAnimation()
       break
   }
 }
+
+// ==================== 进度动画 ====================
+
+function startProgressAnimation(): void {
+  if (animationFrameId !== null) return
+
+  playStartRealTime.value = performance.now()
+  playStartRecordTime.value = currentTime.value
+
+  const animate = () => {
+    if (!replayExecutor.value || !isPlaying.value) {
+      animationFrameId = null
+      return
+    }
+
+    // 根据真实时间和播放速度计算当前录制时间
+    const elapsed = performance.now() - playStartRealTime.value
+    const recordElapsed = elapsed * playbackSpeed.value
+    const newTime = Math.min(playStartRecordTime.value + recordElapsed, totalDuration.value)
+
+    currentTime.value = newTime
+
+    animationFrameId = requestAnimationFrame(animate)
+  }
+
+  animationFrameId = requestAnimationFrame(animate)
+}
+
+function stopProgressAnimation(): void {
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+}
+
+// 监听播放状态变化，启动/停止动画
+watch(isPlaying, (playing) => {
+  if (playing) {
+    startProgressAnimation()
+  } else {
+    stopProgressAnimation()
+  }
+})
 
 // ==================== 播放控制 ====================
 
@@ -241,6 +302,9 @@ function stepForward(): void {
 function restart(): void {
   if (!replayExecutor.value || !recording.value) return
 
+  // 停止动画
+  stopProgressAnimation()
+
   // 取消当前执行
   replayExecutor.value.cancel()
 
@@ -257,6 +321,11 @@ function setSpeed(speed: number): void {
   playbackSpeed.value = speed
   if (replayExecutor.value) {
     replayExecutor.value.playbackSpeed = speed
+  }
+  // 如果正在播放，重新校准动画起点
+  if (isPlaying.value) {
+    playStartRealTime.value = performance.now()
+    playStartRecordTime.value = currentTime.value
   }
 }
 
@@ -303,11 +372,13 @@ function goToEditor(): void {
 // ==================== 清理 ====================
 
 function cleanup(): void {
+  stopProgressAnimation()
   if (replayExecutor.value) {
     replayExecutor.value.cancel()
     replayExecutor.value = null
   }
   recording.value = null
+  keyframes.value = []
   graphStore.clearExecutionState()
   currentEventIndex.value = 0
   currentTime.value = 0
@@ -376,16 +447,28 @@ onUnmounted(cleanup)
       <!-- 进度条 -->
       <div class="progress-section">
         <div class="time-display">{{ formatTime(currentTime) }}</div>
-        <input
-          type="range"
-          :min="0"
-          :max="totalDuration"
-          :value="currentTime"
-          class="progress-slider"
-          @input="handleProgressChange"
-        />
+        <div class="progress-wrapper">
+          <input
+            type="range"
+            :min="0"
+            :max="totalDuration"
+            :value="currentTime"
+            class="progress-slider"
+            @input="handleProgressChange"
+          />
+          <!-- 关键帧标记 -->
+          <div class="keyframe-markers">
+            <div
+              v-for="(kf, idx) in keyframes"
+              :key="idx"
+              class="keyframe-marker"
+              :style="{ left: kf.percentage + '%' }"
+              :title="`${formatTime(kf.time)} (${kf.endIndex - kf.startIndex + 1} events)`"
+            />
+          </div>
+        </div>
         <div class="time-display">{{ formatTime(totalDuration) }}</div>
-        <div class="progress-text">{{ progress }}%</div>
+        <div class="progress-text">{{ progress.toFixed(1) }}%</div>
       </div>
 
       <!-- 播放控制 -->
@@ -535,8 +618,13 @@ onUnmounted(cleanup)
   gap: 12px;
 }
 
-.progress-slider {
+.progress-wrapper {
   flex: 1;
+  position: relative;
+}
+
+.progress-slider {
+  width: 100%;
   height: 6px;
   cursor: pointer;
   appearance: none;
@@ -566,6 +654,29 @@ onUnmounted(cleanup)
   border-radius: 50%;
   border: none;
   cursor: pointer;
+}
+
+.keyframe-markers {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.keyframe-marker {
+  position: absolute;
+  width: 4px;
+  height: 10px;
+  background: rgba(251, 191, 36, 0.7);
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+  transition: background 0.2s;
+}
+
+.keyframe-marker:hover {
+  background: #fbbf24;
 }
 
 .time-display {

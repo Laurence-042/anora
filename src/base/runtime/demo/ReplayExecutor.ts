@@ -297,4 +297,61 @@ export class ReplayExecutor extends BasicExecutor {
       this.totalDuration,
     )
   }
+
+  /**
+   * 获取关键帧列表（按指定间隔聚合事件）
+   * @param intervalMs 聚合间隔（毫秒），默认 13ms（约一帧）
+   * @returns 关键帧数组，每个关键帧包含时间和事件索引范围
+   */
+  getKeyframes(intervalMs: number = 13): Array<{
+    time: number
+    startIndex: number
+    endIndex: number
+    percentage: number
+  }> {
+    if (!this.recording || this.recording.events.length === 0) return []
+
+    const keyframes: Array<{
+      time: number
+      startIndex: number
+      endIndex: number
+      percentage: number
+    }> = []
+
+    const totalDuration = this.totalDuration
+    if (totalDuration === 0) return []
+
+    let currentKeyframeStart = 0
+    let currentKeyframeTime = 0
+
+    for (let i = 0; i < this.recording.events.length; i++) {
+      const event = this.recording.events[i]!
+      const eventTime = event.timestamp
+
+      // 如果事件时间超过当前关键帧的结束时间，创建新关键帧
+      if (eventTime >= currentKeyframeTime + intervalMs || i === 0) {
+        if (i > 0) {
+          // 保存上一个关键帧
+          keyframes.push({
+            time: currentKeyframeTime,
+            startIndex: currentKeyframeStart,
+            endIndex: i - 1,
+            percentage: (currentKeyframeTime / totalDuration) * 100,
+          })
+        }
+        currentKeyframeTime = Math.floor(eventTime / intervalMs) * intervalMs
+        currentKeyframeStart = i
+      }
+    }
+
+    // 添加最后一个关键帧
+    keyframes.push({
+      time: currentKeyframeTime,
+      startIndex: currentKeyframeStart,
+      endIndex: this.recording.events.length - 1,
+      percentage: (currentKeyframeTime / totalDuration) * 100,
+    })
+
+    return keyframes
+  }
 }
