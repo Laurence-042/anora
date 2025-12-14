@@ -11,6 +11,7 @@ import {
   BasicExecutor,
   ExecutorEventType,
   ExecutionMode,
+  ExecutorState,
   type ExecutorEvent,
   type EdgeDataTransfer,
   type ExecuteOptions,
@@ -80,8 +81,20 @@ export const useGraphStore = defineStore('graph', () => {
   /** 所有节点 */
   const nodes = computed(() => currentGraph.value.getAllNodes())
 
-  /** 是否正在执行 */
-  const isRunning = computed(() => executorStatus.value === ExecutorStatus.Running)
+  /** 执行器状态 */
+  const executorState = computed(() => executor.value.executorState)
+
+  /** 是否正在执行（包括 Running 和 Stepping） */
+  const isRunning = computed(() => {
+    const state = executor.value.executorState
+    return state === ExecutorState.Running || state === ExecutorState.Stepping
+  })
+
+  /** 是否已暂停 */
+  const isPaused = computed(() => executor.value.executorState === ExecutorState.Paused)
+
+  /** 是否空闲 */
+  const isIdle = computed(() => executor.value.executorState === ExecutorState.Idle)
 
   /** 当前面包屑路径 */
   const breadcrumbPath = computed(() => {
@@ -476,7 +489,10 @@ export const useGraphStore = defineStore('graph', () => {
 
     // 计算属性
     nodes,
+    executorState,
     isRunning,
+    isPaused,
+    isIdle,
     breadcrumbPath,
 
     // 图操作

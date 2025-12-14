@@ -1,29 +1,23 @@
 ﻿/**
  * ReplayExecutor - 回放执行器
  *
- * 继承 BasicExecutor，使用相同的步进模型
- * 不执行实际节点逻辑，而是按录制的事件序列 emit 事件
+ * 继承 BasicExecutor，复用其执行流程和状态机
+ * 仅覆盖 executeOneIteration() 来播放录制的事件
  *
  * 使用方式：
  * 1. loadRecording(recording, graph) - 加载录制数据
- * 2. execute(graph) - 开始回放（与 BasicExecutor 相同接口）
+ * 2. execute(graph) - 开始回放（继承自 BasicExecutor）
  * 3. pause() / resume() / cancel() - 控制回放（继承自 BasicExecutor）
- * 4. stepForward() - 单步前进（覆盖基类，播放一个事件）
+ * 4. stepForward() - 单步前进（继承自 BasicExecutor）
  *
- * 执行模型与 BasicExecutor 相同：
- * - execute() 循环调用步进单元
- * - stepForward() 手动调用一次
- * - 暂停 = 停止循环，恢复 = 继续循环
+ * 执行模型与 BasicExecutor 完全一致，仅 executeOneIteration() 不同：
+ * - BasicExecutor.executeOneIteration(): 执行就绪节点
+ * - ReplayExecutor.executeOneIteration(): 播放下一个录制事件
  */
 
 import { ExecutorStatus } from '../types'
 import type { ExecutorContext } from '../types'
-import {
-  BasicExecutor,
-  ExecutorEventType,
-  ExecutionMode,
-  PlaybackState,
-} from '../executor/BasicExecutor'
+import { BasicExecutor, ExecutorEventType, ExecutorState } from '../executor'
 import type { ExecutorEvent, ExecutionResult, ExecuteOptions } from '../executor/ExecutorTypes'
 import type { AnoraGraph } from '../graph'
 import type { DemoRecording, SerializedExecutorEvent } from './types'
@@ -34,7 +28,6 @@ import type { DemoRecording, SerializedExecutorEvent } from './types'
 export class ReplayExecutor extends BasicExecutor {
   private recording: DemoRecording | null = null
   private currentEventIndex: number = -1
-  private graph: AnoraGraph | null = null
 
   /** 回放速度倍率 */
   playbackSpeed: number = 1.0
@@ -50,77 +43,52 @@ export class ReplayExecutor extends BasicExecutor {
     return this.recording?.events.length ?? 0
   }
 
+  /**
+   * 加载录制数据
+   */
   loadRecording(recording: DemoRecording, graph: AnoraGraph): void {
     this.recording = recording
-    this.graph = graph
+    // 保存 graph 引用到基类的 _graph（通过 execute 时设置）
+    this._graph = graph
     this.currentEventIndex = -1
     this.cancelRequested = false
     this.notifyProgress()
   }
 
+  /**
+   * 覆盖 execute 以初始化回放状态
+   */
   override async execute(
-    _graph: AnoraGraph,
-    _context?: ExecutorContext,
+    graph: AnoraGraph,
+    context?: ExecutorContext,
     options?: ExecuteOptions,
   ): Promise<ExecutionResult> {
-    if (!this.recording || !this.graph) {
+    if (!this.recording) {
       throw new Error('No recording loaded. Call loadRecording() first.')
     }
 
-    if (this._status === ExecutorStatus.Running) {
-      throw new Error('Executor is already running')
-    }
-
-    this._startTime = Date.now()
-    this._status = ExecutorStatus.Running
+    // 重置回放索引
     this.currentEventIndex = -1
-    this.cancelRequested = false
 
-    this.emit({ type: ExecutorEventType.Start })
-
-    const startPaused = options?.mode === ExecutionMode.StepByStep
-    this._playbackState = startPaused ? PlaybackState.Paused : PlaybackState.Playing
-
-    return new Promise<ExecutionResult>((resolve) => {
-      this._executeResolve = resolve
-      if (!startPaused) {
-        this.runReplayLoop()
-      }
-    })
-  }
-
-  override resume(): void {
-    if (this._playbackState !== PlaybackState.Paused || !this.recording) return
-    this._playbackState = PlaybackState.Playing
-    this.runReplayLoop()
-  }
-
-  override async stepForward(): Promise<void> {
-    if (this._playbackState !== PlaybackState.Paused || !this.recording) return
-    await this.playOneEvent()
-  }
-
-  override cancel(): void {
-    if (this._status !== ExecutorStatus.Running) return
-    this.cancelRequested = true
-    this.finishReplay(ExecutorStatus.Cancelled)
+    // 调用基类的 execute，它会处理状态机转换和执行循环
+    return super.execute(graph, context, options)
   }
 
   /**
-   * 播放一个事件（步进单元）
-   * @returns true 表示还有更多事件，false 表示已完成或取消
+   * 覆盖核心步进单元
+   * 播放一个事件而不是执行节点
    */
-  private async playOneEvent(): Promise<boolean> {
-    if (!this.recording || !this.graph || this.cancelRequested) return false
+  protected override async executeOneIteration(): Promise<boolean> {
+    if (!this.recording || !this._graph || this.cancelRequested) return false
 
     // 检查是否已到达末尾
     if (this.currentEventIndex >= this.recording.events.length - 1) {
-      this.finishReplay(ExecutorStatus.Completed)
+      this.finishExecution(ExecutorStatus.Completed)
       return false
     }
 
     // 如果是连续播放模式，需要等待延迟
-    if (this._playbackState === PlaybackState.Playing) {
+    if (this.stateMachine.state === ExecutorState.Running) {
       const currentTimestamp =
         this.currentEventIndex >= 0 ? this.recording.events[this.currentEventIndex]!.timestamp : 0
       const nextEvent = this.recording.events[this.currentEventIndex + 1]!
@@ -133,7 +101,7 @@ export class ReplayExecutor extends BasicExecutor {
 
     // 延迟后重新检查状态（可能在延迟期间被暂停/取消）
     if (this.cancelRequested) return false
-    if (this._playbackState === PlaybackState.Paused) return true
+    if (this.stateMachine.isPaused) return true
 
     // 播放下一个事件
     this.currentEventIndex++
@@ -149,44 +117,6 @@ export class ReplayExecutor extends BasicExecutor {
   }
 
   /**
-   * 连续播放循环
-   */
-  private async runReplayLoop(): Promise<void> {
-    while (this._playbackState === PlaybackState.Playing && !this.cancelRequested) {
-      const hasMore = await this.playOneEvent()
-      if (!hasMore) break
-    }
-  }
-
-  /**
-   * 完成回放
-   */
-  private finishReplay(status: ExecutorStatus, error?: Error): void {
-    this._status = status
-    this._playbackState = PlaybackState.Idle
-
-    const result: ExecutionResult = {
-      status,
-      error,
-      iterations: this.recording?.events.filter((e) => e.event.type === 'iteration').length ?? 0,
-      duration: Date.now() - this._startTime,
-    }
-
-    if (status === ExecutorStatus.Completed) {
-      this.emit({ type: ExecutorEventType.Complete, result })
-    } else if (status === ExecutorStatus.Cancelled) {
-      this.emit({ type: ExecutorEventType.Cancelled })
-    } else if (status === ExecutorStatus.Error && error) {
-      this.emit({ type: ExecutorEventType.Error, error })
-    }
-
-    if (this._executeResolve) {
-      this._executeResolve(result)
-      this._executeResolve = null
-    }
-  }
-
-  /**
    * 可中断的延迟
    * 在延迟期间检查取消/暂停状态
    */
@@ -194,7 +124,7 @@ export class ReplayExecutor extends BasicExecutor {
     return new Promise((resolve) => {
       const timer = setTimeout(resolve, ms)
       const checkInterval = setInterval(() => {
-        if (this.cancelRequested || this._playbackState === PlaybackState.Paused) {
+        if (this.cancelRequested || this.stateMachine.isPaused) {
           clearTimeout(timer)
           clearInterval(checkInterval)
           resolve()
@@ -209,7 +139,7 @@ export class ReplayExecutor extends BasicExecutor {
    * 将录制的序列化事件转换为 ExecutorEvent
    */
   private deserializeEvent(serialized: SerializedExecutorEvent): ExecutorEvent | null {
-    if (!this.graph) return null
+    if (!this._graph) return null
 
     switch (serialized.type) {
       case 'start':
@@ -217,12 +147,12 @@ export class ReplayExecutor extends BasicExecutor {
       case 'iteration':
         return { type: ExecutorEventType.Iteration, iteration: serialized.iteration }
       case 'node-start': {
-        const node = this.graph.getNode(serialized.nodeId)
+        const node = this._graph.getNode(serialized.nodeId)
         if (!node) return null
         return { type: ExecutorEventType.NodeStart, node }
       }
       case 'node-complete': {
-        const node = this.graph.getNode(serialized.nodeId)
+        const node = this._graph.getNode(serialized.nodeId)
         if (!node) return null
         return {
           type: ExecutorEventType.NodeComplete,

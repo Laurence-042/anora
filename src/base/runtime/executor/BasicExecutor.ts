@@ -16,6 +16,7 @@ import {
   type EdgeDataTransfer,
   type ExecuteOptions,
 } from './ExecutorTypes'
+import { ExecutorStateMachine, ExecutorState } from './ExecutorStateMachine'
 
 // Re-export types for convenience
 export {
@@ -29,6 +30,7 @@ export {
   type EdgeDataTransfer,
   type ExecuteOptions,
 } from './ExecutorTypes'
+export { ExecutorStateMachine, ExecutorState } from './ExecutorStateMachine'
 
 // 启用 Bluebird 的取消功能
 Bluebird.config({ cancellation: true })
@@ -100,13 +102,16 @@ function isDirectThroughForwardNode(node: BaseNode): boolean {
  * - execute() 内部循环调用 executeOneIteration()
  * - stepForward() 手动调用一次 executeOneIteration()
  * - 暂停 = 停止循环，恢复 = 继续循环
+ *
+ * 使用状态机管理状态转换：
+ * - Idle: 空闲
+ * - Running: 连续执行中
+ * - Paused: 已暂停
+ * - Stepping: 单步执行中
  */
 export class BasicExecutor {
-  /** 执行状态 */
-  protected _status: ExecutorStatus = ExecutorStatus.Idle
-
-  /** 播放状态（用于暂停/恢复控制） */
-  protected _playbackState: PlaybackState = PlaybackState.Idle
+  /** 状态机 */
+  protected stateMachine: ExecutorStateMachine = new ExecutorStateMachine()
 
   /** 事件监听器 */
   protected listeners: Set<ExecutorEventListener> = new Set()
@@ -117,10 +122,10 @@ export class BasicExecutor {
   // ==================== 执行上下文（execute 期间有效） ====================
 
   /** 当前执行的图 */
-  private _graph: AnoraGraph | null = null
+  protected _graph: AnoraGraph | null = null
 
   /** 当前执行上下文 */
-  private _context: ExecutorContext = DEFAULT_EXECUTOR_CONTEXT
+  protected _context: ExecutorContext = DEFAULT_EXECUTOR_CONTEXT
 
   /** 当前迭代次数 */
   protected _iterations: number = 0
@@ -132,31 +137,68 @@ export class BasicExecutor {
   protected _executeResolve: ((result: ExecutionResult) => void) | null = null
 
   /**
-   * 获取当前状态
+   * 获取状态机状态
    */
-  get status(): ExecutorStatus {
-    return this._status
+  get executorState(): ExecutorState {
+    return this.stateMachine.state
   }
 
   /**
-   * 获取播放状态
+   * 获取当前状态（兼容旧 API）
+   * @deprecated 使用 executorState 代替
+   */
+  get status(): ExecutorStatus {
+    // 映射状态机状态到旧的 ExecutorStatus
+    switch (this.stateMachine.state) {
+      case ExecutorState.Idle:
+        return ExecutorStatus.Idle
+      case ExecutorState.Running:
+      case ExecutorState.Paused:
+      case ExecutorState.Stepping:
+        return ExecutorStatus.Running
+      default:
+        return ExecutorStatus.Idle
+    }
+  }
+
+  /**
+   * 获取播放状态（兼容旧 API）
+   * @deprecated 使用 executorState 代替
    */
   get playbackState(): PlaybackState {
-    return this._playbackState
+    // 映射状态机状态到旧的 PlaybackState
+    switch (this.stateMachine.state) {
+      case ExecutorState.Idle:
+        return PlaybackState.Idle
+      case ExecutorState.Running:
+      case ExecutorState.Stepping:
+        return PlaybackState.Playing
+      case ExecutorState.Paused:
+        return PlaybackState.Paused
+      default:
+        return PlaybackState.Idle
+    }
   }
 
   /**
    * 是否正在执行
    */
   get isPlaying(): boolean {
-    return this._playbackState === PlaybackState.Playing
+    return this.stateMachine.state === ExecutorState.Running
   }
 
   /**
    * 是否已暂停
    */
   get isPaused(): boolean {
-    return this._playbackState === PlaybackState.Paused
+    return this.stateMachine.state === ExecutorState.Paused
+  }
+
+  /**
+   * 是否正在单步执行
+   */
+  get isStepping(): boolean {
+    return this.stateMachine.state === ExecutorState.Stepping
   }
 
   /**
@@ -199,8 +241,9 @@ export class BasicExecutor {
    * 暂停执行
    */
   pause(): void {
-    if (this._playbackState === PlaybackState.Playing) {
-      this._playbackState = PlaybackState.Paused
+    const result = this.stateMachine.transition({ type: 'PAUSE' })
+    if (!result.allowed) {
+      console.warn('Cannot pause:', result.reason)
     }
   }
 
@@ -208,9 +251,14 @@ export class BasicExecutor {
    * 恢复执行（继续循环执行）
    */
   resume(): void {
-    if (this._playbackState !== PlaybackState.Paused || !this._graph) return
+    if (!this._graph) return
 
-    this._playbackState = PlaybackState.Playing
+    const result = this.stateMachine.transition({ type: 'RESUME' })
+    if (!result.allowed) {
+      console.warn('Cannot resume:', result.reason)
+      return
+    }
+
     // 继续执行循环
     this.runExecutionLoop()
   }
@@ -220,9 +268,18 @@ export class BasicExecutor {
    * 仅在暂停状态下有效
    */
   async stepForward(): Promise<void> {
-    if (this._playbackState !== PlaybackState.Paused || !this._graph) return
+    if (!this._graph) return
+
+    const result = this.stateMachine.transition({ type: 'STEP' })
+    if (!result.allowed) {
+      console.warn('Cannot step:', result.reason)
+      return
+    }
 
     await this.executeOneIteration()
+
+    // 单步完成，回到暂停状态
+    this.stateMachine.transition({ type: 'STEP_COMPLETE' })
   }
 
   /**
@@ -270,7 +327,8 @@ export class BasicExecutor {
    * 执行循环（连续执行直到暂停、取消或完成）
    */
   private async runExecutionLoop(): Promise<void> {
-    while (this._playbackState === PlaybackState.Playing && !this.cancelRequested) {
+    // 只在 Running 状态下继续执行
+    while (this.stateMachine.state === ExecutorState.Running && !this.cancelRequested) {
       const hasMore = await this.executeOneIteration()
       if (!hasMore) break
     }
@@ -279,9 +337,15 @@ export class BasicExecutor {
   /**
    * 完成执行（内部方法）
    */
-  private finishExecution(status: ExecutorStatus, error?: Error): void {
-    this._status = status
-    this._playbackState = PlaybackState.Idle
+  protected finishExecution(status: ExecutorStatus, error?: Error): void {
+    // 转换状态机到 Idle
+    if (status === ExecutorStatus.Completed) {
+      this.stateMachine.transition({ type: 'COMPLETE' })
+    } else if (status === ExecutorStatus.Cancelled) {
+      this.stateMachine.transition({ type: 'CANCEL' })
+    } else if (status === ExecutorStatus.Error) {
+      this.stateMachine.transition({ type: 'ERROR' })
+    }
 
     const result: ExecutionResult = {
       status,
@@ -325,8 +389,11 @@ export class BasicExecutor {
     context?: ExecutorContext,
     options?: ExecuteOptions,
   ): Promise<ExecutionResult> {
-    if (this._status === ExecutorStatus.Running) {
-      throw new Error('Executor is already running')
+    // 使用状态机检查是否可以启动
+    const stepMode = options?.mode === ExecutionMode.StepByStep
+    const result = this.stateMachine.transition({ type: 'START', stepMode })
+    if (!result.allowed) {
+      throw new Error(`Cannot start execution: ${result.reason}`)
     }
 
     // 初始化执行上下文
@@ -334,7 +401,6 @@ export class BasicExecutor {
     this._context = context ?? DEFAULT_EXECUTOR_CONTEXT
     this._iterations = 0
     this._startTime = Date.now()
-    this._status = ExecutorStatus.Running
     this.cancelRequested = false
 
     // 重置所有节点的激活状态
@@ -344,16 +410,12 @@ export class BasicExecutor {
 
     this.emit({ type: ExecutorEventType.Start })
 
-    // 根据选项决定初始状态
-    const startPaused = options?.mode === ExecutionMode.StepByStep
-    this._playbackState = startPaused ? PlaybackState.Paused : PlaybackState.Playing
-
     // 返回 Promise，在 finishExecution 时 resolve
     return new Promise<ExecutionResult>((resolve) => {
       this._executeResolve = resolve
 
-      // 如果不是暂停启动，开始执行循环
-      if (!startPaused) {
+      // 如果不是步进模式，开始执行循环
+      if (!stepMode) {
         this.runExecutionLoop()
       }
     })
@@ -363,7 +425,11 @@ export class BasicExecutor {
    * 取消执行
    */
   cancel(): void {
-    if (this._status !== ExecutorStatus.Running) return
+    const result = this.stateMachine.transition({ type: 'CANCEL' })
+    if (!result.allowed) {
+      console.warn('Cannot cancel:', result.reason)
+      return
+    }
 
     this.cancelRequested = true
     this.finishExecution(ExecutorStatus.Cancelled)
@@ -373,10 +439,10 @@ export class BasicExecutor {
    * 重置执行器状态
    */
   reset(): void {
-    if (this._status === ExecutorStatus.Running) {
+    if (!this.stateMachine.isIdle) {
       throw new Error('Cannot reset while running')
     }
-    this._status = ExecutorStatus.Idle
+    this.stateMachine.reset()
   }
 
   /**

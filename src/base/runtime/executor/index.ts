@@ -11,3 +11,6 @@ export {
   type EdgeDataTransfer,
   type ExecuteOptions,
 } from './ExecutorTypes'
+
+export { ExecutorStateMachine, ExecutorState } from './ExecutorStateMachine'
+export type { ExecutorAction, TransitionResult, StateChangeListener } from './ExecutorStateMachine'
