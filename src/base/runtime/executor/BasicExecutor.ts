@@ -185,7 +185,7 @@ export class BasicExecutor {
    * 发送事件（protected 允许子类使用）
    */
   protected emit(event: ExecutorEvent): void {
-    console.log('Emitting event:', event)
+    console.log(new Date().toISOString(), 'Emitting event:', event)
     for (const listener of this.listeners) {
       try {
         listener(event)
@@ -424,8 +424,6 @@ export class BasicExecutor {
    * 3. 传播出 Port 数据到下游入 Port
    * 4. 如果下游入 Port 是直通节点，立即执行并继续传播
    * 5. 等待延迟后再发送 node-complete 事件
-   *
-   * 注意：单步模式下会让出执行权让 UI 有机会更新
    */
   private async executeNodes(
     nodes: BaseNode[],
@@ -472,22 +470,6 @@ export class BasicExecutor {
       return results
     }
 
-    // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
-    // 单步模式下即使延迟为 0 也要让出执行权，连续执行时只在延迟 > 0 时等待
-    const delay = context.iterationDelay ?? 0
-    try {
-      await cancellableDelay(delay)
-    } catch {
-      // 延迟被取消，忽略
-    }
-
-    // 发送成功节点的 node-complete 事件
-    for (const result of results) {
-      if (result.success) {
-        this.emit({ type: ExecutorEventType.NodeComplete, node: result.node, success: true })
-      }
-    }
-
     // 对成功执行的节点：清空入 Port，然后传播出 Port 数据
     for (const result of results) {
       if (result.success) {
@@ -496,6 +478,19 @@ export class BasicExecutor {
 
         // 传播数据到下游，并处理直通节点
         await this.propagateDataWithDirectThrough(result.node, graph, context)
+
+        // 发送成功节点的 node-complete 事件
+        this.emit({ type: ExecutorEventType.NodeComplete, node: result.node, success: true })
+      }
+    }
+
+    // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
+    const delay = context.iterationDelay ?? 0
+    if (delay > 0) {
+      try {
+        await cancellableDelay(delay)
+      } catch {
+        // 延迟被取消，忽略
       }
     }
 

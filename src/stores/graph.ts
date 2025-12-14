@@ -268,7 +268,8 @@ export const useGraphStore = defineStore('graph', () => {
 
       case ExecutorEventType.Iteration:
         currentIteration.value = event.iteration
-        // 新迭代开始时清除上一迭代的边数据
+        // 新迭代开始时清除上一迭代的节点激活状态和边数据
+        executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
         break
 
@@ -278,12 +279,8 @@ export const useGraphStore = defineStore('graph', () => {
         break
 
       case ExecutorEventType.NodeComplete:
-        // 创建新 Set 以触发响应式更新
-        {
-          const newSet = new Set(executingNodeIds.value)
-          newSet.delete(event.node.id)
-          executingNodeIds.value = newSet
-        }
+        // 不在这里清除节点激活状态，让状态保持到下一次迭代开始
+        // 这样单步执行时用户能看到节点的执行结果
         break
 
       case ExecutorEventType.DataPropagate:
@@ -301,6 +298,7 @@ export const useGraphStore = defineStore('graph', () => {
       case ExecutorEventType.Complete:
         executorStatus.value = event.result.status
         executingNodeIds.value.clear()
+        edgeDataTransfers.value.clear()
         triggerRef(currentGraph) // 刷新以显示执行后的 Port 值
         break
 
@@ -313,6 +311,7 @@ export const useGraphStore = defineStore('graph', () => {
       case ExecutorEventType.Error:
         executorStatus.value = ExecutorStatus.Error
         executingNodeIds.value.clear()
+        edgeDataTransfers.value.clear()
         console.error('[Executor Error]', event.error.message, event.error.stack)
         break
     }
