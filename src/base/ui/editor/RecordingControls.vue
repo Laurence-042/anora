@@ -24,8 +24,8 @@ const graphStore = useGraphStore()
 // ========== 录制状态 ==========
 
 const recorder = ref<DemoRecorder | null>(null)
-const isRecording = computed(() => recorder.value?.isRecording ?? false)
-const recordedEventCount = computed(() => recorder.value?.eventCount ?? 0)
+const isRecording = ref(false)
+const recordedEventCount = ref(0)
 const isRunning = computed(() => graphStore.isRunning)
 
 // ========== 录制操作 ==========
@@ -45,15 +45,17 @@ function startRecording(): void {
   const graph = graphStore.currentGraph
   newRecorder.bindGraph(graph)
 
+  // 设置状态变更回调
+  newRecorder.onRecordingChange = (recording, count) => {
+    isRecording.value = recording
+    recordedEventCount.value = count
+  }
+
   // 开始录制（传入节点位置）
-  console.log(
-    '[RecordingControls] nodePositions before start:',
-    props.nodePositions.size,
-    Array.from(props.nodePositions.entries()),
-  )
   newRecorder.startRecording(props.nodePositions)
 
   recorder.value = newRecorder
+  isRecording.value = true
   console.log('[RecordingControls] Recording started')
 }
 
@@ -61,6 +63,7 @@ function stopRecording(): void {
   if (!recorder.value) return
 
   recorder.value.stopRecording()
+  isRecording.value = false
   console.log('[RecordingControls] Recording stopped, events:', recorder.value.eventCount)
 }
 
