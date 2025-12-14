@@ -87,12 +87,24 @@ Key classes in `src/base/runtime/nodes/SubGraphNode.ts`:
 
 ## Demo/Recording System
 
-`src/base/runtime/demo/` provides operation recording for playback demos:
+`src/base/runtime/demo/` provides execution recording for playback demos:
 
-- `DemoRecorder` - Records node/edge add/remove, port value changes, iterations
-- `DemoPlayer` - Replays recorded operations for visualization
+- `DemoRecorder` - Records executor events (node activation, data propagation, etc.)
+- `ReplayExecutor` - Replays recorded events, emitting same events as BasicExecutor
 
-This is a **playback-only** system—it records graph mutations and port states, not execution logic.
+Recording workflow:
+
+1. `GraphEditor` + `RecordingControls` - Start recording, binds to executor events
+2. Execute graph - Events are recorded with timestamps
+3. Export to `.json` file
+
+Replay workflow:
+
+1. Navigate to `/demo` route (`ReplayView.vue`)
+2. Load recording file
+3. `ReplayExecutor` emits events to `AnoraGraphView` (same as live execution)
+
+Key design: Recording and replay share the same event interface as normal execution.
 
 ## Mod Development
 

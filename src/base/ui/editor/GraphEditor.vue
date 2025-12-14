@@ -1,21 +1,21 @@
 <script setup lang="ts">
 /**
  * GraphEditor - 图编辑器主组件
- * 整合 Vue-Flow、节点、边、控制面板等
+ *
+ * 组合 AnoraGraphView + 编辑功能 + 工具栏
+ * - 节点拖拽、连线、删除
+ * - 执行控制
+ * - 录制功能
+ * - 图导入/导出
  */
-import { ref, computed, watch, onMounted, onUnmounted, markRaw } from 'vue'
-import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
-import { Background, BackgroundVariant } from '@vue-flow/background'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import '@vue-flow/core/dist/style.css'
-import '@vue-flow/core/dist/theme-default.css'
+import type { Connection } from '@vue-flow/core'
 
 import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
-import { createRecordingContext } from '../composables'
 
-import BaseNodeView from '../components/BaseNodeView.vue'
-import EdgeView from '../components/EdgeView.vue'
+import AnoraGraphView from '../components/AnoraGraphView.vue'
 import ExecutorControls from './ExecutorControls.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import NodePalette from './NodePalette.vue'
@@ -23,179 +23,47 @@ import LocaleSwitcher from './LocaleSwitcher.vue'
 import RecordingControls from './RecordingControls.vue'
 import GraphIOControls from './GraphIOControls.vue'
 
-// 节点视图注册表
-import { NodeViewRegistry } from '../registry'
-
-// 初始化时设置默认视图
-NodeViewRegistry.setDefaultView(BaseNodeView)
-
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
-// 创建录制/回放上下文（子组件通过 useRecording 获取）
-const recording = createRecordingContext()
+// ==================== 状态 ====================
 
-// Vue-Flow 实例
-const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueFlow()
-
-/** 节点位置存储（独立于 AnoraNode） */
+/** 节点位置存储 */
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
-/** 是否处于回放模式（只读） */
-const isReplayMode = computed(() => recording.isReplayMode.value)
+/** AnoraGraphView 组件引用 */
+const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
 
-/** 处理图导入完成 */
-function onGraphImported(positions: Map<string, { x: number; y: number }>): void {
-  nodePositions.value = positions
-}
-
-/** 根据节点 typeId 获取对应的视图组件类型 */
-function getNodeViewType(typeId: string): string {
-  return NodeViewRegistry.getViewType(typeId)
-}
-
-/** 将 AnoraGraph 转换为 Vue-Flow 节点 */
-const vfNodes = computed<Node[]>(() => {
-  const nodes: Node[] = []
-  // 回放模式下使用 store 中的位置
-  const positions = isReplayMode.value ? graphStore.nodePositions : nodePositions.value
-
-  for (const node of graphStore.nodes) {
-    const pos = positions.get(node.id) ?? { x: 0, y: 0 }
-    nodes.push({
-      id: node.id,
-      type: getNodeViewType(node.typeId),
-      position: pos,
-      data: { node: markRaw(node) },
-      // 回放模式下禁用拖拽和选择
-      draggable: !isReplayMode.value,
-      selectable: !isReplayMode.value,
-    })
-  }
-  return nodes
-})
-
-/** 将 AnoraGraph 边转换为 Vue-Flow 边 */
-const vfEdges = computed<Edge[]>(() => {
-  const edges: Edge[] = []
-  const graph = graphStore.currentGraph
-
-  for (const node of graphStore.nodes) {
-    // 遍历所有出 Port（使用 getOutputPorts）
-    for (const port of node.getOutputPorts()) {
-      const connectedPorts = graph.getConnectedPorts(port)
-      for (const targetPort of connectedPorts) {
-        const edgeId = `${port.id}->${targetPort.id}`
-
-        edges.push({
-          id: edgeId,
-          source: node.id,
-          target: graph.getNodeByPort(targetPort)?.id ?? '',
-          sourceHandle: port.id,
-          targetHandle: targetPort.id,
-          type: 'default',
-        })
-      }
-    }
-  }
-
-  return edges
-})
-
-/** 不兼容边的默认样式 */
-const incompatibleEdgeStyle = {
-  stroke: '#ef4444',
-  strokeWidth: 2,
-}
-
-/** 正常边的默认样式 */
-const normalEdgeStyle = {
-  stroke: '#64748b',
-  strokeWidth: 2,
-}
-
-/**
- * 监听 incompatibleEdges 变化，增量更新受影响边的样式
- * 直接修改边对象的响应式属性
- */
-watch(
-  () => graphStore.incompatibleEdges,
-  (newIncompatible, oldIncompatible) => {
-    const edges = getEdges.value
-
-    // 找出新增的不兼容边，设为红色
-    for (const edgeId of newIncompatible) {
-      if (!oldIncompatible?.has(edgeId)) {
-        const edge = edges.find((e) => e.id === edgeId)
-        if (edge) {
-          edge.style = incompatibleEdgeStyle
-          edge.animated = true
-        }
-      }
-    }
-
-    // 找出恢复兼容的边，恢复正常样式
-    if (oldIncompatible) {
-      for (const edgeId of oldIncompatible) {
-        if (!newIncompatible.has(edgeId)) {
-          const edge = edges.find((e) => e.id === edgeId)
-          if (edge) {
-            edge.style = normalEdgeStyle
-            edge.animated = false
-          }
-        }
-      }
-    }
-  },
-  { deep: true },
-)
-
-/** 自定义节点类型（从注册表获取） */
-const nodeTypes = computed(() => NodeViewRegistry.getNodeTypes())
-
-/** 自定义边类型 */
-const edgeTypes = {
-  default: markRaw(EdgeView),
-}
+// ==================== 事件处理 ====================
 
 /** 处理连接 */
-onConnect((connection: Connection) => {
-  // 回放模式下禁止编辑
-  if (isReplayMode.value) return
-
+function onConnect(connection: Connection): void {
   if (connection.sourceHandle && connection.targetHandle) {
     const success = graphStore.addEdge(connection.sourceHandle, connection.targetHandle)
     if (!success) {
       console.warn('Failed to create edge: incompatible types')
     }
   }
-})
-
-/** 处理节点双击（进入子图） */
-onNodeDoubleClick(({ node }) => {
-  const anoraNode = graphStore.currentGraph.getNode(node.id)
-  if (anoraNode instanceof SubGraphNode) {
-    graphStore.enterSubGraph(anoraNode)
-  }
-})
-
-/** 处理画布点击（清空选择） */
-onPaneClick(() => {
-  graphStore.clearSelection()
-})
-
-/** 处理节点位置变化 */
-function onNodeDragStop(event: { node: Node }): void {
-  // 回放模式下禁止拖拽
-  if (isReplayMode.value) return
-
-  const newPos = { ...event.node.position }
-  nodePositions.value.set(event.node.id, newPos)
-  // 同步到 store（用于录制）
-  graphStore.updateNodePosition(event.node.id, newPos)
 }
 
-/** 处理节点变更（选择、删除等） */
+/** 处理节点双击（进入子图） */
+function onNodeDoubleClick(_nodeId: string, subGraphNode: SubGraphNode | null): void {
+  if (subGraphNode) {
+    graphStore.enterSubGraph(subGraphNode)
+  }
+}
+
+/** 处理画布点击 */
+function onPaneClick(): void {
+  graphStore.clearSelection()
+}
+
+/** 处理节点拖拽结束 */
+function onNodeDragStop(nodeId: string, position: { x: number; y: number }): void {
+  nodePositions.value.set(nodeId, position)
+}
+
+/** 处理节点变更 */
 function onNodesChange(changes: unknown[]): void {
   for (const change of changes) {
     const c = change as { id?: string; type?: string; selected?: boolean }
@@ -206,24 +74,18 @@ function onNodesChange(changes: unknown[]): void {
         graphStore.deselectNode(c.id)
       }
     }
-    // 处理节点删除（回放模式下禁止）
-    if (c.type === 'remove' && c.id !== undefined && !isReplayMode.value) {
+    if (c.type === 'remove' && c.id !== undefined) {
       graphStore.removeNode(c.id)
       nodePositions.value.delete(c.id)
     }
   }
 }
 
-/** 处理边变更（删除等） */
+/** 处理边变更 */
 function onEdgesChange(changes: unknown[]): void {
-  // 回放模式下禁止删除边
-  if (isReplayMode.value) return
-
   for (const change of changes) {
     const c = change as { id?: string; type?: string }
-    // 处理边删除
     if (c.type === 'remove' && c.id !== undefined) {
-      // 边 ID 格式: "fromPortId->toPortId"
       const [fromPortId, toPortId] = c.id.split('->')
       if (fromPortId && toPortId) {
         graphStore.removeEdge(fromPortId, toPortId)
@@ -232,7 +94,14 @@ function onEdgesChange(changes: unknown[]): void {
   }
 }
 
-/** 自动布局（简单的网格布局，后续可接入 ELK） */
+/** 处理图导入完成 */
+function onGraphImported(positions: Map<string, { x: number; y: number }>): void {
+  nodePositions.value = positions
+}
+
+// ==================== 工具栏操作 ====================
+
+/** 自动布局 */
 function autoLayout(): void {
   const nodes = graphStore.nodes
   const cols = Math.ceil(Math.sqrt(nodes.length))
@@ -249,29 +118,24 @@ function autoLayout(): void {
     })
   })
 
-  // 触发视图更新
-  setTimeout(() => fitView({ padding: 0.2 }), 100)
+  setTimeout(() => graphViewRef.value?.fitView(), 100)
 }
 
 /** 删除选中的节点 */
 function deleteSelected(): void {
-  // 回放模式下禁止删除
-  if (isReplayMode.value) return
-
   for (const nodeId of graphStore.selectedNodeIds) {
     graphStore.removeNode(nodeId)
     nodePositions.value.delete(nodeId)
   }
 }
 
-/** 键盘快捷键 */
+// ==================== 键盘快捷键 ====================
+
 function handleKeydown(event: KeyboardEvent): void {
-  // Delete: 删除选中节点
   if (event.key === 'Delete') {
     deleteSelected()
   }
 
-  // F5: 开始执行
   if (event.key === 'F5' && !event.shiftKey) {
     event.preventDefault()
     if (!graphStore.isRunning) {
@@ -279,22 +143,18 @@ function handleKeydown(event: KeyboardEvent): void {
     }
   }
 
-  // Shift+F5: 停止执行
   if (event.key === 'F5' && event.shiftKey) {
     event.preventDefault()
     graphStore.stopExecution()
   }
 
-  // Backspace: 返回上一级子图
   if (event.key === 'Backspace' && graphStore.subGraphStack.length > 0) {
-    // 仅当没有输入框聚焦时
     if (document.activeElement?.tagName !== 'INPUT') {
       event.preventDefault()
       graphStore.exitSubGraph()
     }
   }
 
-  // Ctrl+A: 全选
   if (event.key === 'a' && (event.ctrlKey || event.metaKey)) {
     event.preventDefault()
     for (const node of graphStore.nodes) {
@@ -303,22 +163,19 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 }
 
-/** 监听图变化，更新节点位置 */
+// ==================== 生命周期 ====================
+
+/** 监听图变化，为新节点设置默认位置 */
 watch(
   () => graphStore.nodes,
   (nodes) => {
-    // 为新节点设置默认位置
     for (const node of nodes) {
       if (!nodePositions.value.has(node.id)) {
-        // 简单的默认位置：稍微偏移
         const existingCount = nodePositions.value.size
-        const pos = {
+        nodePositions.value.set(node.id, {
           x: 100 + (existingCount % 5) * 250,
           y: 100 + Math.floor(existingCount / 5) * 180,
-        }
-        nodePositions.value.set(node.id, pos)
-        // 同步到 store
-        graphStore.updateNodePosition(node.id, pos)
+        })
       }
     }
   },
@@ -347,7 +204,7 @@ onUnmounted(() => {
       <div class="toolbar-divider" />
 
       <!-- 录制控制 -->
-      <RecordingControls />
+      <RecordingControls :node-positions="nodePositions" />
 
       <div class="toolbar-divider" />
 
@@ -358,27 +215,27 @@ onUnmounted(() => {
       <LocaleSwitcher />
     </div>
 
-    <!-- Vue-Flow 画布 -->
+    <!-- 图展示区域 -->
     <div class="editor-canvas">
-      <VueFlow
-        :nodes="vfNodes"
-        :edges="vfEdges"
-        :node-types="nodeTypes"
-        :edge-types="edgeTypes"
-        :default-edge-options="{ type: 'default' }"
-        :snap-to-grid="true"
-        :snap-grid="[20, 20]"
-        fit-view-on-init
+      <AnoraGraphView
+        ref="graphViewRef"
+        :graph="graphStore.currentGraph"
+        :node-positions="nodePositions"
+        :readonly="false"
+        :executing-node-ids="graphStore.executingNodeIds"
+        :incompatible-edges="graphStore.incompatibleEdges"
+        :edge-data-transfers="graphStore.edgeDataTransfers"
+        :selected-node-ids="graphStore.selectedNodeIds"
+        @connect="onConnect"
+        @node-double-click="onNodeDoubleClick"
+        @pane-click="onPaneClick"
         @node-drag-stop="onNodeDragStop"
         @nodes-change="onNodesChange"
         @edges-change="onEdgesChange"
       >
-        <!-- 网格背景（跟随画布移动） -->
-        <Background :variant="BackgroundVariant.Dots" :gap="20" :size="1" pattern-color="#3a3a5c" />
-      </VueFlow>
-
-      <!-- 节点面板 -->
-      <NodePalette />
+        <!-- 节点面板 -->
+        <NodePalette />
+      </AnoraGraphView>
     </div>
 
     <!-- 底部状态栏 -->
@@ -449,50 +306,5 @@ onUnmounted(() => {
   border-top: 1px solid var(--vf-border, #3a3a5c);
   font-size: 11px;
   color: var(--vf-text-muted, #6b7280);
-}
-
-/* Vue-Flow 主题覆盖 */
-:deep(.vue-flow) {
-  background: var(--vf-bg, #0f0f1a);
-}
-
-:deep(.vue-flow__edge-path) {
-  stroke: #64748b;
-  stroke-width: 2;
-}
-
-:deep(.vue-flow__edge.selected .vue-flow__edge-path) {
-  stroke: #60a5fa;
-}
-
-:deep(.vue-flow__connection-line) {
-  stroke: #60a5fa;
-  stroke-width: 2;
-  stroke-dasharray: 5, 5;
-}
-
-:deep(.vue-flow__handle) {
-  width: 10px;
-  height: 10px;
-}
-
-:deep(.vue-flow__minimap) {
-  background: var(--vf-minimap-bg, #1a1a2e);
-}
-
-:deep(.vue-flow__controls) {
-  background: var(--vf-controls-bg, #1a1a2e);
-  border: 1px solid var(--vf-border, #3a3a5c);
-  border-radius: 8px;
-}
-
-:deep(.vue-flow__controls-button) {
-  background: var(--vf-btn-bg, #252542);
-  border-color: var(--vf-border, #3a3a5c);
-  color: var(--vf-text, #e2e8f0);
-}
-
-:deep(.vue-flow__controls-button:hover) {
-  background: var(--vf-btn-hover-bg, #3a3a5c);
 }
 </style>

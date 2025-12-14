@@ -65,9 +65,6 @@ export const useGraphStore = defineStore('graph', () => {
   /** 边上传递的数据（用于调试/演示显示） */
   const edgeDataTransfers = ref<Map<string, EdgeDataTransfer>>(new Map())
 
-  /** 节点位置（由 GraphEditor 维护，供外部使用） */
-  const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
-
   // ==================== 计算属性 ====================
 
   /** 所有节点 */
@@ -388,25 +385,6 @@ export const useGraphStore = defineStore('graph', () => {
     return edgeDataTransfers.value.has(`${fromPortId}->${toPortId}`)
   }
 
-  // ==================== 节点位置 ====================
-
-  /**
-   * 更新节点位置（供 GraphEditor 调用）
-   */
-  function updateNodePosition(nodeId: string, position: { x: number; y: number }): void {
-    nodePositions.value.set(nodeId, { ...position })
-  }
-
-  /**
-   * 批量设置节点位置
-   */
-  function setNodePositions(positions: Record<string, { x: number; y: number }>): void {
-    nodePositions.value.clear()
-    for (const [nodeId, pos] of Object.entries(positions)) {
-      nodePositions.value.set(nodeId, { ...pos })
-    }
-  }
-
   /**
    * 替换当前图（用于加载外部图数据）
    */
@@ -439,7 +417,6 @@ export const useGraphStore = defineStore('graph', () => {
     executorContext,
     iterationDelay,
     edgeDataTransfers,
-    nodePositions,
 
     // 计算属性
     nodes,
@@ -477,9 +454,5 @@ export const useGraphStore = defineStore('graph', () => {
     // 边数据传递
     getEdgeDataTransfer,
     hasEdgeDataTransfer,
-
-    // 节点位置
-    updateNodePosition,
-    setNodePositions,
   }
 })
