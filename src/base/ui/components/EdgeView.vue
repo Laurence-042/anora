@@ -75,9 +75,9 @@ const displayData = computed(() => {
   return String(data)
 })
 
-/** 是否显示标签（延迟模式下有数据传递时显示） */
+/** 是否显示标签（有数据传递时显示） */
 const showLabel = computed(() => {
-  return iterationDelay.value > 0 && hasDataTransfer.value
+  return hasDataTransfer.value
 })
 
 /** 计算贝塞尔路径 */
