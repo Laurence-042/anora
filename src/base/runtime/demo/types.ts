@@ -52,10 +52,8 @@ export type SerializedExecutorEvent =
 export interface DemoRecording {
   /** 格式版本 */
   version: '2.0.0'
-  /** 初始图状态（使用标准序列化格式） */
+  /** 初始图状态（使用标准序列化格式，包含节点位置） */
   initialGraph: SerializedGraph
-  /** 节点位置信息 */
-  nodePositions: Record<string, { x: number; y: number }>
   /** 事件序列 */
   events: TimestampedEvent[]
   /** 元数据 */

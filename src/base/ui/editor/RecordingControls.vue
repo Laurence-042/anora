@@ -8,14 +8,14 @@
  *
  * 回放功能由独立的 ReplayView 页面处理
  */
-import { ref, computed, onUnmounted, type Ref } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import { DemoRecorder } from '@/base/runtime/demo'
 import type { DemoRecording } from '@/base/runtime/demo'
 
 const props = defineProps<{
-  nodePositions: Ref<Map<string, { x: number; y: number }>>
+  nodePositions: Map<string, { x: number; y: number }>
 }>()
 
 const { t } = useI18n()
@@ -46,7 +46,7 @@ function startRecording(): void {
   newRecorder.bindGraph(graph)
 
   // 开始录制（传入节点位置）
-  newRecorder.startRecording(props.nodePositions.value)
+  newRecorder.startRecording(props.nodePositions)
 
   recorder.value = newRecorder
   console.log('[RecordingControls] Recording started')

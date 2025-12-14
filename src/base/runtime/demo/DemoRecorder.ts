@@ -25,11 +25,8 @@ export class DemoRecorder {
   /** 是否正在录制 */
   private _isRecording: boolean = false
 
-  /** 初始图状态 */
+  /** 初始图状态（包含节点位置） */
   private initialGraph: SerializedGraph | null = null
-
-  /** 节点位置快照 */
-  private nodePositions: Record<string, { x: number; y: number }> = {}
 
   /** 被绑定的执行器 */
   private executor: BasicExecutor | null = null
@@ -91,14 +88,8 @@ export class DemoRecorder {
     // 清空之前的录制
     this.clear()
 
-    // 保存初始状态
-    this.initialGraph = this.graph.serialize()
-
-    // 转换节点位置为普通对象
-    this.nodePositions = {}
-    for (const [nodeId, pos] of nodePositions) {
-      this.nodePositions[nodeId] = { x: pos.x, y: pos.y }
-    }
+    // 保存初始状态（包含节点位置）
+    this.initialGraph = this.graph.serialize(nodePositions)
 
     // 订阅执行器事件
     this.unsubscribe = this.executor.on((event) => {
@@ -221,7 +212,6 @@ export class DemoRecorder {
     return {
       version: DEMO_FORMAT_VERSION,
       initialGraph: this.initialGraph,
-      nodePositions: this.nodePositions,
       events: [...this.events],
       metadata: {
         title: metadata?.title ?? 'Untitled Recording',
@@ -240,6 +230,5 @@ export class DemoRecorder {
     this.events = []
     this.startTime = 0
     this.initialGraph = null
-    this.nodePositions = {}
   }
 }

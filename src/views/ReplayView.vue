@@ -107,16 +107,13 @@ async function loadRecordingFile(file: File): Promise<void> {
     // 保存录制数据
     recording.value = data
 
-    // 反序列化图
-    const deserializedGraph = new AnoraGraph()
-    deserializedGraph.deserialize(data.initialGraph)
+    // 反序列化图（位置已包含在 initialGraph 中）
+    const { graph: deserializedGraph, nodePositions: positions } = AnoraGraph.fromSerialized(
+      data.initialGraph,
+    )
     graph.value = deserializedGraph
     triggerRef(graph)
-
-    // 恢复节点位置
-    nodePositions.value = new Map(
-      Object.entries(data.nodePositions).map(([id, pos]) => [id, { x: pos.x, y: pos.y }]),
-    )
+    nodePositions.value = positions
 
     // 创建回放执行器
     const executor = new ReplayExecutor()

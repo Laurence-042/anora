@@ -13,6 +13,14 @@ interface Edge {
 }
 
 /**
+ * 反序列化结果
+ */
+export interface DeserializeResult {
+  graph: AnoraGraph
+  nodePositions: Map<string, { x: number; y: number }>
+}
+
+/**
  * AnoraGraph - 图管理类
  * 维护 Port 之间的连接关系，支持序列化/反序列化
  */
@@ -380,8 +388,9 @@ export class AnoraGraph {
 
   /**
    * 序列化图
+   * @param nodePositions 可选的节点位置映射（从 UI 层传入）
    */
-  serialize(): SerializedGraph {
+  serialize(nodePositions?: Map<string, { x: number; y: number }>): SerializedGraph {
     const serializedEdges: SerializedEdge[] = this.edges.map((edge) => ({
       fromPortId: edge.fromPortId,
       toPortId: edge.toPortId,
@@ -389,13 +398,51 @@ export class AnoraGraph {
 
     return {
       schemaVersion: 1,
-      nodes: Array.from(this.nodes.values()).map((node) => node.serialize()),
+      nodes: Array.from(this.nodes.values()).map((node) => {
+        const serialized = node.serialize()
+        // 如果提供了位置映射，使用 UI 层的位置
+        if (nodePositions) {
+          const pos = nodePositions.get(node.id)
+          if (pos) {
+            serialized.position = { x: pos.x, y: pos.y }
+          }
+        }
+        return serialized
+      }),
       edges: serializedEdges,
     }
   }
 
   /**
-   * 从序列化数据恢复图
+   * 从序列化数据创建新图（静态工厂方法）
+   * 返回图实例和节点位置映射
+   */
+  static fromSerialized(data: SerializedGraph): DeserializeResult {
+    const graph = new AnoraGraph()
+    const nodePositions = new Map<string, { x: number; y: number }>()
+
+    // 恢复节点
+    for (const nodeData of data.nodes) {
+      const node = graph.deserializeNode(nodeData)
+      if (node) {
+        graph.addNode(node)
+        // 提取位置信息
+        if (nodeData.position) {
+          nodePositions.set(node.id, { x: nodeData.position.x, y: nodeData.position.y })
+        }
+      }
+    }
+
+    // 恢复边
+    for (const edgeData of data.edges) {
+      graph.addEdge(edgeData.fromPortId, edgeData.toPortId)
+    }
+
+    return { graph, nodePositions }
+  }
+
+  /**
+   * 从序列化数据恢复图（实例方法，就地修改）
    */
   deserialize(data: SerializedGraph): void {
     // 清空当前图
@@ -431,9 +478,6 @@ export class AnoraGraph {
     if (data.context && baseNode.context) {
       Object.assign(baseNode.context, data.context)
     }
-
-    // 恢复 position
-    baseNode.position = { ...data.position }
 
     // 恢复端口数据
     this.deserializePorts(baseNode, data)

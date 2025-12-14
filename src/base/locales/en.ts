@@ -80,9 +80,16 @@ export default {
     ipcInfo: 'External control via post_message',
   },
 
-  // Errors
+  // Error messages
   errors: {
     invalidDemoFile: 'Invalid demo file format',
+    nodeNotFound: 'Node not found',
+    portNotFound: 'Port not found',
+    incompatibleTypes: 'Incompatible types',
+    connectionFailed: 'Connection failed',
+    executionFailed: 'Execution failed',
+    invalidOperation: 'Invalid operation',
+    invalidGraph: 'Invalid graph file',
   },
 
   // Node palette
@@ -133,16 +140,5 @@ export default {
   breadcrumb: {
     root: 'Root',
     back: 'Go Back',
-  },
-
-  // Error messages
-  errors: {
-    nodeNotFound: 'Node not found',
-    portNotFound: 'Port not found',
-    incompatibleTypes: 'Incompatible types',
-    connectionFailed: 'Connection failed',
-    executionFailed: 'Execution failed',
-    invalidOperation: 'Invalid operation',
-    invalidGraph: 'Invalid graph file',
   },
 }
