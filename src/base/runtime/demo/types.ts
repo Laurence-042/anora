@@ -66,27 +66,3 @@ export interface DemoRecording {
     [key: string]: unknown
   }
 }
-
-/**
- * 回放状态
- */
-export enum ReplayState {
-  /** 空闲（未加载或已停止） */
-  Idle = 'idle',
-  /** 播放中 */
-  Playing = 'playing',
-  /** 已暂停 */
-  Paused = 'paused',
-}
-
-/**
- * 回放控制命令
- */
-export enum ReplayCommand {
-  Play = 'play',
-  Pause = 'pause',
-  Stop = 'stop',
-  StepForward = 'step-forward',
-  StepBackward = 'step-backward',
-  SeekTo = 'seek-to',
-}

@@ -4,7 +4,7 @@
  *
  * 功能：
  * - 加载 .json 录制文件
- * - 使用 ReplayExecutor 回放事件
+ * - 使用 ReplayExecutor 回放事件（与 BasicExecutor 相同的 execute() 接口）
  * - 使用 graphStore 管理所有状态
  * - 回放进度控制
  */
@@ -14,10 +14,11 @@ import { useI18n } from 'vue-i18n'
 
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
 import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
-import { ReplayExecutor, ReplayState } from '@/base/runtime/demo'
+import { ReplayExecutor } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
 import { ExecutorEventType, type ExecutorEvent } from '@/base/runtime/executor'
+import { ExecutorStatus } from '@/base/runtime/types'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -30,9 +31,6 @@ const recording = ref<DemoRecording | null>(null)
 
 /** 回放执行器 */
 const replayExecutor = ref<ReplayExecutor | null>(null)
-
-/** 回放状态 */
-const replayState = ref<ReplayState>(ReplayState.Idle)
 
 /** 当前事件索引 */
 const currentEventIndex = ref(0)
@@ -48,15 +46,17 @@ const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
 const isLoaded = computed(
   () => recording.value !== null && graphStore.currentGraph.getAllNodes().length > 0,
 )
-const isPlaying = computed(() => replayState.value === ReplayState.Playing)
-const isPaused = computed(() => replayState.value === ReplayState.Paused)
-const isIdle = computed(() => replayState.value === ReplayState.Idle)
+const isPlaying = computed(() => replayExecutor.value?.isPlaying ?? false)
+const isPaused = computed(() => replayExecutor.value?.isPaused ?? false)
+const isIdle = computed(() => replayExecutor.value?.status === ExecutorStatus.Idle)
 const totalEvents = computed(() => recording.value?.events.length ?? 0)
 const progress = computed(() =>
   totalEvents.value > 0 ? Math.round((currentEventIndex.value / totalEvents.value) * 100) : 0,
 )
 const isCompleted = computed(
-  () => isIdle.value && currentEventIndex.value >= totalEvents.value && totalEvents.value > 0,
+  () =>
+    replayExecutor.value?.status === ExecutorStatus.Completed ||
+    (isIdle.value && currentEventIndex.value >= totalEvents.value && totalEvents.value > 0),
 )
 
 const speedOptions = [0.5, 1, 1.5, 2, 4]
@@ -103,10 +103,7 @@ async function loadRecordingFile(file: File): Promise<void> {
     const executor = new ReplayExecutor()
     executor.loadRecording(data, graphStore.currentGraph)
 
-    // 设置回调
-    executor.onStateChange = (state: ReplayState) => {
-      replayState.value = state
-    }
+    // 设置进度回调
     executor.onProgressChange = (current: number, _total: number) => {
       currentEventIndex.value = current
     }
@@ -115,9 +112,6 @@ async function loadRecordingFile(file: File): Promise<void> {
     executor.on(handleExecutorEvent)
 
     replayExecutor.value = executor
-
-    // 重置回放状态
-    replayState.value = ReplayState.Idle
     currentEventIndex.value = 0
 
     console.log('[ReplayView] Recording loaded:', {
@@ -183,8 +177,16 @@ function handleExecutorEvent(event: ExecutorEvent): void {
 
 function play(): void {
   if (!replayExecutor.value) return
+
   replayExecutor.value.playbackSpeed = playbackSpeed.value
-  replayExecutor.value.play()
+
+  if (replayExecutor.value.isPaused) {
+    // 如果是暂停状态，恢复播放
+    replayExecutor.value.resume()
+  } else if (replayExecutor.value.status === ExecutorStatus.Idle) {
+    // 如果是空闲状态，开始执行
+    replayExecutor.value.execute(graphStore.currentGraph)
+  }
 }
 
 function pause(): void {
@@ -201,20 +203,29 @@ function togglePlayPause(): void {
 }
 
 function stepForward(): void {
-  if (!replayExecutor.value || isPlaying.value) return
+  if (!replayExecutor.value) return
+
+  // 如果还没开始，先暂停启动
+  if (replayExecutor.value.status === ExecutorStatus.Idle) {
+    replayExecutor.value.execute(graphStore.currentGraph)
+    replayExecutor.value.pause()
+  }
+
   replayExecutor.value.stepForward()
 }
 
 function restart(): void {
-  if (!replayExecutor.value) return
+  if (!replayExecutor.value || !recording.value) return
+
+  // 取消当前执行
+  replayExecutor.value.cancel()
 
   // 重置状态
-  graphStore.executingNodeIds = new Set()
-  graphStore.edgeDataTransfers = new Map()
+  graphStore.clearExecutionState()
   currentEventIndex.value = 0
 
-  replayExecutor.value.stop()
-  replayState.value = ReplayState.Idle
+  // 重新加载录制数据
+  replayExecutor.value.loadRecording(recording.value, graphStore.currentGraph)
 }
 
 function setSpeed(speed: number): void {
@@ -222,11 +233,6 @@ function setSpeed(speed: number): void {
   if (replayExecutor.value) {
     replayExecutor.value.playbackSpeed = speed
   }
-}
-
-function seekTo(index: number): void {
-  if (!replayExecutor.value) return
-  replayExecutor.value.seekTo(index)
 }
 
 // ==================== 导航 ====================
@@ -239,12 +245,11 @@ function goToEditor(): void {
 
 function cleanup(): void {
   if (replayExecutor.value) {
-    replayExecutor.value.stop()
+    replayExecutor.value.cancel()
     replayExecutor.value = null
   }
   recording.value = null
   graphStore.clearExecutionState()
-  replayState.value = ReplayState.Idle
   currentEventIndex.value = 0
 }
 
@@ -315,8 +320,7 @@ onUnmounted(cleanup)
           :max="totalEvents"
           :value="currentEventIndex"
           class="progress-slider"
-          @input="seekTo(Number(($event.target as HTMLInputElement).value))"
-          :disabled="isPlaying"
+          disabled
         />
         <div class="progress-text">
           {{ currentEventIndex }} / {{ totalEvents }} ({{ progress }}%)
