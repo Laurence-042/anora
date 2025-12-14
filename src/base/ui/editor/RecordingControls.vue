@@ -2,66 +2,41 @@
 /**
  * RecordingControls - 录制与回放控制组件
  *
- * 新架构：直接操作 DemoRecorder 和 ReplayExecutor
- * - 录制：绑定 executor/graph，调用 recorder 方法
- * - 回放：加载录制，使用 replayExecutor 播放
+ * 使用 useRecording composable 获取录制/回放状态和操作
+ * 本组件只负责 UI 展示和用户交互
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGraphStore } from '@/stores/graph'
-import { AnoraGraph } from '@/base/runtime/graph'
+import { useRecording } from '../composables'
 import { ReplayState } from '@/base/runtime/demo'
 import type { DemoRecording } from '@/base/runtime/demo'
+import { useGraphStore } from '@/stores/graph'
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
+const recording = useRecording()
 
-// ========== 从 store 获取实例 ==========
-const recorder = computed(() => graphStore.demoRecorder)
-const replayExec = computed(() => graphStore.replayExecutor)
-
-// ========== 状态（直接映射到 store） ==========
-const isRecording = computed(() => graphStore.isRecording)
-const recordedEventCount = computed(() => graphStore.recordedEventCount)
-const isReplayMode = computed(() => graphStore.isReplayMode)
-const replayState = computed(() => graphStore.replayState)
-const replayProgress = computed(() => graphStore.replayProgress)
+// ========== 状态 ==========
+const isRecording = computed(() => recording.isRecording.value)
+const recordedEventCount = computed(() => recording.recordedEventCount.value)
+const isReplayMode = computed(() => recording.isReplayMode.value)
+const replayState = computed(() => recording.replayState.value)
+const replayProgress = computed(() => recording.replayProgress.value)
 const isRunning = computed(() => graphStore.isRunning)
-
-// 回放是否正在播放
 const isPlaying = computed(() => replayState.value === ReplayState.Playing)
-
-// ========== 初始化 ==========
-onMounted(() => {
-  // 设置录制器状态同步回调
-  recorder.value.onRecordingChange = (recording, count) => {
-    graphStore.isRecording = recording
-    graphStore.recordedEventCount = count
-  }
-})
 
 // ========== 录制操作 ==========
 
 function startRecording(): void {
-  if (isRecording.value || isReplayMode.value) return
-
-  // 绑定当前的 executor 和 graph
-  recorder.value.bindExecutor(graphStore.executor)
-  recorder.value.bindGraph(graphStore.currentGraph)
-
-  // 开始录制
-  recorder.value.startRecording(graphStore.nodePositions)
+  recording.startRecording()
 }
 
 function stopRecording(): void {
-  if (!isRecording.value) return
-  recorder.value.stopRecording()
+  recording.stopRecording()
 }
 
 function downloadRecording(): void {
-  const data = recorder.value.exportRecording({
-    iterationDelay: graphStore.iterationDelay,
-  })
+  const data = recording.exportRecording()
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -73,7 +48,7 @@ function downloadRecording(): void {
 
 // ========== 回放操作 ==========
 
-function loadRecording(file: File): void {
+function loadRecordingFromFile(file: File): void {
   const reader = new FileReader()
   reader.onload = (e) => {
     const content = e.target?.result as string
@@ -86,26 +61,7 @@ function loadRecording(file: File): void {
         return
       }
 
-      // 反序列化图
-      const graph = new AnoraGraph()
-      graph.deserialize(data.initialGraph)
-
-      // 进入回放模式
-      graphStore.enterReplayMode(graph, data.nodePositions)
-
-      // 配置 replayExecutor
-      replayExec.value.onStateChange = (state) => {
-        graphStore.replayState = state
-      }
-      replayExec.value.onProgressChange = (current, total) => {
-        graphStore.replayProgress = { current, total }
-      }
-
-      // 加载录制数据
-      replayExec.value.loadRecording(data, graphStore.currentGraph)
-
-      // 注册事件监听（使用与正常执行相同的处理逻辑）
-      replayExec.value.on(graphStore.handleExecutorEvent)
+      recording.loadRecording(data)
     } catch (err) {
       console.error('Failed to parse demo file:', err)
       alert(t('errors.invalidDemoFile'))
@@ -115,22 +71,15 @@ function loadRecording(file: File): void {
 }
 
 function exitReplay(): void {
-  graphStore.exitReplayMode()
+  recording.exitReplay()
 }
 
 function togglePlayPause(): void {
-  if (!isReplayMode.value) return
-
-  if (replayState.value === ReplayState.Playing) {
-    replayExec.value.pause()
-  } else {
-    replayExec.value.play()
-  }
+  recording.togglePlayPause()
 }
 
 function stepForward(): void {
-  if (!isReplayMode.value) return
-  replayExec.value.stepForward()
+  recording.stepForward()
 }
 
 // ========== UI ==========
@@ -144,7 +93,7 @@ function handleFileChange(event: Event): void {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
-    loadRecording(file)
+    loadRecordingFromFile(file)
     target.value = ''
   }
 }
@@ -155,7 +104,7 @@ const currentSpeed = ref(1)
 
 function setSpeed(speed: number): void {
   currentSpeed.value = speed
-  replayExec.value.playbackSpeed = speed
+  recording.setSpeed(speed)
 }
 </script>
 

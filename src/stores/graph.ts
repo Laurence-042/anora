@@ -1,6 +1,8 @@
 /**
  * 图状态管理 Store
  * 管理 AnoraGraph、执行状态、UI 状态等
+ *
+ * 注意：此 Store 不关心录制/回放，那些逻辑由 RecordingControls 组件自行管理
  */
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef, triggerRef } from 'vue'
@@ -10,7 +12,6 @@ import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { ExecutorStatus, DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
 import type { ExecutorContext } from '@/base/runtime/types'
-import { DemoRecorder, ReplayExecutor, ReplayState } from '@/base/runtime/demo'
 
 /**
  * 子图栈项
@@ -64,30 +65,7 @@ export const useGraphStore = defineStore('graph', () => {
   /** 边上传递的数据（用于调试/演示显示） */
   const edgeDataTransfers = ref<Map<string, EdgeDataTransfer>>(new Map())
 
-  // ==================== 录制/回放状态 ====================
-
-  /** 录制器实例 - 由 RecordingControls 直接操作 */
-  const demoRecorder = shallowRef<DemoRecorder>(new DemoRecorder())
-
-  /** 回放执行器实例 - 由 RecordingControls 直接操作 */
-  const replayExecutor = shallowRef<ReplayExecutor>(new ReplayExecutor())
-
-  /** 是否正在录制 */
-  const isRecording = ref(false)
-
-  /** 录制的事件数量 */
-  const recordedEventCount = ref(0)
-
-  /** 回放状态 */
-  const replayState = ref<ReplayState>(ReplayState.Idle)
-
-  /** 是否处于回放模式 */
-  const isReplayMode = ref(false)
-
-  /** 回放进度 */
-  const replayProgress = ref({ current: 0, total: 0 })
-
-  /** 节点位置（用于录制和回放，由 GraphEditor 维护） */
+  /** 节点位置（由 GraphEditor 维护，供外部使用） */
   const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
   // ==================== 计算属性 ====================
@@ -97,9 +75,6 @@ export const useGraphStore = defineStore('graph', () => {
 
   /** 是否正在执行 */
   const isRunning = computed(() => executorStatus.value === ExecutorStatus.Running)
-
-  /** 是否正在回放 */
-  const isReplaying = computed(() => replayState.value === ReplayState.Playing)
 
   /** 当前面包屑路径 */
   const breadcrumbPath = computed(() => {
@@ -413,7 +388,7 @@ export const useGraphStore = defineStore('graph', () => {
     return edgeDataTransfers.value.has(`${fromPortId}->${toPortId}`)
   }
 
-  // ==================== 录制/回放辅助 ====================
+  // ==================== 节点位置 ====================
 
   /**
    * 更新节点位置（供 GraphEditor 调用）
@@ -423,41 +398,25 @@ export const useGraphStore = defineStore('graph', () => {
   }
 
   /**
-   * 进入回放模式（由 RecordingControls 调用）
+   * 批量设置节点位置
    */
-  function enterReplayMode(
-    graph: AnoraGraph,
-    positions: Record<string, { x: number; y: number }>,
-  ): void {
-    // 替换当前图
-    currentGraph.value = graph
-    rootSubGraph.value.setGraph(graph)
-    subGraphStack.value = []
-    triggerRef(currentGraph)
-
-    // 恢复节点位置
+  function setNodePositions(positions: Record<string, { x: number; y: number }>): void {
     nodePositions.value.clear()
     for (const [nodeId, pos] of Object.entries(positions)) {
       nodePositions.value.set(nodeId, { ...pos })
     }
-
-    isReplayMode.value = true
-    replayState.value = ReplayState.Idle
   }
 
   /**
-   * 退出回放模式（由 RecordingControls 调用）
+   * 替换当前图（用于加载外部图数据）
    */
-  function exitReplayMode(): void {
-    if (!isReplayMode.value) return
-
-    replayExecutor.value.stop()
-    isReplayMode.value = false
-    replayState.value = ReplayState.Idle
-    replayProgress.value = { current: 0, total: 0 }
-
-    // 重置图
-    initializeRootGraph()
+  function replaceGraph(graph: AnoraGraph): void {
+    currentGraph.value = graph
+    rootSubGraph.value.setGraph(graph)
+    subGraphStack.value = []
+    selectedNodeIds.value.clear()
+    selectedEdges.value.clear()
+    triggerRef(currentGraph)
   }
 
   // ==================== 初始化 ====================
@@ -480,21 +439,11 @@ export const useGraphStore = defineStore('graph', () => {
     executorContext,
     iterationDelay,
     edgeDataTransfers,
-
-    // 录制/回放状态与实例
-    demoRecorder,
-    replayExecutor,
-    isRecording,
-    recordedEventCount,
-    isReplayMode,
-    replayState,
-    replayProgress,
     nodePositions,
 
     // 计算属性
     nodes,
     isRunning,
-    isReplaying,
     breadcrumbPath,
 
     // 图操作
@@ -507,6 +456,7 @@ export const useGraphStore = defineStore('graph', () => {
     enterSubGraph,
     exitSubGraph,
     navigateToLevel,
+    replaceGraph,
 
     // 选择操作
     selectNode,
@@ -528,9 +478,8 @@ export const useGraphStore = defineStore('graph', () => {
     getEdgeDataTransfer,
     hasEdgeDataTransfer,
 
-    // 录制/回放辅助
+    // 节点位置
     updateNodePosition,
-    enterReplayMode,
-    exitReplayMode,
+    setNodePositions,
   }
 })

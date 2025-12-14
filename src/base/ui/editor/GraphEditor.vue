@@ -12,6 +12,7 @@ import '@vue-flow/core/dist/theme-default.css'
 
 import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
+import { createRecordingContext } from '../composables'
 
 import BaseNodeView from '../components/BaseNodeView.vue'
 import EdgeView from '../components/EdgeView.vue'
@@ -31,6 +32,9 @@ NodeViewRegistry.setDefaultView(BaseNodeView)
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
+// 创建录制/回放上下文（子组件通过 useRecording 获取）
+const recording = createRecordingContext()
+
 // Vue-Flow 实例
 const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueFlow()
 
@@ -38,7 +42,7 @@ const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueF
 const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
 /** 是否处于回放模式（只读） */
-const isReplayMode = computed(() => graphStore.isReplayMode)
+const isReplayMode = computed(() => recording.isReplayMode.value)
 
 /** 处理图导入完成 */
 function onGraphImported(positions: Map<string, { x: number; y: number }>): void {
