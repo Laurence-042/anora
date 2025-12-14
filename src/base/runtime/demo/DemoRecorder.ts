@@ -89,7 +89,16 @@ export class DemoRecorder {
     this.clear()
 
     // 保存初始状态（包含节点位置）
+    console.log(
+      '[DemoRecorder] nodePositions received:',
+      nodePositions.size,
+      Array.from(nodePositions.entries()),
+    )
     this.initialGraph = this.graph.serialize(nodePositions)
+    console.log(
+      '[DemoRecorder] serialized nodes positions:',
+      this.initialGraph.nodes.map((n) => ({ id: n.id, pos: n.position })),
+    )
 
     // 订阅执行器事件
     this.unsubscribe = this.executor.on((event) => {

@@ -141,6 +141,8 @@ async function loadRecordingFile(file: File): Promise<void> {
     console.log('[ReplayView] Recording loaded:', {
       nodes: deserializedGraph.getAllNodes().length,
       events: data.events.length,
+      positions: positions.size,
+      positionsData: Array.from(positions.entries()),
     })
 
     // 自动适应视图

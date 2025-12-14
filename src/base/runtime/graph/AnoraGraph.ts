@@ -476,7 +476,7 @@ export class AnoraGraph {
 
     // 恢复 context
     if (data.context && baseNode.context) {
-      Object.assign(baseNode.context, data.context)
+      baseNode.context = data.context
     }
 
     // 恢复端口数据
@@ -489,6 +489,9 @@ export class AnoraGraph {
    * 反序列化节点的端口数据
    */
   private deserializePorts(node: BaseNode, data: SerializedNode): void {
+    // 恢复端口 ID（必须在恢复端口数据之前，这样边连接才能正确恢复）
+    node.restorePortIds(data)
+
     // 恢复入端口数据
     for (const [portName, portData] of Object.entries(data.inPorts)) {
       const port = node.inPorts.get(portName)

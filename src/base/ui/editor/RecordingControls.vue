@@ -46,6 +46,11 @@ function startRecording(): void {
   newRecorder.bindGraph(graph)
 
   // 开始录制（传入节点位置）
+  console.log(
+    '[RecordingControls] nodePositions before start:',
+    props.nodePositions.size,
+    Array.from(props.nodePositions.entries()),
+  )
   newRecorder.startRecording(props.nodePositions)
 
   recorder.value = newRecorder
