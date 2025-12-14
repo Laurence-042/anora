@@ -5,10 +5,8 @@
  * 功能：
  * - 加载 .json 录制文件
  * - 使用 ReplayExecutor 回放事件
- * - 使用 AnoraGraphView 展示图（只读）
+ * - 使用 graphStore 管理状态（与 GraphEditor 共用同一套机制）
  * - 回放进度控制
- *
- * 与 GraphEditor 完全独立，不共享任何状态
  */
 import { ref, computed, onUnmounted, shallowRef, triggerRef } from 'vue'
 import { useRouter } from 'vue-router'
@@ -18,11 +16,13 @@ import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
 import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
 import { AnoraGraph } from '@/base/runtime/graph'
 import { ReplayExecutor, ReplayState } from '@/base/runtime/demo'
+import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
-import type { EdgeDataTransfer, ExecutorEvent } from '@/base/runtime/executor'
+import type { ExecutorEvent } from '@/base/runtime/executor'
 
 const router = useRouter()
 const { t } = useI18n()
+const graphStore = useGraphStore()
 
 // ==================== 状态 ====================
 
@@ -43,12 +43,6 @@ const replayState = ref<ReplayState>(ReplayState.Idle)
 
 /** 当前事件索引 */
 const currentEventIndex = ref(0)
-
-/** 当前正在执行的节点 */
-const executingNodeIds = ref<Set<string>>(new Set())
-
-/** 边数据传输状态 */
-const edgeDataTransfers = ref<Map<string, EdgeDataTransfer>>(new Map())
 
 /** 播放速度 */
 const playbackSpeed = ref(1)
@@ -111,6 +105,9 @@ async function loadRecordingFile(file: File): Promise<void> {
     const { graph: deserializedGraph, nodePositions: positions } = AnoraGraph.fromSerialized(
       data.initialGraph,
     )
+
+    // 使用 graphStore 管理图
+    graphStore.replaceGraph(deserializedGraph)
     graph.value = deserializedGraph
     triggerRef(graph)
     nodePositions.value = positions
@@ -135,8 +132,8 @@ async function loadRecordingFile(file: File): Promise<void> {
     // 重置状态
     replayState.value = ReplayState.Idle
     currentEventIndex.value = 0
-    executingNodeIds.value = new Set()
-    edgeDataTransfers.value = new Map()
+    graphStore.executingNodeIds = new Set()
+    graphStore.edgeDataTransfers = new Map()
 
     console.log('[ReplayView] Recording loaded:', {
       nodes: deserializedGraph.getAllNodes().length,
@@ -158,37 +155,37 @@ async function loadRecordingFile(file: File): Promise<void> {
 function handleExecutorEvent(event: ExecutorEvent): void {
   switch (event.type) {
     case 'node-start':
-      executingNodeIds.value.add(event.node.id)
-      executingNodeIds.value = new Set(executingNodeIds.value) // 触发响应式
+      graphStore.executingNodeIds.add(event.node.id)
+      graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
       break
 
     case 'node-complete':
-      executingNodeIds.value.delete(event.node.id)
-      executingNodeIds.value = new Set(executingNodeIds.value)
+      graphStore.executingNodeIds.delete(event.node.id)
+      graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
       break
 
     case 'data-propagate':
       // 显示数据在边上传输
       for (const transfer of event.transfers) {
         const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
-        edgeDataTransfers.value.set(edgeId, transfer)
+        graphStore.edgeDataTransfers.set(edgeId, transfer)
       }
-      edgeDataTransfers.value = new Map(edgeDataTransfers.value)
+      graphStore.edgeDataTransfers = new Map(graphStore.edgeDataTransfers)
 
       // 短暂显示后清除
       setTimeout(() => {
         for (const transfer of event.transfers) {
           const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
-          edgeDataTransfers.value.delete(edgeId)
+          graphStore.edgeDataTransfers.delete(edgeId)
         }
-        edgeDataTransfers.value = new Map(edgeDataTransfers.value)
+        graphStore.edgeDataTransfers = new Map(graphStore.edgeDataTransfers)
       }, 500)
       break
 
     case 'complete':
     case 'cancelled':
       // 播放结束，清除执行状态
-      executingNodeIds.value = new Set()
+      graphStore.executingNodeIds = new Set()
       break
 
     case 'start':
@@ -229,8 +226,8 @@ function restart(): void {
   if (!replayExecutor.value) return
 
   // 重置状态
-  executingNodeIds.value = new Set()
-  edgeDataTransfers.value = new Map()
+  graphStore.executingNodeIds = new Set()
+  graphStore.edgeDataTransfers = new Map()
   currentEventIndex.value = 0
 
   replayExecutor.value.stop()
@@ -265,8 +262,8 @@ function cleanup(): void {
   recording.value = null
   graph.value = null
   nodePositions.value = new Map()
-  executingNodeIds.value = new Set()
-  edgeDataTransfers.value = new Map()
+  graphStore.executingNodeIds = new Set()
+  graphStore.edgeDataTransfers = new Map()
   replayState.value = ReplayState.Idle
   currentEventIndex.value = 0
 }
@@ -321,9 +318,9 @@ onUnmounted(cleanup)
         :graph="graph!"
         :node-positions="nodePositions"
         :readonly="true"
-        :executing-node-ids="executingNodeIds"
+        :executing-node-ids="graphStore.executingNodeIds"
         :incompatible-edges="new Set()"
-        :edge-data-transfers="edgeDataTransfers"
+        :edge-data-transfers="graphStore.edgeDataTransfers"
         :selected-node-ids="new Set()"
       />
     </div>

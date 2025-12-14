@@ -78,13 +78,10 @@ function downloadRecording(): void {
   a.download = `anora-demo-${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
-}
 
-function clearRecording(): void {
-  if (recorder.value) {
-    recorder.value.stopRecording()
-    recorder.value = null
-  }
+  // 下载后清理录制器
+  recorder.value = null
+  recordedEventCount.value = 0
 }
 
 // ========== 清理 ==========
@@ -128,9 +125,6 @@ onUnmounted(() => {
         :disabled="recordedEventCount === 0"
       >
         <span class="icon">💾</span>
-      </button>
-      <button class="control-btn clear-btn" @click="clearRecording" :title="t('demo.clear')">
-        <span class="icon">🗑</span>
       </button>
     </template>
   </div>

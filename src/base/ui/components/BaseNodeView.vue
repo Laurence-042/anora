@@ -155,19 +155,21 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           @keyup.escape="cancelEditLabel"
         />
         <span v-else class="node-label" @dblclick="startEditLabel">{{ nodeDisplayName }}</span>
+        <!-- 执行状态指示器（固定宽度占位） -->
+        <span class="status-indicator-slot">
+          <span v-if="isExecuting" class="status-indicator executing">⟳</span>
+          <span
+            v-else-if="executionStatus === NodeExecutionStatus.SUCCESS"
+            class="status-indicator success"
+            >✓</span
+          >
+          <span
+            v-else-if="executionStatus === NodeExecutionStatus.FAILED"
+            class="status-indicator failed"
+            >✗</span
+          >
+        </span>
       </div>
-      <!-- 执行状态指示器 -->
-      <span v-if="isExecuting" class="status-indicator executing">⟳</span>
-      <span
-        v-else-if="executionStatus === NodeExecutionStatus.SUCCESS"
-        class="status-indicator success"
-        >✓</span
-      >
-      <span
-        v-else-if="executionStatus === NodeExecutionStatus.FAILED"
-        class="status-indicator failed"
-        >✗</span
-      >
     </div>
 
     <!-- 警告信息 -->
@@ -270,10 +272,20 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   opacity: 1;
 }
 
+/* 状态指示器占位槽 */
+.status-indicator-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
 /* 状态指示器动画 */
 .status-indicator {
   font-size: 14px;
-  margin-left: 8px;
 }
 
 .status-indicator.executing {
