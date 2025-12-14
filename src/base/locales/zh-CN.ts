@@ -83,6 +83,13 @@ export default {
   // 错误
   errors: {
     invalidDemoFile: '无效的演示文件格式',
+    nodeNotFound: '节点未找到',
+    portNotFound: '端口未找到',
+    incompatibleTypes: '类型不兼容',
+    connectionFailed: '连接失败',
+    executionFailed: '执行失败',
+    invalidOperation: '无效操作',
+    invalidGraph: '无效的逻辑图文件',
   },
 
   // 节点面板
@@ -133,16 +140,5 @@ export default {
   breadcrumb: {
     root: '根图',
     back: '返回上一级',
-  },
-
-  // 错误消息
-  errors: {
-    nodeNotFound: '节点未找到',
-    portNotFound: '端口未找到',
-    incompatibleTypes: '类型不兼容',
-    connectionFailed: '连接失败',
-    executionFailed: '执行失败',
-    invalidOperation: '无效操作',
-    invalidGraph: '无效的逻辑图文件',
   },
 }

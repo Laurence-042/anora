@@ -7,7 +7,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef, triggerRef } from 'vue'
 import { AnoraGraph } from '@/base/runtime/graph'
-import { BasicExecutor, type ExecutorEvent, type EdgeDataTransfer } from '@/base/runtime/executor'
+import {
+  BasicExecutor,
+  ExecutorEventType,
+  type ExecutorEvent,
+  type EdgeDataTransfer,
+} from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { ExecutorStatus, DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
@@ -252,25 +257,25 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function handleExecutorEvent(event: ExecutorEvent): void {
     switch (event.type) {
-      case 'start':
+      case ExecutorEventType.Start:
         executorStatus.value = ExecutorStatus.Running
         currentIteration.value = 0
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
         break
 
-      case 'iteration':
+      case ExecutorEventType.Iteration:
         currentIteration.value = event.iteration
         // 新迭代开始时清除上一迭代的边数据
         edgeDataTransfers.value.clear()
         break
 
-      case 'node-start':
+      case ExecutorEventType.NodeStart:
         // 创建新 Set 以触发响应式更新
         executingNodeIds.value = new Set([...executingNodeIds.value, event.node.id])
         break
 
-      case 'node-complete':
+      case ExecutorEventType.NodeComplete:
         // 创建新 Set 以触发响应式更新
         {
           const newSet = new Set(executingNodeIds.value)
@@ -279,7 +284,7 @@ export const useGraphStore = defineStore('graph', () => {
         }
         break
 
-      case 'data-propagate':
+      case ExecutorEventType.DataPropagate:
         // 记录边上传递的数据（创建新 Map 以触发响应式更新）
         {
           const newMap = new Map(edgeDataTransfers.value)
@@ -291,19 +296,19 @@ export const useGraphStore = defineStore('graph', () => {
         }
         break
 
-      case 'complete':
+      case ExecutorEventType.Complete:
         executorStatus.value = event.result.status
         executingNodeIds.value.clear()
         triggerRef(currentGraph) // 刷新以显示执行后的 Port 值
         break
 
-      case 'cancelled':
+      case ExecutorEventType.Cancelled:
         executorStatus.value = ExecutorStatus.Cancelled
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
         break
 
-      case 'error':
+      case ExecutorEventType.Error:
         executorStatus.value = ExecutorStatus.Error
         executingNodeIds.value.clear()
         console.error('[Executor Error]', event.error.message, event.error.stack)

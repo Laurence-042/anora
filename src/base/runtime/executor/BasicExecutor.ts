@@ -5,6 +5,25 @@ import { AnoraGraph } from '../graph/AnoraGraph'
 import { DEFAULT_EXECUTOR_CONTEXT } from '../types'
 import Bluebird from 'bluebird'
 
+import {
+  ExecutorEventType,
+  type ExecutorEvent,
+  type ExecutorEventListener,
+  type ExecutionResult,
+  type NodeExecutionResult,
+  type EdgeDataTransfer,
+} from './ExecutorTypes'
+
+// Re-export types for convenience
+export {
+  ExecutorEventType,
+  type ExecutorEvent,
+  type ExecutorEventListener,
+  type ExecutionResult,
+  type NodeExecutionResult,
+  type EdgeDataTransfer,
+} from './ExecutorTypes'
+
 // 启用 Bluebird 的取消功能
 Bluebird.config({ cancellation: true })
 
@@ -62,59 +81,6 @@ function isDirectThroughForwardNode(node: BaseNode): boolean {
 }
 
 /**
- * 执行结果
- */
-export interface ExecutionResult {
-  /** 执行状态 */
-  status: ExecutorStatus
-  /** 错误信息（如果有） */
-  error?: Error
-  /** 执行的迭代次数 */
-  iterations: number
-  /** 执行时间（毫秒） */
-  duration: number
-}
-
-/**
- * 节点执行结果
- */
-export interface NodeExecutionResult {
-  node: BaseNode
-  success: boolean
-  error?: Error
-}
-
-/**
- * 边数据传递记录
- */
-export interface EdgeDataTransfer {
-  /** 源 Port ID */
-  fromPortId: string
-  /** 目标 Port ID */
-  toPortId: string
-  /** 传递的数据 */
-  data: unknown
-}
-
-/**
- * 执行器事件
- */
-export type ExecutorEvent =
-  | { type: 'start' }
-  | { type: 'iteration'; iteration: number }
-  | { type: 'node-start'; node: BaseNode }
-  | { type: 'node-complete'; node: BaseNode; success: boolean; error?: Error }
-  | { type: 'data-propagate'; transfers: EdgeDataTransfer[] }
-  | { type: 'complete'; result: ExecutionResult }
-  | { type: 'cancelled' }
-  | { type: 'error'; error: Error }
-
-/**
- * 事件监听器
- */
-export type ExecutorEventListener = (event: ExecutorEvent) => void
-
-/**
  * 基础执行器
  * 负责执行 AnoraGraph 中的节点
  *
@@ -122,16 +88,17 @@ export type ExecutorEventListener = (event: ExecutorEvent) => void
  * - 迭代间使用同步，支持环结构（如周期性触发器）
  * - 不使用最大迭代次数限制，用户可自行取消执行
  * - 直通节点在数据传播时立即执行
+ * - 子类（如 ReplayExecutor）可通过继承共享事件机制
  */
 export class BasicExecutor {
   /** 执行状态 */
-  private _status: ExecutorStatus = ExecutorStatus.Idle
+  protected _status: ExecutorStatus = ExecutorStatus.Idle
 
   /** 当前执行的 Bluebird Promise（用于取消） */
   private currentExecution: Bluebird<ExecutionResult> | null = null
 
   /** 事件监听器 */
-  private listeners: Set<ExecutorEventListener> = new Set()
+  protected listeners: Set<ExecutorEventListener> = new Set()
 
   /**
    * 获取当前状态
@@ -156,9 +123,9 @@ export class BasicExecutor {
   }
 
   /**
-   * 发送事件
+   * 发送事件（protected 允许子类使用）
    */
-  private emit(event: ExecutorEvent): void {
+  protected emit(event: ExecutorEvent): void {
     for (const listener of this.listeners) {
       try {
         listener(event)
@@ -193,7 +160,7 @@ export class BasicExecutor {
       node.resetActivationState()
     }
 
-    this.emit({ type: 'start' })
+    this.emit({ type: ExecutorEventType.Start })
 
     let iterations = 0
     let cancelled = false
@@ -209,7 +176,7 @@ export class BasicExecutor {
         // 迭代阶段：循环直到没有就绪节点或用户取消
         while (!cancelled) {
           iterations++
-          this.emit({ type: 'iteration', iteration: iterations })
+          this.emit({ type: ExecutorEventType.Iteration, iteration: iterations })
 
           // 迭代开始前的延迟（跳过第一次迭代）- 移到数据传播后
           // if (iterations > 1 && execContext.iterationDelay && execContext.iterationDelay > 0) {
@@ -241,7 +208,7 @@ export class BasicExecutor {
 
         if (cancelled) {
           this._status = ExecutorStatus.Cancelled
-          this.emit({ type: 'cancelled' })
+          this.emit({ type: ExecutorEventType.Cancelled })
           resolve({
             status: ExecutorStatus.Cancelled,
             iterations,
@@ -256,12 +223,12 @@ export class BasicExecutor {
           iterations,
           duration: Date.now() - startTime,
         }
-        this.emit({ type: 'complete', result })
+        this.emit({ type: ExecutorEventType.Complete, result })
         resolve(result)
       } catch (error) {
         this._status = ExecutorStatus.Error
         const err = error instanceof Error ? error : new Error(String(error))
-        this.emit({ type: 'error', error: err })
+        this.emit({ type: ExecutorEventType.Error, error: err })
         resolve({
           status: ExecutorStatus.Error,
           error: err,
@@ -354,14 +321,14 @@ export class BasicExecutor {
     // 并行执行所有节点（先只发送 node-start，暂不发送 node-complete）
     const promises = nodes.map(async (node) => {
       try {
-        this.emit({ type: 'node-start', node })
+        this.emit({ type: ExecutorEventType.NodeStart, node })
         await node.activate(context)
         // 暂不发送 node-complete，等数据传播和延迟后再发送
         return { node, success: true, error: undefined } as NodeExecutionResult
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
         // 失败时立即发送 node-complete
-        this.emit({ type: 'node-complete', node, success: false, error: err })
+        this.emit({ type: ExecutorEventType.NodeComplete, node, success: false, error: err })
         return { node, success: false, error: err } as NodeExecutionResult
       }
     })
@@ -412,7 +379,7 @@ export class BasicExecutor {
     // 延迟结束后，发送成功节点的 node-complete 事件
     for (const result of results) {
       if (result.success) {
-        this.emit({ type: 'node-complete', node: result.node, success: true })
+        this.emit({ type: ExecutorEventType.NodeComplete, node: result.node, success: true })
       }
     }
 
@@ -478,7 +445,7 @@ export class BasicExecutor {
 
     // 发送数据传播事件
     if (transfers.length > 0) {
-      this.emit({ type: 'data-propagate', transfers })
+      this.emit({ type: ExecutorEventType.DataPropagate, transfers })
     }
 
     // 检查受影响的节点是否有直通节点需要立即执行
@@ -509,9 +476,9 @@ export class BasicExecutor {
 
     // 直通节点：立即执行
     try {
-      this.emit({ type: 'node-start', node })
+      this.emit({ type: ExecutorEventType.NodeStart, node })
       await node.activate(context)
-      this.emit({ type: 'node-complete', node, success: true })
+      this.emit({ type: ExecutorEventType.NodeComplete, node, success: true })
 
       // 清空入 Port
       this.clearNodeInputPorts(node)
@@ -520,7 +487,7 @@ export class BasicExecutor {
       await this.propagateDataWithDirectThrough(node, graph, context)
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
-      this.emit({ type: 'node-complete', node, success: false, error: err })
+      this.emit({ type: ExecutorEventType.NodeComplete, node, success: false, error: err })
       throw err
     }
   }

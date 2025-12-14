@@ -17,7 +17,7 @@ import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
 import { ReplayExecutor, ReplayState } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
-import type { ExecutorEvent } from '@/base/runtime/executor'
+import { ExecutorEventType, type ExecutorEvent } from '@/base/runtime/executor'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -137,17 +137,17 @@ async function loadRecordingFile(file: File): Promise<void> {
 
 function handleExecutorEvent(event: ExecutorEvent): void {
   switch (event.type) {
-    case 'node-start':
+    case ExecutorEventType.NodeStart:
       graphStore.executingNodeIds.add(event.node.id)
       graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
       break
 
-    case 'node-complete':
+    case ExecutorEventType.NodeComplete:
       graphStore.executingNodeIds.delete(event.node.id)
       graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
       break
 
-    case 'data-propagate':
+    case ExecutorEventType.DataPropagate:
       // 显示数据在边上传输
       for (const transfer of event.transfers) {
         const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
@@ -165,15 +165,15 @@ function handleExecutorEvent(event: ExecutorEvent): void {
       }, 500)
       break
 
-    case 'complete':
-    case 'cancelled':
+    case ExecutorEventType.Complete:
+    case ExecutorEventType.Cancelled:
       // 播放结束，清除执行状态
       graphStore.executingNodeIds = new Set()
       break
 
-    case 'start':
-    case 'iteration':
-    case 'error':
+    case ExecutorEventType.Start:
+    case ExecutorEventType.Iteration:
+    case ExecutorEventType.Error:
       // 这些事件可用于 UI 显示，暂不处理
       break
   }

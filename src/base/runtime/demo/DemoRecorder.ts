@@ -10,6 +10,7 @@
 import type { AnoraGraph } from '../graph'
 import type { SerializedGraph } from '../types'
 import type { BasicExecutor, ExecutorEvent } from '../executor'
+import { ExecutorEventType } from '../executor'
 import type { DemoRecording, SerializedExecutorEvent, TimestampedEvent } from './types'
 
 /** Demo 格式版本 */
@@ -150,22 +151,22 @@ export class DemoRecorder {
    */
   private serializeEvent(event: ExecutorEvent): SerializedExecutorEvent {
     switch (event.type) {
-      case 'start':
+      case ExecutorEventType.Start:
         return { type: 'start' }
 
-      case 'iteration':
+      case ExecutorEventType.Iteration:
         return {
           type: 'iteration',
           iteration: event.iteration,
         }
 
-      case 'node-start':
+      case ExecutorEventType.NodeStart:
         return {
           type: 'node-start',
           nodeId: event.node.id,
         }
 
-      case 'node-complete':
+      case ExecutorEventType.NodeComplete:
         return {
           type: 'node-complete',
           nodeId: event.node.id,
@@ -173,7 +174,7 @@ export class DemoRecorder {
           error: event.error?.message,
         }
 
-      case 'data-propagate':
+      case ExecutorEventType.DataPropagate:
         return {
           type: 'data-propagate',
           transfers: event.transfers.map((t) => ({
@@ -183,7 +184,7 @@ export class DemoRecorder {
           })),
         }
 
-      case 'complete':
+      case ExecutorEventType.Complete:
         return {
           type: 'complete',
           result: {
@@ -194,10 +195,10 @@ export class DemoRecorder {
           },
         }
 
-      case 'cancelled':
+      case ExecutorEventType.Cancelled:
         return { type: 'cancelled' }
 
-      case 'error':
+      case ExecutorEventType.Error:
         return {
           type: 'error',
           error: event.error.message,

@@ -1,10 +1,10 @@
+export { BasicExecutor, createExecutor, executeGraph } from './BasicExecutor'
+
 export {
-  BasicExecutor,
-  createExecutor,
-  executeGraph,
+  ExecutorEventType,
   type ExecutionResult,
   type NodeExecutionResult,
   type ExecutorEvent,
   type ExecutorEventListener,
   type EdgeDataTransfer,
-} from './BasicExecutor'
+} from './ExecutorTypes'

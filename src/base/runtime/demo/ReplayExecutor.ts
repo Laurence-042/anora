@@ -1,22 +1,26 @@
 /**
  * ReplayExecutor - 回放执行器
  *
- * 实现与 BasicExecutor 相同的事件接口，但不执行实际逻辑
- * 而是按录制的事件序列 emit 事件，让前端组件响应
+ * 继承 BasicExecutor，共享事件机制和基础设施
+ * 不执行实际逻辑，而是按录制的事件序列 emit 事件
  *
  * 这样前端组件在回放模式和正常模式下使用完全相同的代码
  */
 
 import { ExecutorStatus } from '../types'
-import type { ExecutorEvent, ExecutorEventListener } from '../executor'
+import { BasicExecutor } from '../executor/BasicExecutor'
+import { ExecutorEventType } from '../executor/ExecutorTypes'
+import type { ExecutorEvent } from '../executor/ExecutorTypes'
 import type { AnoraGraph } from '../graph'
 import type { DemoRecording, SerializedExecutorEvent, ReplayState } from './types'
 import { ReplayState as RS } from './types'
 
-export class ReplayExecutor {
-  private _status: ExecutorStatus = ExecutorStatus.Idle
+/**
+ * 回放执行器
+ * 继承 BasicExecutor 以复用事件机制（on/off/emit）
+ */
+export class ReplayExecutor extends BasicExecutor {
   private _replayState: ReplayState = RS.Idle
-  private listeners: Set<ExecutorEventListener> = new Set()
 
   private recording: DemoRecording | null = null
   private currentEventIndex: number = -1
@@ -30,13 +34,6 @@ export class ReplayExecutor {
   onStateChange?: (state: ReplayState) => void
   /** 进度变化回调 */
   onProgressChange?: (current: number, total: number) => void
-
-  /**
-   * 获取执行器状态
-   */
-  get status(): ExecutorStatus {
-    return this._status
-  }
 
   /**
    * 获取回放状态
@@ -57,34 +54,6 @@ export class ReplayExecutor {
    */
   get totalEvents(): number {
     return this.recording?.events.length ?? 0
-  }
-
-  /**
-   * 添加事件监听器
-   */
-  on(listener: ExecutorEventListener): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
-
-  /**
-   * 移除事件监听器
-   */
-  off(listener: ExecutorEventListener): void {
-    this.listeners.delete(listener)
-  }
-
-  /**
-   * 发送事件
-   */
-  private emit(event: ExecutorEvent): void {
-    for (const listener of this.listeners) {
-      try {
-        listener(event)
-      } catch (e) {
-        console.error('ReplayExecutor event listener error:', e)
-      }
-    }
   }
 
   /**
@@ -112,7 +81,7 @@ export class ReplayExecutor {
 
     // 如果是从头开始
     if (this.currentEventIndex < 0) {
-      this.emit({ type: 'start' })
+      this.emit({ type: ExecutorEventType.Start })
     }
 
     this.scheduleNextEvent()
@@ -164,7 +133,7 @@ export class ReplayExecutor {
     // 如果目标在当前位置之前，需要重置
     if (targetIndex <= this.currentEventIndex) {
       // 重置图状态
-      this.emit({ type: 'cancelled' })
+      this.emit({ type: ExecutorEventType.Cancelled })
       this.currentEventIndex = -1
     }
 
@@ -253,10 +222,10 @@ export class ReplayExecutor {
 
     switch (serialized.type) {
       case 'start':
-        return { type: 'start' }
+        return { type: ExecutorEventType.Start }
 
       case 'iteration':
-        return { type: 'iteration', iteration: serialized.iteration }
+        return { type: ExecutorEventType.Iteration, iteration: serialized.iteration }
 
       case 'node-start': {
         const node = this.graph.getNode(serialized.nodeId)
@@ -264,7 +233,7 @@ export class ReplayExecutor {
           console.warn(`ReplayExecutor: Node ${serialized.nodeId} not found`)
           return null
         }
-        return { type: 'node-start', node }
+        return { type: ExecutorEventType.NodeStart, node }
       }
 
       case 'node-complete': {
@@ -274,7 +243,7 @@ export class ReplayExecutor {
           return null
         }
         return {
-          type: 'node-complete',
+          type: ExecutorEventType.NodeComplete,
           node,
           success: serialized.success,
           error: serialized.error ? new Error(serialized.error) : undefined,
@@ -283,7 +252,7 @@ export class ReplayExecutor {
 
       case 'data-propagate':
         return {
-          type: 'data-propagate',
+          type: ExecutorEventType.DataPropagate,
           transfers: serialized.transfers.map((t) => ({
             fromPortId: t.fromPortId,
             toPortId: t.toPortId,
@@ -293,7 +262,7 @@ export class ReplayExecutor {
 
       case 'complete':
         return {
-          type: 'complete',
+          type: ExecutorEventType.Complete,
           result: {
             status: serialized.result.status as ExecutorStatus,
             error: serialized.result.error ? new Error(serialized.result.error) : undefined,
@@ -303,10 +272,10 @@ export class ReplayExecutor {
         }
 
       case 'cancelled':
-        return { type: 'cancelled' }
+        return { type: ExecutorEventType.Cancelled }
 
       case 'error':
-        return { type: 'error', error: new Error(serialized.error) }
+        return { type: ExecutorEventType.Error, error: new Error(serialized.error) }
     }
   }
 
