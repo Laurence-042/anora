@@ -1,4 +1,4 @@
-import { ActivationReadyStatus, ExecutorStatus } from '../types'
+import { ActivationReadyStatus } from '../types'
 import type { ExecutorContext } from '../types'
 import { BaseNode } from '../nodes/BaseNode'
 import { AnoraGraph } from '../graph/AnoraGraph'
@@ -8,7 +8,6 @@ import Bluebird from 'bluebird'
 import {
   ExecutorEventType,
   ExecutionMode,
-  PlaybackState,
   type ExecutorEvent,
   type ExecutorEventListener,
   type ExecutionResult,
@@ -16,13 +15,12 @@ import {
   type EdgeDataTransfer,
   type ExecuteOptions,
 } from './ExecutorTypes'
-import { ExecutorStateMachine, ExecutorState } from './ExecutorStateMachine'
+import { ExecutorStateMachine, ExecutorState, FinishReason } from './ExecutorStateMachine'
 
 // Re-export types for convenience
 export {
   ExecutorEventType,
   ExecutionMode,
-  PlaybackState,
   type ExecutorEvent,
   type ExecutorEventListener,
   type ExecutionResult,
@@ -30,7 +28,7 @@ export {
   type EdgeDataTransfer,
   type ExecuteOptions,
 } from './ExecutorTypes'
-export { ExecutorStateMachine, ExecutorState } from './ExecutorStateMachine'
+export { ExecutorStateMachine, ExecutorState, FinishReason } from './ExecutorStateMachine'
 
 // 启用 Bluebird 的取消功能
 Bluebird.config({ cancellation: true })
@@ -141,43 +139,6 @@ export class BasicExecutor {
    */
   get executorState(): ExecutorState {
     return this.stateMachine.state
-  }
-
-  /**
-   * 获取当前状态（兼容旧 API）
-   * @deprecated 使用 executorState 代替
-   */
-  get status(): ExecutorStatus {
-    // 映射状态机状态到旧的 ExecutorStatus
-    switch (this.stateMachine.state) {
-      case ExecutorState.Idle:
-        return ExecutorStatus.Idle
-      case ExecutorState.Running:
-      case ExecutorState.Paused:
-      case ExecutorState.Stepping:
-        return ExecutorStatus.Running
-      default:
-        return ExecutorStatus.Idle
-    }
-  }
-
-  /**
-   * 获取播放状态（兼容旧 API）
-   * @deprecated 使用 executorState 代替
-   */
-  get playbackState(): PlaybackState {
-    // 映射状态机状态到旧的 PlaybackState
-    switch (this.stateMachine.state) {
-      case ExecutorState.Idle:
-        return PlaybackState.Idle
-      case ExecutorState.Running:
-      case ExecutorState.Stepping:
-        return PlaybackState.Playing
-      case ExecutorState.Paused:
-        return PlaybackState.Paused
-      default:
-        return PlaybackState.Idle
-    }
   }
 
   /**
@@ -293,7 +254,7 @@ export class BasicExecutor {
 
     if (readyNodes.length === 0) {
       // 没有就绪节点，执行完成
-      this.finishExecution(ExecutorStatus.Completed)
+      this.finishExecution(FinishReason.Completed)
       return false
     }
 
@@ -304,7 +265,7 @@ export class BasicExecutor {
       const results = await this.executeNodes(readyNodes, this._graph, this._context)
 
       if (this.cancelRequested) {
-        this.finishExecution(ExecutorStatus.Cancelled)
+        this.finishExecution(FinishReason.Cancelled)
         return false
       }
 
@@ -318,7 +279,7 @@ export class BasicExecutor {
       return true // 还有更多迭代
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
-      this.finishExecution(ExecutorStatus.Error, err)
+      this.finishExecution(FinishReason.Error, err)
       return false
     }
   }
@@ -337,28 +298,28 @@ export class BasicExecutor {
   /**
    * 完成执行（内部方法）
    */
-  protected finishExecution(status: ExecutorStatus, error?: Error): void {
+  protected finishExecution(reason: FinishReason, error?: Error): void {
     // 转换状态机到 Idle
-    if (status === ExecutorStatus.Completed) {
+    if (reason === FinishReason.Completed) {
       this.stateMachine.transition({ type: 'COMPLETE' })
-    } else if (status === ExecutorStatus.Cancelled) {
+    } else if (reason === FinishReason.Cancelled) {
       this.stateMachine.transition({ type: 'CANCEL' })
-    } else if (status === ExecutorStatus.Error) {
+    } else if (reason === FinishReason.Error) {
       this.stateMachine.transition({ type: 'ERROR' })
     }
 
     const result: ExecutionResult = {
-      status,
+      finishReason: reason,
       error,
       iterations: this._iterations,
       duration: Date.now() - this._startTime,
     }
 
-    if (status === ExecutorStatus.Completed) {
+    if (reason === FinishReason.Completed) {
       this.emit({ type: ExecutorEventType.Complete, result })
-    } else if (status === ExecutorStatus.Cancelled) {
+    } else if (reason === FinishReason.Cancelled) {
       this.emit({ type: ExecutorEventType.Cancelled })
-    } else if (status === ExecutorStatus.Error && error) {
+    } else if (reason === FinishReason.Error && error) {
       this.emit({ type: ExecutorEventType.Error, error })
     }
 
@@ -432,7 +393,7 @@ export class BasicExecutor {
     }
 
     this.cancelRequested = true
-    this.finishExecution(ExecutorStatus.Cancelled)
+    this.finishExecution(FinishReason.Cancelled)
   }
 
   /**

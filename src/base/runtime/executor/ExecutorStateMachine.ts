@@ -52,6 +52,18 @@ export enum ExecutorState {
 }
 
 /**
+ * 执行结束原因
+ */
+export enum FinishReason {
+  /** 正常完成 */
+  Completed = 'completed',
+  /** 被取消 */
+  Cancelled = 'cancelled',
+  /** 发生错误 */
+  Error = 'error',
+}
+
+/**
  * 状态转换动作
  */
 export type ExecutorAction =

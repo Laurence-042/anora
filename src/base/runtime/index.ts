@@ -2,7 +2,6 @@
 export {
   DataType,
   ActivationReadyStatus,
-  ExecutorStatus,
   NodeExecutionStatus,
   DefType,
   TYPE_COMPATIBILITY_MATRIX,
@@ -31,7 +30,13 @@ export { BaseNode, WebNode, BackendNode, type NodeStaticMeta } from './nodes'
 export { AnoraGraph } from './graph'
 
 // Executor 系统
-export { BasicExecutor, createExecutor, executeGraph } from './executor'
+export {
+  BasicExecutor,
+  createExecutor,
+  executeGraph,
+  ExecutorState,
+  FinishReason,
+} from './executor'
 export type {
   ExecutionResult,
   NodeExecutionResult,

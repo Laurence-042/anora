@@ -15,9 +15,8 @@
  * - ReplayExecutor.executeOneIteration(): 播放下一个录制事件
  */
 
-import { ExecutorStatus } from '../types'
 import type { ExecutorContext } from '../types'
-import { BasicExecutor, ExecutorEventType, ExecutorState } from '../executor'
+import { BasicExecutor, ExecutorEventType, ExecutorState, FinishReason } from '../executor'
 import type { ExecutorEvent, ExecutionResult, ExecuteOptions } from '../executor/ExecutorTypes'
 import type { AnoraGraph } from '../graph'
 import type { DemoRecording, SerializedExecutorEvent } from './types'
@@ -83,7 +82,7 @@ export class ReplayExecutor extends BasicExecutor {
 
     // 检查是否已到达末尾
     if (this.currentEventIndex >= this.recording.events.length - 1) {
-      this.finishExecution(ExecutorStatus.Completed)
+      this.finishExecution(FinishReason.Completed)
       return false
     }
 
@@ -174,7 +173,7 @@ export class ReplayExecutor extends BasicExecutor {
         return {
           type: ExecutorEventType.Complete,
           result: {
-            status: serialized.result.status as ExecutorStatus,
+            finishReason: serialized.result.finishReason as FinishReason,
             error: serialized.result.error ? new Error(serialized.result.error) : undefined,
             iterations: serialized.result.iterations,
             duration: serialized.result.duration,

@@ -6,7 +6,7 @@
  */
 
 import type { BaseNode } from '../nodes/BaseNode'
-import { ExecutorStatus } from '../types'
+import { FinishReason } from './ExecutorStateMachine'
 
 /**
  * 执行器运行模式
@@ -19,23 +19,11 @@ export enum ExecutionMode {
 }
 
 /**
- * 执行器播放状态（用于暂停/恢复控制）
- */
-export enum PlaybackState {
-  /** 空闲（未开始或已完成） */
-  Idle = 'idle',
-  /** 正在播放/执行 */
-  Playing = 'playing',
-  /** 已暂停 */
-  Paused = 'paused',
-}
-
-/**
  * 执行结果
  */
 export interface ExecutionResult {
-  /** 执行状态 */
-  status: ExecutorStatus
+  /** 结束原因 */
+  finishReason: FinishReason
   /** 错误信息（如果有） */
   error?: Error
   /** 执行的迭代次数 */

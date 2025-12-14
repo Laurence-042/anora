@@ -37,7 +37,7 @@ export type SerializedExecutorEvent =
   | {
       type: 'complete'
       result: {
-        status: string
+        finishReason: string
         error?: string
         iterations: number
         duration: number

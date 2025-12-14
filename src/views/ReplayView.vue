@@ -17,8 +17,7 @@ import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
 import { ReplayExecutor } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
-import { ExecutorEventType, type ExecutorEvent } from '@/base/runtime/executor'
-import { ExecutorStatus } from '@/base/runtime/types'
+import { ExecutorEventType, ExecutorState, type ExecutorEvent } from '@/base/runtime/executor'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -48,15 +47,13 @@ const isLoaded = computed(
 )
 const isPlaying = computed(() => replayExecutor.value?.isPlaying ?? false)
 const isPaused = computed(() => replayExecutor.value?.isPaused ?? false)
-const isIdle = computed(() => replayExecutor.value?.status === ExecutorStatus.Idle)
+const isIdle = computed(() => replayExecutor.value?.executorState === ExecutorState.Idle)
 const totalEvents = computed(() => recording.value?.events.length ?? 0)
 const progress = computed(() =>
   totalEvents.value > 0 ? Math.round((currentEventIndex.value / totalEvents.value) * 100) : 0,
 )
 const isCompleted = computed(
-  () =>
-    replayExecutor.value?.status === ExecutorStatus.Completed ||
-    (isIdle.value && currentEventIndex.value >= totalEvents.value && totalEvents.value > 0),
+  () => isIdle.value && currentEventIndex.value >= totalEvents.value && totalEvents.value > 0,
 )
 
 const speedOptions = [0.5, 1, 1.5, 2, 4]
@@ -183,7 +180,7 @@ function play(): void {
   if (replayExecutor.value.isPaused) {
     // 如果是暂停状态，恢复播放
     replayExecutor.value.resume()
-  } else if (replayExecutor.value.status === ExecutorStatus.Idle) {
+  } else if (replayExecutor.value.executorState === ExecutorState.Idle) {
     // 如果是空闲状态，开始执行
     replayExecutor.value.execute(graphStore.currentGraph)
   }
@@ -206,7 +203,7 @@ function stepForward(): void {
   if (!replayExecutor.value) return
 
   // 如果还没开始，先暂停启动
-  if (replayExecutor.value.status === ExecutorStatus.Idle) {
+  if (replayExecutor.value.executorState === ExecutorState.Idle) {
     replayExecutor.value.execute(graphStore.currentGraph)
     replayExecutor.value.pause()
   }

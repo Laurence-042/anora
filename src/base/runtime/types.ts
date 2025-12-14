@@ -40,22 +40,6 @@ export enum ActivationReadyStatus {
 }
 
 /**
- * 执行器状态
- */
-export enum ExecutorStatus {
-  /** 空闲 */
-  Idle = 'idle',
-  /** 执行中 */
-  Running = 'running',
-  /** 已完成 */
-  Completed = 'completed',
-  /** 已取消 */
-  Cancelled = 'cancelled',
-  /** 错误 */
-  Error = 'error',
-}
-
-/**
  * 节点执行状态
  */
 export enum NodeExecutionStatus {
@@ -97,7 +81,7 @@ export interface IPort {
  * Registry 依赖此接口而非具体的 BasicExecutor 类
  */
 export interface IExecutor {
-  readonly status: ExecutorStatus
+  readonly executorState: string // 使用 string 避免循环依赖
 }
 
 /**

@@ -188,7 +188,7 @@ export class DemoRecorder {
         return {
           type: 'complete',
           result: {
-            status: event.result.status,
+            finishReason: event.result.finishReason,
             iterations: event.result.iterations,
             duration: event.result.duration,
             error: event.result.error?.message,

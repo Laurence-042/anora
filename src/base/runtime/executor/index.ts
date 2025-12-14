@@ -3,7 +3,6 @@ export { BasicExecutor, createExecutor, executeGraph } from './BasicExecutor'
 export {
   ExecutorEventType,
   ExecutionMode,
-  PlaybackState,
   type ExecutionResult,
   type NodeExecutionResult,
   type ExecutorEvent,
@@ -12,5 +11,5 @@ export {
   type ExecuteOptions,
 } from './ExecutorTypes'
 
-export { ExecutorStateMachine, ExecutorState } from './ExecutorStateMachine'
+export { ExecutorStateMachine, ExecutorState, FinishReason } from './ExecutorStateMachine'
 export type { ExecutorAction, TransitionResult, StateChangeListener } from './ExecutorStateMachine'
