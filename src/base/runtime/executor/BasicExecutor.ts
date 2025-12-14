@@ -7,21 +7,27 @@ import Bluebird from 'bluebird'
 
 import {
   ExecutorEventType,
+  ExecutionMode,
+  PlaybackState,
   type ExecutorEvent,
   type ExecutorEventListener,
   type ExecutionResult,
   type NodeExecutionResult,
   type EdgeDataTransfer,
+  type ExecuteOptions,
 } from './ExecutorTypes'
 
 // Re-export types for convenience
 export {
   ExecutorEventType,
+  ExecutionMode,
+  PlaybackState,
   type ExecutorEvent,
   type ExecutorEventListener,
   type ExecutionResult,
   type NodeExecutionResult,
   type EdgeDataTransfer,
+  type ExecuteOptions,
 } from './ExecutorTypes'
 
 // 启用 Bluebird 的取消功能
@@ -88,23 +94,76 @@ function isDirectThroughForwardNode(node: BaseNode): boolean {
  * - 迭代间使用同步，支持环结构（如周期性触发器）
  * - 不使用最大迭代次数限制，用户可自行取消执行
  * - 直通节点在数据传播时立即执行
- * - 子类（如 ReplayExecutor）可通过继承共享事件机制
+ * - 子类（如 ReplayExecutor）可通过继承共享事件机制和步进控制
+ *
+ * 执行模型：
+ * - execute() 内部循环调用 executeOneIteration()
+ * - stepForward() 手动调用一次 executeOneIteration()
+ * - 暂停 = 停止循环，恢复 = 继续循环
  */
 export class BasicExecutor {
   /** 执行状态 */
   protected _status: ExecutorStatus = ExecutorStatus.Idle
 
-  /** 当前执行的 Bluebird Promise（用于取消） */
-  private currentExecution: Bluebird<ExecutionResult> | null = null
+  /** 播放状态（用于暂停/恢复控制） */
+  protected _playbackState: PlaybackState = PlaybackState.Idle
 
   /** 事件监听器 */
   protected listeners: Set<ExecutorEventListener> = new Set()
+
+  /** 是否已请求取消 */
+  protected cancelRequested: boolean = false
+
+  // ==================== 执行上下文（execute 期间有效） ====================
+
+  /** 当前执行的图 */
+  private _graph: AnoraGraph | null = null
+
+  /** 当前执行上下文 */
+  private _context: ExecutorContext = DEFAULT_EXECUTOR_CONTEXT
+
+  /** 当前迭代次数 */
+  protected _iterations: number = 0
+
+  /** 执行开始时间 */
+  protected _startTime: number = 0
+
+  /** 当前执行的 Promise resolve（用于完成执行） */
+  protected _executeResolve: ((result: ExecutionResult) => void) | null = null
 
   /**
    * 获取当前状态
    */
   get status(): ExecutorStatus {
     return this._status
+  }
+
+  /**
+   * 获取播放状态
+   */
+  get playbackState(): PlaybackState {
+    return this._playbackState
+  }
+
+  /**
+   * 是否正在执行
+   */
+  get isPlaying(): boolean {
+    return this._playbackState === PlaybackState.Playing
+  }
+
+  /**
+   * 是否已暂停
+   */
+  get isPaused(): boolean {
+    return this._playbackState === PlaybackState.Paused
+  }
+
+  /**
+   * 获取当前迭代次数
+   */
+  get iterations(): number {
+    return this._iterations
   }
 
   /**
@@ -136,24 +195,146 @@ export class BasicExecutor {
   }
 
   /**
+   * 暂停执行
+   */
+  pause(): void {
+    if (this._playbackState === PlaybackState.Playing) {
+      this._playbackState = PlaybackState.Paused
+    }
+  }
+
+  /**
+   * 恢复执行（继续循环执行）
+   */
+  resume(): void {
+    if (this._playbackState !== PlaybackState.Paused || !this._graph) return
+
+    this._playbackState = PlaybackState.Playing
+    // 继续执行循环
+    this.runExecutionLoop()
+  }
+
+  /**
+   * 单步前进（执行一次迭代）
+   * 仅在暂停状态下有效
+   */
+  async stepForward(): Promise<void> {
+    if (this._playbackState !== PlaybackState.Paused || !this._graph) return
+
+    await this.executeOneIteration()
+  }
+
+  /**
+   * 执行一次迭代（核心步进单元）
+   * 返回 true 表示还有更多迭代，false 表示执行结束
+   */
+  protected async executeOneIteration(): Promise<boolean> {
+    if (!this._graph || this.cancelRequested) return false
+
+    const readyNodes = this.findReadyNodes(this._graph)
+
+    if (readyNodes.length === 0) {
+      // 没有就绪节点，执行完成
+      this.finishExecution(ExecutorStatus.Completed)
+      return false
+    }
+
+    this._iterations++
+    this.emit({ type: ExecutorEventType.Iteration, iteration: this._iterations })
+
+    try {
+      const results = await this.executeNodes(readyNodes, this._graph, this._context)
+
+      if (this.cancelRequested) {
+        this.finishExecution(ExecutorStatus.Cancelled)
+        return false
+      }
+
+      // 检查是否有节点失败
+      const failed = results.filter((r) => !r.success)
+      if (failed.length > 0) {
+        const errorMessages = failed.map((f) => f.error?.message || 'Unknown error').join('; ')
+        throw new Error(`Nodes failed: ${errorMessages}`)
+      }
+
+      return true // 还有更多迭代
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      this.finishExecution(ExecutorStatus.Error, err)
+      return false
+    }
+  }
+
+  /**
+   * 执行循环（连续执行直到暂停、取消或完成）
+   */
+  private async runExecutionLoop(): Promise<void> {
+    while (this._playbackState === PlaybackState.Playing && !this.cancelRequested) {
+      const hasMore = await this.executeOneIteration()
+      if (!hasMore) break
+    }
+  }
+
+  /**
+   * 完成执行（内部方法）
+   */
+  private finishExecution(status: ExecutorStatus, error?: Error): void {
+    this._status = status
+    this._playbackState = PlaybackState.Idle
+
+    const result: ExecutionResult = {
+      status,
+      error,
+      iterations: this._iterations,
+      duration: Date.now() - this._startTime,
+    }
+
+    if (status === ExecutorStatus.Completed) {
+      this.emit({ type: ExecutorEventType.Complete, result })
+    } else if (status === ExecutorStatus.Cancelled) {
+      this.emit({ type: ExecutorEventType.Cancelled })
+    } else if (status === ExecutorStatus.Error && error) {
+      this.emit({ type: ExecutorEventType.Error, error })
+    }
+
+    // resolve execute() 的 Promise
+    if (this._executeResolve) {
+      this._executeResolve(result)
+      this._executeResolve = null
+    }
+
+    // 清理执行上下文
+    this._graph = null
+  }
+
+  /**
    * 执行图
    *
    * 流程：
-   * 1. 初始化：查询所有节点的可运行状态
-   * 2. 执行已准备好的节点（并行），然后传播数据
-   * 3. 重复直到没有节点可以执行或用户取消
+   * 1. 初始化：重置节点状态
+   * 2. 循环执行 executeOneIteration() 直到完成
+   * 3. 支持暂停（停止循环）和恢复（继续循环）
    *
-   * 支持环结构，不限制最大迭代次数
+   * @param graph 要执行的图
+   * @param context 执行上下文
+   * @param options 执行选项（可选，startPaused 表示开始后立即暂停）
    */
-  async execute(graph: AnoraGraph, context?: ExecutorContext): Promise<ExecutionResult> {
+  async execute(
+    graph: AnoraGraph,
+    context?: ExecutorContext,
+    options?: ExecuteOptions,
+  ): Promise<ExecutionResult> {
     if (this._status === ExecutorStatus.Running) {
       throw new Error('Executor is already running')
     }
 
-    const startTime = Date.now()
+    // 初始化执行上下文
+    this._graph = graph
+    this._context = context ?? DEFAULT_EXECUTOR_CONTEXT
+    this._iterations = 0
+    this._startTime = Date.now()
     this._status = ExecutorStatus.Running
-
-    const execContext: ExecutorContext = context ?? DEFAULT_EXECUTOR_CONTEXT
+    this.cancelRequested = false
 
     // 重置所有节点的激活状态
     for (const node of graph.getAllNodes()) {
@@ -162,96 +343,29 @@ export class BasicExecutor {
 
     this.emit({ type: ExecutorEventType.Start })
 
-    let iterations = 0
-    let cancelled = false
+    // 根据选项决定初始状态
+    const startPaused = options?.mode === ExecutionMode.StepByStep
+    this._playbackState = startPaused ? PlaybackState.Paused : PlaybackState.Playing
 
-    // 创建可取消的执行 Promise
-    this.currentExecution = new Bluebird<ExecutionResult>(async (resolve, reject, onCancel) => {
-      // 设置取消回调
-      onCancel?.(() => {
-        cancelled = true
-      })
+    // 返回 Promise，在 finishExecution 时 resolve
+    return new Promise<ExecutionResult>((resolve) => {
+      this._executeResolve = resolve
 
-      try {
-        // 迭代阶段：循环直到没有就绪节点或用户取消
-        while (!cancelled) {
-          iterations++
-          this.emit({ type: ExecutorEventType.Iteration, iteration: iterations })
-
-          // 迭代开始前的延迟（跳过第一次迭代）- 移到数据传播后
-          // if (iterations > 1 && execContext.iterationDelay && execContext.iterationDelay > 0) {
-          //   ...
-          // }
-
-          // 检查取消状态
-          if (cancelled) break
-
-          const readyNodes = this.findReadyNodes(graph)
-
-          if (readyNodes.length === 0) {
-            // 没有就绪节点，执行完成
-            break
-          }
-
-          const results = await this.executeNodes(readyNodes, graph, execContext, cancelled)
-
-          // 检查取消状态
-          if (cancelled) break
-
-          // 检查是否有节点失败
-          const failed = results.filter((r) => !r.success)
-          if (failed.length > 0) {
-            const errorMessages = failed.map((f) => f.error?.message || 'Unknown error').join('; ')
-            throw new Error(`Nodes failed: ${errorMessages}`)
-          }
-        }
-
-        if (cancelled) {
-          this._status = ExecutorStatus.Cancelled
-          this.emit({ type: ExecutorEventType.Cancelled })
-          resolve({
-            status: ExecutorStatus.Cancelled,
-            iterations,
-            duration: Date.now() - startTime,
-          })
-          return
-        }
-
-        this._status = ExecutorStatus.Completed
-        const result: ExecutionResult = {
-          status: ExecutorStatus.Completed,
-          iterations,
-          duration: Date.now() - startTime,
-        }
-        this.emit({ type: ExecutorEventType.Complete, result })
-        resolve(result)
-      } catch (error) {
-        this._status = ExecutorStatus.Error
-        const err = error instanceof Error ? error : new Error(String(error))
-        this.emit({ type: ExecutorEventType.Error, error: err })
-        resolve({
-          status: ExecutorStatus.Error,
-          error: err,
-          iterations,
-          duration: Date.now() - startTime,
-        })
+      // 如果不是暂停启动，开始执行循环
+      if (!startPaused) {
+        this.runExecutionLoop()
       }
     })
-
-    try {
-      return await this.currentExecution
-    } finally {
-      this.currentExecution = null
-    }
   }
 
   /**
    * 取消执行
    */
   cancel(): void {
-    if (this._status === ExecutorStatus.Running && this.currentExecution) {
-      this.currentExecution.cancel()
-    }
+    if (this._status !== ExecutorStatus.Running) return
+
+    this.cancelRequested = true
+    this.finishExecution(ExecutorStatus.Cancelled)
   }
 
   /**
@@ -314,7 +428,6 @@ export class BasicExecutor {
     nodes: BaseNode[],
     graph: AnoraGraph,
     context: ExecutorContext,
-    cancelled: boolean,
   ): Promise<NodeExecutionResult[]> {
     const results: NodeExecutionResult[] = []
 
@@ -352,7 +465,7 @@ export class BasicExecutor {
     }
 
     // 如果已取消，直接返回
-    if (cancelled) {
+    if (this.cancelRequested) {
       return results
     }
 

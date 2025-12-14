@@ -10,8 +10,10 @@ import { AnoraGraph } from '@/base/runtime/graph'
 import {
   BasicExecutor,
   ExecutorEventType,
+  ExecutionMode,
   type ExecutorEvent,
   type EdgeDataTransfer,
+  type ExecuteOptions,
 } from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
@@ -318,8 +320,9 @@ export const useGraphStore = defineStore('graph', () => {
 
   /**
    * 开始执行
+   * @param stepMode 是否使用步进模式
    */
-  async function startExecution(): Promise<void> {
+  async function startExecution(stepMode: boolean = false): Promise<void> {
     if (isRunning.value) return
 
     // 注册事件监听
@@ -331,8 +334,13 @@ export const useGraphStore = defineStore('graph', () => {
       iterationDelay: iterationDelay.value,
     }
 
+    // 执行选项
+    const options: ExecuteOptions = {
+      mode: stepMode ? ExecutionMode.StepByStep : ExecutionMode.Continuous,
+    }
+
     try {
-      await executor.value.execute(currentGraph.value, context)
+      await executor.value.execute(currentGraph.value, context, options)
     } finally {
       unsubscribe()
     }
@@ -343,6 +351,27 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function stopExecution(): void {
     executor.value.cancel()
+  }
+
+  /**
+   * 暂停执行
+   */
+  function pauseExecution(): void {
+    executor.value.pause()
+  }
+
+  /**
+   * 恢复执行
+   */
+  function resumeExecution(): void {
+    executor.value.resume()
+  }
+
+  /**
+   * 单步执行
+   */
+  async function stepExecution(): Promise<void> {
+    await executor.value.stepForward()
   }
 
   /**
@@ -474,6 +503,9 @@ export const useGraphStore = defineStore('graph', () => {
     // 执行器操作
     startExecution,
     stopExecution,
+    pauseExecution,
+    resumeExecution,
+    stepExecution,
     isNodeExecuting,
     handleExecutorEvent,
 

@@ -9,6 +9,28 @@ import type { BaseNode } from '../nodes/BaseNode'
 import { ExecutorStatus } from '../types'
 
 /**
+ * 执行器运行模式
+ */
+export enum ExecutionMode {
+  /** 连续运行直到完成 */
+  Continuous = 'continuous',
+  /** 逐步运行（每步暂停） */
+  StepByStep = 'step-by-step',
+}
+
+/**
+ * 执行器播放状态（用于暂停/恢复控制）
+ */
+export enum PlaybackState {
+  /** 空闲（未开始或已完成） */
+  Idle = 'idle',
+  /** 正在播放/执行 */
+  Playing = 'playing',
+  /** 已暂停 */
+  Paused = 'paused',
+}
+
+/**
  * 执行结果
  */
 export interface ExecutionResult {
@@ -84,3 +106,11 @@ export type ExecutorEvent =
  * 事件监听器
  */
 export type ExecutorEventListener = (event: ExecutorEvent) => void
+
+/**
+ * 执行选项
+ */
+export interface ExecuteOptions {
+  /** 运行模式，默认 Continuous */
+  mode?: ExecutionMode
+}
