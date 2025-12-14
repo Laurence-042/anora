@@ -34,6 +34,12 @@ const replayExecutor = ref<ReplayExecutor | null>(null)
 /** 当前事件索引 */
 const currentEventIndex = ref(0)
 
+/** 当前播放时间（毫秒） */
+const currentTime = ref(0)
+
+/** 总时长（毫秒） */
+const totalDuration = ref(0)
+
 /** 播放速度 */
 const playbackSpeed = ref(1)
 
@@ -50,11 +56,23 @@ const isPaused = computed(() => replayExecutor.value?.isPaused ?? false)
 const isIdle = computed(() => replayExecutor.value?.executorState === ExecutorState.Idle)
 const totalEvents = computed(() => recording.value?.events.length ?? 0)
 const progress = computed(() =>
-  totalEvents.value > 0 ? Math.round((currentEventIndex.value / totalEvents.value) * 100) : 0,
+  totalDuration.value > 0 ? Math.round((currentTime.value / totalDuration.value) * 100) : 0,
 )
 const isCompleted = computed(
   () => isIdle.value && currentEventIndex.value >= totalEvents.value && totalEvents.value > 0,
 )
+
+/** 格式化时间显示 */
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  const remainingMs = Math.floor((ms % 1000) / 10)
+  if (minutes > 0) {
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}.${remainingMs.toString().padStart(2, '0')}`
+  }
+  return `${remainingSeconds}.${remainingMs.toString().padStart(2, '0')}s`
+}
 
 const speedOptions = [0.5, 1, 1.5, 2, 4]
 
@@ -101,15 +119,26 @@ async function loadRecordingFile(file: File): Promise<void> {
     executor.loadRecording(data, graphStore.currentGraph)
 
     // 设置进度回调
-    executor.onProgressChange = (current: number, _total: number) => {
+    executor.onProgressChange = (
+      current: number,
+      _total: number,
+      time: number,
+      duration: number,
+    ) => {
       currentEventIndex.value = current
+      currentTime.value = time
+      totalDuration.value = duration
     }
+
+    // 初始化总时长
+    totalDuration.value = executor.totalDuration
 
     // 监听事件
     executor.on(handleExecutorEvent)
 
     replayExecutor.value = executor
     currentEventIndex.value = 0
+    currentTime.value = 0
 
     console.log('[ReplayView] Recording loaded:', {
       nodes: graphStore.currentGraph.getAllNodes().length,
@@ -128,6 +157,13 @@ async function loadRecordingFile(file: File): Promise<void> {
 
 function handleExecutorEvent(event: ExecutorEvent): void {
   switch (event.type) {
+    case ExecutorEventType.Start:
+    case ExecutorEventType.Iteration:
+      // 新迭代开始时清除状态
+      graphStore.executingNodeIds = new Set()
+      graphStore.edgeDataTransfers = new Map()
+      break
+
     case ExecutorEventType.NodeStart:
       graphStore.executingNodeIds.add(event.node.id)
       graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
@@ -139,33 +175,24 @@ function handleExecutorEvent(event: ExecutorEvent): void {
       break
 
     case ExecutorEventType.DataPropagate:
-      // 显示数据在边上传输
+      // 显示数据在边上传输（保持显示直到下一次迭代）
       for (const transfer of event.transfers) {
         const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
         graphStore.edgeDataTransfers.set(edgeId, transfer)
       }
       graphStore.edgeDataTransfers = new Map(graphStore.edgeDataTransfers)
-
-      // 短暂显示后清除
-      setTimeout(() => {
-        for (const transfer of event.transfers) {
-          const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
-          graphStore.edgeDataTransfers.delete(edgeId)
-        }
-        graphStore.edgeDataTransfers = new Map(graphStore.edgeDataTransfers)
-      }, 500)
       break
 
     case ExecutorEventType.Complete:
     case ExecutorEventType.Cancelled:
       // 播放结束，清除执行状态
       graphStore.executingNodeIds = new Set()
+      graphStore.edgeDataTransfers = new Map()
       break
 
-    case ExecutorEventType.Start:
-    case ExecutorEventType.Iteration:
     case ExecutorEventType.Error:
-      // 这些事件可用于 UI 显示，暂不处理
+      graphStore.executingNodeIds = new Set()
+      graphStore.edgeDataTransfers = new Map()
       break
   }
 }
@@ -220,6 +247,7 @@ function restart(): void {
   // 重置状态
   graphStore.clearExecutionState()
   currentEventIndex.value = 0
+  currentTime.value = 0
 
   // 重新加载录制数据
   replayExecutor.value.loadRecording(recording.value, graphStore.currentGraph)
@@ -230,6 +258,40 @@ function setSpeed(speed: number): void {
   if (replayExecutor.value) {
     replayExecutor.value.playbackSpeed = speed
   }
+}
+
+/**
+ * 拖动进度条到指定时间
+ */
+function seekToTime(timeMs: number): void {
+  if (!replayExecutor.value) return
+
+  // 暂停当前播放
+  const wasPlaying = isPlaying.value
+  if (wasPlaying) {
+    replayExecutor.value.pause()
+  }
+
+  // 跳转到目标时间
+  const targetIndex = replayExecutor.value.seekToTime(timeMs)
+
+  // 重建该时间点的 UI 状态
+  const state = replayExecutor.value.getStateAtIndex(targetIndex)
+  graphStore.executingNodeIds = state.executingNodeIds
+  graphStore.edgeDataTransfers = state.edgeDataTransfers
+
+  // 更新本地状态
+  currentEventIndex.value = targetIndex + 1
+  currentTime.value = timeMs
+}
+
+/**
+ * 处理进度条拖动
+ */
+function handleProgressChange(event: Event): void {
+  const target = event.target as HTMLInputElement
+  const timeMs = Number(target.value)
+  seekToTime(timeMs)
 }
 
 // ==================== 导航 ====================
@@ -248,6 +310,8 @@ function cleanup(): void {
   recording.value = null
   graphStore.clearExecutionState()
   currentEventIndex.value = 0
+  currentTime.value = 0
+  totalDuration.value = 0
 }
 
 onUnmounted(cleanup)
@@ -311,17 +375,17 @@ onUnmounted(cleanup)
     <div v-if="isLoaded" class="replay-controls">
       <!-- 进度条 -->
       <div class="progress-section">
+        <div class="time-display">{{ formatTime(currentTime) }}</div>
         <input
           type="range"
           :min="0"
-          :max="totalEvents"
-          :value="currentEventIndex"
+          :max="totalDuration"
+          :value="currentTime"
           class="progress-slider"
-          disabled
+          @input="handleProgressChange"
         />
-        <div class="progress-text">
-          {{ currentEventIndex }} / {{ totalEvents }} ({{ progress }}%)
-        </div>
+        <div class="time-display">{{ formatTime(totalDuration) }}</div>
+        <div class="progress-text">{{ progress }}%</div>
       </div>
 
       <!-- 播放控制 -->
@@ -473,15 +537,51 @@ onUnmounted(cleanup)
 
 .progress-slider {
   flex: 1;
-  height: 4px;
+  height: 6px;
   cursor: pointer;
+  appearance: none;
+  background: #3a3a5c;
+  border-radius: 3px;
+  outline: none;
+}
+
+.progress-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #60a5fa;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.progress-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.progress-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #60a5fa;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+.time-display {
+  font-size: 12px;
+  color: #94a3b8;
+  font-family: monospace;
+  min-width: 60px;
+  text-align: center;
 }
 
 .progress-text {
   font-size: 11px;
-  color: #94a3b8;
+  color: #6b7280;
   font-family: monospace;
-  min-width: 120px;
+  min-width: 40px;
+  text-align: right;
 }
 
 .playback-controls {

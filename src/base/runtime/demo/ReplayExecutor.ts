@@ -32,7 +32,12 @@ export class ReplayExecutor extends BasicExecutor {
   playbackSpeed: number = 1.0
 
   /** 进度变化回调 */
-  onProgressChange?: (current: number, total: number) => void
+  onProgressChange?: (
+    current: number,
+    total: number,
+    currentTime: number,
+    totalTime: number,
+  ) => void
 
   get currentIndex(): number {
     return this.currentEventIndex
@@ -40,6 +45,21 @@ export class ReplayExecutor extends BasicExecutor {
 
   get totalEvents(): number {
     return this.recording?.events.length ?? 0
+  }
+
+  /** 获取录制的总时长（毫秒） */
+  get totalDuration(): number {
+    if (!this.recording || this.recording.events.length === 0) return 0
+    return this.recording.events[this.recording.events.length - 1]!.timestamp
+  }
+
+  /** 获取当前播放时间（毫秒） */
+  get currentTime(): number {
+    if (!this.recording || this.currentEventIndex < 0) return 0
+    if (this.currentEventIndex >= this.recording.events.length) {
+      return this.totalDuration
+    }
+    return this.recording.events[this.currentEventIndex]!.timestamp
   }
 
   /**
@@ -187,9 +207,94 @@ export class ReplayExecutor extends BasicExecutor {
   }
 
   /**
+   * 跳转到指定时间点
+   * @param timeMs 目标时间（毫秒）
+   * @returns 跳转到的事件索引
+   */
+  seekToTime(timeMs: number): number {
+    if (!this.recording || this.recording.events.length === 0) return -1
+
+    // 二分查找找到目标时间点之前最近的事件
+    let left = 0
+    let right = this.recording.events.length - 1
+    let targetIndex = -1
+
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2)
+      const event = this.recording.events[mid]!
+
+      if (event.timestamp <= timeMs) {
+        targetIndex = mid
+        left = mid + 1
+      } else {
+        right = mid - 1
+      }
+    }
+
+    // 设置当前索引（减1是因为 executeOneIteration 会先 ++）
+    this.currentEventIndex = targetIndex
+    this.notifyProgress()
+    return targetIndex
+  }
+
+  /**
+   * 重放从开始到指定索引的所有事件（用于 seek 后重建状态）
+   * 不发出事件，只返回最终状态
+   */
+  getStateAtIndex(targetIndex: number): {
+    executingNodeIds: Set<string>
+    edgeDataTransfers: Map<string, { fromPortId: string; toPortId: string; data: unknown }>
+  } {
+    const executingNodeIds = new Set<string>()
+    const edgeDataTransfers = new Map<
+      string,
+      { fromPortId: string; toPortId: string; data: unknown }
+    >()
+
+    if (!this.recording) return { executingNodeIds, edgeDataTransfers }
+
+    for (let i = 0; i <= targetIndex && i < this.recording.events.length; i++) {
+      const event = this.recording.events[i]!.event
+
+      switch (event.type) {
+        case 'start':
+        case 'iteration':
+          executingNodeIds.clear()
+          edgeDataTransfers.clear()
+          break
+        case 'node-start':
+          executingNodeIds.add(event.nodeId)
+          break
+        case 'node-complete':
+          executingNodeIds.delete(event.nodeId)
+          break
+        case 'data-propagate':
+          for (const transfer of event.transfers) {
+            const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
+            edgeDataTransfers.set(edgeId, transfer)
+          }
+          break
+        case 'complete':
+        case 'cancelled':
+        case 'error':
+          executingNodeIds.clear()
+          edgeDataTransfers.clear()
+          break
+      }
+    }
+
+    return { executingNodeIds, edgeDataTransfers }
+  }
+
+  /**
    * 通知进度变化
    */
   private notifyProgress(): void {
-    this.onProgressChange?.(this.currentEventIndex + 1, this.totalEvents)
+    this.onProgressChange?.(
+      this.currentEventIndex + 1,
+      this.totalEvents,
+      this.currentTime,
+      this.totalDuration,
+    )
   }
 }
