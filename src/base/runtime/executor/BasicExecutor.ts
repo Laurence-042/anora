@@ -432,7 +432,6 @@ export class BasicExecutor {
     context: ExecutorContext,
   ): Promise<NodeExecutionResult[]> {
     const results: NodeExecutionResult[] = []
-    const isStepMode = this._playbackState === PlaybackState.Paused
 
     // 并行执行所有节点
     const promises = nodes.map(async (node) => {
