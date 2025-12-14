@@ -132,7 +132,7 @@ export class IPCController {
     // 获取状态
     this.on('getState', () => {
       const state = {
-        status: this.store!.executorStatus,
+        status: this.store!.stateMachineState,
         iteration: this.store!.currentIteration,
         nodeCount: this.store!.nodes.length,
         executingNodes: Array.from(this.store!.executingNodeIds),

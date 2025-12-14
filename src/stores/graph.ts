@@ -18,7 +18,7 @@ import {
 } from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
-import { ExecutorStatus, DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
+import { DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
 import type { ExecutorContext } from '@/base/runtime/types'
 
 /**
@@ -58,8 +58,8 @@ export const useGraphStore = defineStore('graph', () => {
   /** 执行器实例 */
   const executor = shallowRef<BasicExecutor>(new BasicExecutor())
 
-  /** 执行器状态 */
-  const executorStatus = ref<ExecutorStatus>(ExecutorStatus.Idle)
+  /** 状态机状态（响应式副本，因为 shallowRef 不会追踪内部状态变化） */
+  const stateMachineState = ref<ExecutorState>(ExecutorState.Idle)
 
   /** 当前迭代次数 */
   const currentIteration = ref<number>(0)
@@ -80,21 +80,6 @@ export const useGraphStore = defineStore('graph', () => {
 
   /** 所有节点 */
   const nodes = computed(() => currentGraph.value.getAllNodes())
-
-  /** 执行器状态 */
-  const executorState = computed(() => executor.value.executorState)
-
-  /** 是否正在执行（包括 Running 和 Stepping） */
-  const isRunning = computed(() => {
-    const state = executor.value.executorState
-    return state === ExecutorState.Running || state === ExecutorState.Stepping
-  })
-
-  /** 是否已暂停 */
-  const isPaused = computed(() => executor.value.executorState === ExecutorState.Paused)
-
-  /** 是否空闲 */
-  const isIdle = computed(() => executor.value.executorState === ExecutorState.Idle)
 
   /** 当前面包屑路径 */
   const breadcrumbPath = computed(() => {
@@ -271,9 +256,11 @@ export const useGraphStore = defineStore('graph', () => {
    * 执行器事件处理
    */
   function handleExecutorEvent(event: ExecutorEvent): void {
+    // 每次事件都同步状态机状态
+    syncStateMachineState()
+
     switch (event.type) {
       case ExecutorEventType.Start:
-        executorStatus.value = ExecutorStatus.Running
         currentIteration.value = 0
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
@@ -309,20 +296,17 @@ export const useGraphStore = defineStore('graph', () => {
         break
 
       case ExecutorEventType.Complete:
-        executorStatus.value = event.result.status
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
         triggerRef(currentGraph) // 刷新以显示执行后的 Port 值
         break
 
       case ExecutorEventType.Cancelled:
-        executorStatus.value = ExecutorStatus.Cancelled
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
         break
 
       case ExecutorEventType.Error:
-        executorStatus.value = ExecutorStatus.Error
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
         console.error('[Executor Error]', event.error.message, event.error.stack)
@@ -335,7 +319,8 @@ export const useGraphStore = defineStore('graph', () => {
    * @param stepMode 是否使用步进模式
    */
   async function startExecution(stepMode: boolean = false): Promise<void> {
-    if (isRunning.value) return
+    // 只有空闲状态才能开始执行
+    if (stateMachineState.value !== ExecutorState.Idle) return
 
     // 注册事件监听
     const unsubscribe = executor.value.on(handleExecutorEvent)
@@ -352,10 +337,19 @@ export const useGraphStore = defineStore('graph', () => {
     }
 
     try {
+      syncStateMachineState() // 同步初始状态
       await executor.value.execute(currentGraph.value, context, options)
     } finally {
       unsubscribe()
+      syncStateMachineState() // 同步最终状态
     }
+  }
+
+  /**
+   * 同步状态机状态到响应式 ref
+   */
+  function syncStateMachineState(): void {
+    stateMachineState.value = executor.value.executorState
   }
 
   /**
@@ -363,6 +357,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function stopExecution(): void {
     executor.value.cancel()
+    syncStateMachineState()
   }
 
   /**
@@ -370,6 +365,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function pauseExecution(): void {
     executor.value.pause()
+    syncStateMachineState()
   }
 
   /**
@@ -377,6 +373,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function resumeExecution(): void {
     executor.value.resume()
+    syncStateMachineState()
   }
 
   /**
@@ -384,6 +381,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   async function stepExecution(): Promise<void> {
     await executor.value.stepForward()
+    syncStateMachineState()
   }
 
   /**
@@ -480,19 +478,15 @@ export const useGraphStore = defineStore('graph', () => {
     selectedEdges,
     incompatibleEdges,
     executor,
-    executorStatus,
     currentIteration,
     executingNodeIds,
     executorContext,
     iterationDelay,
     edgeDataTransfers,
+    stateMachineState,
 
     // 计算属性
     nodes,
-    executorState,
-    isRunning,
-    isPaused,
-    isIdle,
     breadcrumbPath,
 
     // 图操作

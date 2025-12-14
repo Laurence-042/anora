@@ -22,7 +22,6 @@ const graphStore = useGraphStore()
 const recorder = ref<DemoRecorder | null>(null)
 const isRecording = ref(false)
 const recordedEventCount = ref(0)
-const isRunning = computed(() => graphStore.isRunning)
 
 // ========== 录制操作 ==========
 
@@ -103,7 +102,6 @@ onUnmounted(() => {
       v-if="!isRecording"
       class="control-btn record-btn"
       @click="startRecording"
-      :disabled="isRunning"
       :title="t('demo.startRecording')"
     >
       <span class="icon">⏺</span>

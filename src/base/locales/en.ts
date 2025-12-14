@@ -47,6 +47,7 @@ export default {
     stepRun: 'Step Run',
     paused: 'Paused',
     running: 'Running',
+    stepping: 'Stepping',
     idle: 'Idle',
     completed: 'Completed',
     cancelled: 'Cancelled',

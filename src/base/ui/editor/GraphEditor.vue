@@ -14,6 +14,7 @@ import type { Connection } from '@vue-flow/core'
 
 import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
+import { ExecutorState } from '@/base/runtime/executor'
 
 import AnoraGraphView from '../components/AnoraGraphView.vue'
 import ExecutorControls from './ExecutorControls.vue'
@@ -130,7 +131,7 @@ function handleKeydown(event: KeyboardEvent): void {
 
   if (event.key === 'F5' && !event.shiftKey) {
     event.preventDefault()
-    if (!graphStore.isRunning) {
+    if (graphStore.stateMachineState === ExecutorState.Idle) {
       graphStore.startExecution()
     }
   }

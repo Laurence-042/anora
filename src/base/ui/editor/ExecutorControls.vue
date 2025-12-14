@@ -6,22 +6,13 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
-import { ExecutorStatus } from '@/base/runtime/types'
+import { ExecutorState } from '@/base/runtime/executor'
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
-/** 是否正在执行 */
-const isRunning = computed(() => graphStore.isRunning)
-
-/** 是否暂停 */
-const isPaused = computed(() => graphStore.executor.isPaused)
-
-/** 是否正在播放（未暂停） */
-const isPlaying = computed(() => graphStore.executor.isPlaying)
-
-/** 执行器状态 */
-const status = computed(() => graphStore.executorStatus)
+/** 状态机状态 */
+const state = computed(() => graphStore.stateMachineState)
 
 /** 当前迭代 */
 const currentIteration = computed(() => graphStore.currentIteration)
@@ -31,38 +22,31 @@ const delayInput = ref(graphStore.iterationDelay)
 
 /** 状态文本 */
 const statusText = computed(() => {
-  switch (status.value) {
-    case ExecutorStatus.Idle:
+  switch (state.value) {
+    case ExecutorState.Idle:
       return t('executor.idle')
-    case ExecutorStatus.Running:
-      if (isPaused.value) {
-        return `${t('executor.paused')} (${t('executor.iteration')} ${currentIteration.value})`
-      }
+    case ExecutorState.Running:
       return `${t('executor.running')} (${t('executor.iteration')} ${currentIteration.value})`
-    case ExecutorStatus.Completed:
-      return `${t('executor.completed')} (${currentIteration.value})`
-    case ExecutorStatus.Cancelled:
-      return t('executor.cancelled')
-    case ExecutorStatus.Error:
-      return t('executor.error')
+    case ExecutorState.Paused:
+      return `${t('executor.paused')} (${t('executor.iteration')} ${currentIteration.value})`
+    case ExecutorState.Stepping:
+      return `${t('executor.stepping')} (${t('executor.iteration')} ${currentIteration.value})`
     default:
-      return status.value
+      return state.value
   }
 })
 
 /** 状态颜色 */
 const statusColor = computed(() => {
-  switch (status.value) {
-    case ExecutorStatus.Running:
-      return isPaused.value ? '#f59e0b' : '#fbbf24'
-    case ExecutorStatus.Completed:
-      return '#22c55e'
-    case ExecutorStatus.Cancelled:
-      return '#f59e0b'
-    case ExecutorStatus.Error:
-      return '#ef4444'
+  switch (state.value) {
+    case ExecutorState.Running:
+    case ExecutorState.Stepping:
+      return '#fbbf24' // 黄色 - 执行中
+    case ExecutorState.Paused:
+      return '#f59e0b' // 橙色 - 暂停
+    case ExecutorState.Idle:
     default:
-      return '#6b7280'
+      return '#6b7280' // 灰色 - 空闲
   }
 })
 
@@ -97,6 +81,9 @@ function handleResume(): void {
 function handleStep(): void {
   graphStore.stepExecution()
 }
+
+// 暴露状态枚举给模板
+const State = ExecutorState
 </script>
 
 <template>
@@ -109,8 +96,8 @@ function handleStep(): void {
 
     <!-- 控制按钮 -->
     <div class="button-section">
-      <!-- 未运行时：显示运行和步进按钮 -->
-      <template v-if="!isRunning">
+      <!-- 空闲时：显示运行和步进启动按钮 -->
+      <template v-if="state === State.Idle">
         <button
           class="control-btn start-btn"
           @click="handleStart"
@@ -127,10 +114,10 @@ function handleStep(): void {
         </button>
       </template>
 
-      <!-- 运行中时：显示暂停/恢复、步进、停止按钮 -->
+      <!-- 执行中时：显示暂停/恢复、步进、停止按钮 -->
       <template v-else>
         <button
-          v-if="isPlaying"
+          v-if="state === State.Running"
           class="control-btn pause-btn"
           @click="handlePause"
           :title="`${t('executor.pause')} (F6)`"
@@ -138,7 +125,7 @@ function handleStep(): void {
           ⏸ {{ t('executor.pause') }}
         </button>
         <button
-          v-else
+          v-else-if="state === State.Paused"
           class="control-btn resume-btn"
           @click="handleResume"
           :title="`${t('executor.resume')} (F5)`"
@@ -148,7 +135,7 @@ function handleStep(): void {
         <button
           class="control-btn step-btn"
           @click="handleStep"
-          :disabled="isPlaying"
+          :disabled="state !== State.Paused"
           :title="`${t('executor.step')} (F10)`"
         >
           ⏭ {{ t('executor.step') }}
@@ -174,13 +161,13 @@ function handleStep(): void {
           max="10000"
           step="100"
           class="delay-input"
-          :disabled="isRunning"
+          :disabled="state !== State.Idle"
         />
       </label>
     </div>
 
     <!-- 执行节点数 -->
-    <div v-if="isRunning && !isPaused" class="executing-info">
+    <div v-if="state === State.Running || state === State.Stepping" class="executing-info">
       {{ t('executor.running') }}: {{ graphStore.executingNodeIds.size }} {{ t('editor.nodes') }}
     </div>
   </div>

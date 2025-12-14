@@ -47,6 +47,7 @@ export default {
     stepRun: '单步执行',
     paused: '已暂停',
     running: '执行中',
+    stepping: '单步中',
     idle: '空闲',
     completed: '已完成',
     cancelled: '已取消',

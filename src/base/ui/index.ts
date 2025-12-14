@@ -19,5 +19,4 @@ export * from './registry'
 
 // Composables
 export * from './composables/useGraph'
-export * from './composables/useExecutor'
 export * from './composables/useIPC'
