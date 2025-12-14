@@ -185,6 +185,7 @@ export class BasicExecutor {
    * 发送事件（protected 允许子类使用）
    */
   protected emit(event: ExecutorEvent): void {
+    console.log('Emitting event:', event)
     for (const listener of this.listeners) {
       try {
         listener(event)
@@ -471,6 +472,15 @@ export class BasicExecutor {
       return results
     }
 
+    // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
+    // 单步模式下即使延迟为 0 也要让出执行权，连续执行时只在延迟 > 0 时等待
+    const delay = context.iterationDelay ?? 0
+    try {
+      await cancellableDelay(delay)
+    } catch {
+      // 延迟被取消，忽略
+    }
+
     // 发送成功节点的 node-complete 事件
     for (const result of results) {
       if (result.success) {
@@ -487,15 +497,6 @@ export class BasicExecutor {
         // 传播数据到下游，并处理直通节点
         await this.propagateDataWithDirectThrough(result.node, graph, context)
       }
-    }
-
-    // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
-    // 单步模式下即使延迟为 0 也要让出执行权，连续执行时只在延迟 > 0 时等待
-    const delay = context.iterationDelay ?? 0
-    try {
-      await cancellableDelay(delay)
-    } catch {
-      // 延迟被取消，忽略
     }
 
     return results
