@@ -306,9 +306,31 @@ export abstract class BaseNode<
 
   /**
    * 重置激活状态（由 Executor 在执行开始前调用）
+   * 完整重置节点状态，包括：
+   * - 激活标志
+   * - 执行状态
+   * - 所有 Port 的数据
    */
   resetActivationState(): void {
     this._hasActivatedOnce = false
+    this.executionStatus = NodeExecutionStatus.IDLE
+    this.lastError = undefined
+
+    // 清空所有 Port 数据
+    for (const port of this.inPorts.values()) {
+      port.clear()
+    }
+    for (const port of this.outPorts.values()) {
+      port.clear()
+    }
+    for (const port of this.inControlPorts.values()) {
+      port.clear()
+    }
+    for (const port of this.outControlPorts.values()) {
+      port.clear()
+    }
+    this.inExecPort.clear()
+    this.outExecPort.clear()
   }
 
   /**
