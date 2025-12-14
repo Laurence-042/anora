@@ -422,7 +422,9 @@ export class BasicExecutor {
    * 2. 执行后清空节点的入 Port
    * 3. 传播出 Port 数据到下游入 Port
    * 4. 如果下游入 Port 是直通节点，立即执行并继续传播
-   * 5. 如果有延迟设置，等待延迟后再发送 node-complete 事件
+   * 5. 等待延迟后再发送 node-complete 事件
+   *
+   * 注意：单步模式下会让出执行权让 UI 有机会更新
    */
   private async executeNodes(
     nodes: BaseNode[],
@@ -430,11 +432,21 @@ export class BasicExecutor {
     context: ExecutorContext,
   ): Promise<NodeExecutionResult[]> {
     const results: NodeExecutionResult[] = []
+    const isStepMode = this._playbackState === PlaybackState.Paused
 
-    // 并行执行所有节点（先只发送 node-start，暂不发送 node-complete）
+    // 先发出所有节点的 node-start 事件
+    for (const node of nodes) {
+      this.emit({ type: ExecutorEventType.NodeStart, node })
+    }
+
+    // 单步模式下让出执行权，让 UI 渲染节点激活状态
+    if (isStepMode) {
+      await cancellableDelay(0)
+    }
+
+    // 并行执行所有节点
     const promises = nodes.map(async (node) => {
       try {
-        this.emit({ type: ExecutorEventType.NodeStart, node })
         await node.activate(context)
         // 暂不发送 node-complete，等数据传播和延迟后再发送
         return { node, success: true, error: undefined } as NodeExecutionResult
@@ -481,9 +493,11 @@ export class BasicExecutor {
     }
 
     // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
-    if (context.iterationDelay && context.iterationDelay > 0) {
+    // 单步模式下即使延迟为 0 也要让出执行权，连续执行时只在延迟 > 0 时等待
+    const delay = context.iterationDelay ?? 0
+    if (isStepMode || delay > 0) {
       try {
-        await cancellableDelay(context.iterationDelay)
+        await cancellableDelay(delay)
       } catch {
         // 延迟被取消，忽略
       }
