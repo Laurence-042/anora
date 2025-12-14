@@ -30,6 +30,9 @@ export const useGraphStore = defineStore('graph', () => {
   /** 当前正在编辑的图 */
   const currentGraph = shallowRef<AnoraGraph>(new AnoraGraph())
 
+  /** 节点位置映射（UI 层位置由 store 统一管理） */
+  const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
+
   /** 子图导航栈 */
   const subGraphStack = ref<SubGraphStackItem[]>([])
 
@@ -386,15 +389,34 @@ export const useGraphStore = defineStore('graph', () => {
   }
 
   /**
-   * 替换当前图（用于加载外部图数据）
+   * 从序列化数据加载图（替代当前图）
    */
-  function replaceGraph(graph: AnoraGraph): void {
+  function loadFromSerialized(data: import('@/base/runtime/types').SerializedGraph): void {
+    const { graph, nodePositions: positions } = AnoraGraph.fromSerialized(data)
     currentGraph.value = graph
+    nodePositions.value = positions
     rootSubGraph.value.setGraph(graph)
     subGraphStack.value = []
     selectedNodeIds.value.clear()
     selectedEdges.value.clear()
+    executingNodeIds.value = new Set()
+    edgeDataTransfers.value = new Map()
     triggerRef(currentGraph)
+  }
+
+  /**
+   * 更新节点位置
+   */
+  function updateNodePosition(nodeId: string, position: { x: number; y: number }): void {
+    nodePositions.value.set(nodeId, position)
+  }
+
+  /**
+   * 清除执行状态（用于回放结束或取消）
+   */
+  function clearExecutionState(): void {
+    executingNodeIds.value = new Set()
+    edgeDataTransfers.value = new Map()
   }
 
   // ==================== 初始化 ====================
@@ -406,6 +428,7 @@ export const useGraphStore = defineStore('graph', () => {
     // 状态
     rootSubGraph,
     currentGraph,
+    nodePositions,
     subGraphStack,
     selectedNodeIds,
     selectedEdges,
@@ -433,7 +456,9 @@ export const useGraphStore = defineStore('graph', () => {
     enterSubGraph,
     exitSubGraph,
     navigateToLevel,
-    replaceGraph,
+    loadFromSerialized,
+    updateNodePosition,
+    clearExecutionState,
 
     // 选择操作
     selectNode,

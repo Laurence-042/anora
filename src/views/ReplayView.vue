@@ -5,16 +5,15 @@
  * 功能：
  * - 加载 .json 录制文件
  * - 使用 ReplayExecutor 回放事件
- * - 使用 graphStore 管理状态（与 GraphEditor 共用同一套机制）
+ * - 使用 graphStore 管理所有状态
  * - 回放进度控制
  */
-import { ref, computed, onUnmounted, shallowRef, triggerRef } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
 import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
-import { AnoraGraph } from '@/base/runtime/graph'
 import { ReplayExecutor, ReplayState } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
@@ -28,12 +27,6 @@ const graphStore = useGraphStore()
 
 /** 录制数据 */
 const recording = ref<DemoRecording | null>(null)
-
-/** 反序列化的图 */
-const graph = shallowRef<AnoraGraph | null>(null)
-
-/** 节点位置 */
-const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
 /** 回放执行器 */
 const replayExecutor = ref<ReplayExecutor | null>(null)
@@ -52,7 +45,9 @@ const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
 
 // ==================== 计算属性 ====================
 
-const isLoaded = computed(() => recording.value !== null && graph.value !== null)
+const isLoaded = computed(
+  () => recording.value !== null && graphStore.currentGraph.getAllNodes().length > 0,
+)
 const isPlaying = computed(() => replayState.value === ReplayState.Playing)
 const isPaused = computed(() => replayState.value === ReplayState.Paused)
 const isIdle = computed(() => replayState.value === ReplayState.Idle)
@@ -101,20 +96,12 @@ async function loadRecordingFile(file: File): Promise<void> {
     // 保存录制数据
     recording.value = data
 
-    // 反序列化图（位置已包含在 initialGraph 中）
-    const { graph: deserializedGraph, nodePositions: positions } = AnoraGraph.fromSerialized(
-      data.initialGraph,
-    )
-
-    // 使用 graphStore 管理图
-    graphStore.replaceGraph(deserializedGraph)
-    graph.value = deserializedGraph
-    triggerRef(graph)
-    nodePositions.value = positions
+    // 加载图到 graphStore（包含位置信息）
+    graphStore.loadFromSerialized(data.initialGraph)
 
     // 创建回放执行器
     const executor = new ReplayExecutor()
-    executor.loadRecording(data, deserializedGraph)
+    executor.loadRecording(data, graphStore.currentGraph)
 
     // 设置回调
     executor.onStateChange = (state: ReplayState) => {
@@ -129,17 +116,13 @@ async function loadRecordingFile(file: File): Promise<void> {
 
     replayExecutor.value = executor
 
-    // 重置状态
+    // 重置回放状态
     replayState.value = ReplayState.Idle
     currentEventIndex.value = 0
-    graphStore.executingNodeIds = new Set()
-    graphStore.edgeDataTransfers = new Map()
 
     console.log('[ReplayView] Recording loaded:', {
-      nodes: deserializedGraph.getAllNodes().length,
+      nodes: graphStore.currentGraph.getAllNodes().length,
       events: data.events.length,
-      positions: positions.size,
-      positionsData: Array.from(positions.entries()),
     })
 
     // 自动适应视图
@@ -260,10 +243,7 @@ function cleanup(): void {
     replayExecutor.value = null
   }
   recording.value = null
-  graph.value = null
-  nodePositions.value = new Map()
-  graphStore.executingNodeIds = new Set()
-  graphStore.edgeDataTransfers = new Map()
+  graphStore.clearExecutionState()
   replayState.value = ReplayState.Idle
   currentEventIndex.value = 0
 }
@@ -315,8 +295,8 @@ onUnmounted(cleanup)
       <AnoraGraphView
         v-else
         ref="graphViewRef"
-        :graph="graph!"
-        :node-positions="nodePositions"
+        :graph="graphStore.currentGraph!"
+        :node-positions="graphStore.nodePositions"
         :readonly="true"
         :executing-node-ids="graphStore.executingNodeIds"
         :incompatible-edges="new Set()"

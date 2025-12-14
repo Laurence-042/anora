@@ -28,9 +28,6 @@ const graphStore = useGraphStore()
 
 // ==================== 状态 ====================
 
-/** 节点位置存储 */
-const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
-
 /** AnoraGraphView 组件引用 */
 const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
 
@@ -60,7 +57,7 @@ function onPaneClick(): void {
 
 /** 处理节点拖拽结束 */
 function onNodeDragStop(nodeId: string, position: { x: number; y: number }): void {
-  nodePositions.value.set(nodeId, position)
+  graphStore.updateNodePosition(nodeId, position)
 }
 
 /** 处理节点变更 */
@@ -76,7 +73,7 @@ function onNodesChange(changes: unknown[]): void {
     }
     if (c.type === 'remove' && c.id !== undefined) {
       graphStore.removeNode(c.id)
-      nodePositions.value.delete(c.id)
+      graphStore.nodePositions.delete(c.id)
     }
   }
 }
@@ -94,11 +91,6 @@ function onEdgesChange(changes: unknown[]): void {
   }
 }
 
-/** 处理图导入完成 */
-function onGraphImported(positions: Map<string, { x: number; y: number }>): void {
-  nodePositions.value = positions
-}
-
 // ==================== 工具栏操作 ====================
 
 /** 自动布局 */
@@ -112,7 +104,7 @@ function autoLayout(): void {
   nodes.forEach((node, index) => {
     const row = Math.floor(index / cols)
     const col = index % cols
-    nodePositions.value.set(node.id, {
+    graphStore.updateNodePosition(node.id, {
       x: col * (nodeWidth + padding) + padding,
       y: row * (nodeHeight + padding) + padding,
     })
@@ -125,7 +117,7 @@ function autoLayout(): void {
 function deleteSelected(): void {
   for (const nodeId of graphStore.selectedNodeIds) {
     graphStore.removeNode(nodeId)
-    nodePositions.value.delete(nodeId)
+    graphStore.nodePositions.delete(nodeId)
   }
 }
 
@@ -170,9 +162,9 @@ watch(
   () => graphStore.nodes,
   (nodes) => {
     for (const node of nodes) {
-      if (!nodePositions.value.has(node.id)) {
-        const existingCount = nodePositions.value.size
-        nodePositions.value.set(node.id, {
+      if (!graphStore.nodePositions.has(node.id)) {
+        const existingCount = graphStore.nodePositions.size
+        graphStore.updateNodePosition(node.id, {
           x: 100 + (existingCount % 5) * 250,
           y: 100 + Math.floor(existingCount / 5) * 180,
         })
@@ -199,12 +191,12 @@ onUnmounted(() => {
       <div class="toolbar-spacer" />
 
       <!-- 图导出/导入 -->
-      <GraphIOControls :node-positions="nodePositions" @imported="onGraphImported" />
+      <GraphIOControls />
 
       <div class="toolbar-divider" />
 
       <!-- 录制控制 -->
-      <RecordingControls :node-positions="nodePositions" />
+      <RecordingControls />
 
       <div class="toolbar-divider" />
 
@@ -220,7 +212,7 @@ onUnmounted(() => {
       <AnoraGraphView
         ref="graphViewRef"
         :graph="graphStore.currentGraph"
-        :node-positions="nodePositions"
+        :node-positions="graphStore.nodePositions"
         :readonly="false"
         :executing-node-ids="graphStore.executingNodeIds"
         :incompatible-edges="graphStore.incompatibleEdges"

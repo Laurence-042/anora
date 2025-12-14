@@ -14,10 +14,6 @@ import { useGraphStore } from '@/stores/graph'
 import { DemoRecorder } from '@/base/runtime/demo'
 import type { DemoRecording } from '@/base/runtime/demo'
 
-const props = defineProps<{
-  nodePositions: Map<string, { x: number; y: number }>
-}>()
-
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
@@ -52,7 +48,7 @@ function startRecording(): void {
   }
 
   // 开始录制（传入节点位置）
-  newRecorder.startRecording(props.nodePositions)
+  newRecorder.startRecording(graphStore.nodePositions)
 
   recorder.value = newRecorder
   isRecording.value = true
