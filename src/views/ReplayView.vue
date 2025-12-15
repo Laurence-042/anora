@@ -9,16 +9,16 @@
  * - 回放进度控制
  */
 import { ref, computed, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+// import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
-import LocaleSwitcher from '@/base/ui/editor/LocaleSwitcher.vue'
+import { useReplayIPC } from '@/base/ui/composables/useReplayIPC'
 import { ReplayExecutor } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
 import { ExecutorEventType, ExecutorState, type ExecutorEvent } from '@/base/runtime/executor'
 
-const router = useRouter()
+// router not used in embedded replay
 const { t } = useI18n()
 const graphStore = useGraphStore()
 
@@ -58,6 +58,29 @@ let animationFrameId: number | null = null
 
 /** AnoraGraphView 引用 */
 const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
+
+// IPC
+let replayIpcHandle: {
+  destroy: () => void
+  postMessage?: (t: string, p?: unknown) => void
+} | null = null
+
+function ensureIpcInitialized() {
+  if (replayIpcHandle) return
+  replayIpcHandle = useReplayIPC({
+    getExecutor: () => replayExecutor.value,
+    applyStateAtIndex: (idx: number) => {
+      if (!replayExecutor.value) return
+      const state = replayExecutor.value.getStateAtIndex(idx)
+      graphStore.executingNodeIds = state.executingNodeIds
+      graphStore.edgeDataTransfers = state.edgeDataTransfers
+    },
+    loadRecordingFromText: async (text: string) => {
+      await loadRecordingText(text)
+    },
+    getKeyframes: () => keyframes.value,
+  })
+}
 
 // ==================== 计算属性 ====================
 
@@ -108,65 +131,69 @@ function handleFileChange(event: Event): void {
 
 async function loadRecordingFile(file: File): Promise<void> {
   const content = await file.text()
+  await loadRecordingText(content)
+}
 
+async function loadRecordingText(text: string): Promise<void> {
   try {
-    const data = JSON.parse(content) as DemoRecording
-
-    // 版本检查
-    if (data.version !== '2.0.0') {
-      alert(t('demo.unsupportedVersion', { version: data.version }))
-      return
-    }
-
-    // 清理现有状态
-    cleanup()
-
-    // 保存录制数据
-    recording.value = data
-
-    // 加载图到 graphStore（包含位置信息）
-    graphStore.loadFromSerialized(data.initialGraph)
-
-    // 创建回放执行器
-    const executor = new ReplayExecutor()
-    executor.loadRecording(data, graphStore.currentGraph)
-
-    // 设置进度回调
-    executor.onProgressChange = (
-      current: number,
-      _total: number,
-      time: number,
-      duration: number,
-    ) => {
-      currentEventIndex.value = current
-      currentTime.value = time
-      totalDuration.value = duration
-    }
-
-    // 初始化总时长
-    totalDuration.value = executor.totalDuration
-
-    // 生成关键帧
-    keyframes.value = executor.getKeyframes(13)
-
-    // 监听事件
-    executor.on(handleExecutorEvent)
-
-    replayExecutor.value = executor
-    currentEventIndex.value = 0
-    currentTime.value = 0
-
-    console.log('[ReplayView] Recording loaded:', {
-      nodes: graphStore.currentGraph.getAllNodes().length,
-      events: data.events.length,
-    })
-
-    // 自动适应视图
-    setTimeout(() => graphViewRef.value?.fitView(), 100)
+    const data = JSON.parse(text) as DemoRecording
+    await processLoadedRecording(data)
   } catch (err) {
     console.error('Failed to load recording:', err)
     alert(t('errors.invalidDemoFile'))
   }
+}
+
+async function processLoadedRecording(data: DemoRecording): Promise<void> {
+  // 版本检查
+  if (data.version !== '2.0.0') {
+    alert(t('demo.unsupportedVersion', { version: data.version }))
+    return
+  }
+
+  // 清理现有状态
+  cleanup()
+
+  // 保存录制数据
+  recording.value = data
+
+  // 加载图到 graphStore（包含位置信息）
+  graphStore.loadFromSerialized(data.initialGraph)
+
+  // 创建回放执行器
+  const executor = new ReplayExecutor()
+  executor.loadRecording(data, graphStore.currentGraph)
+
+  // 设置进度回调
+  executor.onProgressChange = (current: number, _total: number, time: number, duration: number) => {
+    currentEventIndex.value = current
+    currentTime.value = time
+    totalDuration.value = duration
+  }
+
+  // 初始化总时长
+  totalDuration.value = executor.totalDuration
+
+  // 生成关键帧
+  keyframes.value = executor.getKeyframes(13)
+
+  // 监听事件
+  executor.on(handleExecutorEvent)
+
+  replayExecutor.value = executor
+
+  // ensure IPC is active and register replay handlers (lazy init below)
+  ensureIpcInitialized()
+  currentEventIndex.value = 0
+  currentTime.value = 0
+
+  console.log('[ReplayView] Recording loaded:', {
+    nodes: graphStore.currentGraph.getAllNodes().length,
+    events: data.events.length,
+  })
+
+  // 自动适应视图
+  setTimeout(() => graphViewRef.value?.fitView(), 100)
 }
 
 // ==================== 执行器事件处理 ====================
@@ -365,9 +392,7 @@ function handleProgressChange(event: Event): void {
 
 // ==================== 导航 ====================
 
-function goToEditor(): void {
-  router.push('/editor')
-}
+// navigation handled externally in embedded scenarios
 
 // ==================== 清理 ====================
 
@@ -376,6 +401,14 @@ function cleanup(): void {
   if (replayExecutor.value) {
     replayExecutor.value.cancel()
     replayExecutor.value = null
+  }
+  if (replayIpcHandle) {
+    try {
+      replayIpcHandle.destroy()
+    } catch (e) {
+      console.warn('replayIpc destroy failed', e)
+    }
+    replayIpcHandle = null
   }
   recording.value = null
   keyframes.value = []
@@ -390,32 +423,7 @@ onUnmounted(cleanup)
 
 <template>
   <div class="replay-view">
-    <!-- 顶部工具栏 -->
-    <div class="replay-toolbar">
-      <button class="toolbar-btn back-btn" @click="goToEditor">
-        ← {{ t('demo.backToEditor') }}
-      </button>
-
-      <div class="toolbar-title">
-        {{ t('demo.replayMode') }}
-      </div>
-
-      <div class="toolbar-spacer" />
-
-      <!-- 文件加载 -->
-      <button class="toolbar-btn upload-btn" @click="handleUpload">
-        📂 {{ t('demo.loadRecording') }}
-      </button>
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".json"
-        style="display: none"
-        @change="handleFileChange"
-      />
-
-      <LocaleSwitcher />
-    </div>
+    <!-- 顶部工具栏 已移除（回放嵌入场景时通常由外部提供控制） -->
 
     <!-- 主内容区 -->
     <div class="replay-content">
@@ -502,6 +510,18 @@ onUnmounted(cleanup)
         >
           <option v-for="speed in speedOptions" :key="speed" :value="speed">{{ speed }}x</option>
         </select>
+
+        <!-- 文件加载（底部替代入口） -->
+        <button class="toolbar-btn upload-btn" @click="handleUpload">
+          📂 {{ t('demo.loadRecording') }}
+        </button>
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".json"
+          style="display: none"
+          @change="handleFileChange"
+        />
       </div>
 
       <!-- 状态指示 -->
