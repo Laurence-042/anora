@@ -111,7 +111,7 @@
 ```
 
 ```gdscript
-# Godot 环境
+# Godot-WRY 环境
 $WebView.load_url("http://localhost:5173/demo")
 ```
 
