@@ -559,9 +559,36 @@ Graph 在创建边时会进行检查，检查项包括但不限于：
 
 ### 6.1 定位
 
-ANORA 作为一个**纯前端项目**，它不仅提供展示还会提供计算框架，后端只需要实现后端节点对应的函数即可。
+ANORA 作为一个**纯前端项目**,它不仅提供展示还会提供计算框架，后端只需要实现后端节点对应的函数即可。
 
-### 6.2 执行状态
+### 6.2 状态管理
+
+#### 6.2.1 执行器状态（ExecutorState）
+
+使用 `ExecutorStateMachine` 管理执行器生命周期：
+
+```typescript
+enum ExecutorState {
+  Idle, // 空闲，可以开始新的执行
+  Running, // 连续运行中
+  Paused, // 暂停中
+  Stepping, // 单步执行中
+}
+```
+
+#### 6.2.2 完成原因（FinishReason）
+
+执行结束时的原因分类：
+
+```typescript
+enum FinishReason {
+  Completed, // 正常完成（无更多节点可执行）
+  Cancelled, // 用户取消
+  Error, // 执行出错
+}
+```
+
+#### 6.2.3 节点激活状态（ActivationReadyStatus）
 
 ```typescript
 enum ActivationReadyStatus {
@@ -580,20 +607,20 @@ enum ActivationReadyStatus {
 
 #### 2. 执行已准备好（Activation-Ready）的节点
 
-1. **检查停止请求**：检查当前用户是否要求停止
+1. **检查停止请求**：检查当前用户是否要求停止或暂停
 
 2. **并行执行**：
    - 节点的执行函数 `activate` 必定是**异步的**
    - 使用类似 `await Promise.allSettled` 同时启动当前迭代中所有准备好的节点并等待完成
    - 同一个迭代中节点的执行顺序**并不确定**
-   - 实际应使用 bluebird 等支持**取消**的 Promise，以支持用户在节点卡太久时终止
-   - 终止时，当前所有未完成的节点视为执行失败
+   - 支持**取消**操作，终止时当前所有未完成的节点视为执行失败
 
 3. **执行后处理**：
    - **清空执行后节点的入 Port**（避免下一次激活时残留脏数据）
-   - 统一检查这些执行后节点的准备状态（主要用于`DistributeNode `这类在激活后的多个迭代都会保持READY的节点）
+   - 统一检查这些执行后节点的准备状态（主要用于`DistributeNode`这类在激活后的多个迭代都会保持READY的节点）
    - 从执行后节点的所有出 Port 里取出数据填入其连接的另一节点的入 Port
      - 即使值为 null 或 ContainerPort 内的子 Port 为 null 也要填入
+   - **特殊处理直通节点**：如果目标节点是 `directThrough=true` 的 ForwardNode，立即执行并继续传播
    - 查询其他受影响节点的准备状态
 
 4. **失败处理**：
@@ -602,7 +629,43 @@ enum ActivationReadyStatus {
 
 #### 3. 重复步骤 2 直到没有节点可以执行
 
-### 6.4 特性
+### 6.4 执行模式
+
+执行器支持多种运行模式：
+
+```typescript
+enum ExecutionMode {
+  Continuous, // 连续执行直到完成
+  StepByStep, // 单步执行（每次迭代后暂停）
+}
+```
+
+### 6.5 事件系统
+
+执行器通过事件系统通知外部组件执行状态变化：
+
+```typescript
+enum ExecutorEventType {
+  Start, // 执行开始
+  Iteration, // 新迭代开始
+  NodeStart, // 节点开始执行
+  NodeComplete, // 节点执行完成
+  DataPropagate, // 数据传播（边上的数据传输）
+  Complete, // 执行完成
+  Cancelled, // 执行被取消
+  Error, // 执行出错
+}
+```
+
+事件订阅：
+
+```typescript
+executor.on((event: ExecutorEvent) => {
+  // 处理事件
+})
+```
+
+### 6.6 特性
 
 #### 指定起始节点
 
@@ -633,15 +696,25 @@ enum ActivationReadyStatus {
 
 多对一覆盖警告："这种情况会导致不可确定的覆盖顺序，进而导致逻辑图难以维护，不建议这么做"
 
-### 6.5 可扩展性
+### 6.7 可扩展性
 
-ANORA 支持**继承 Executor** 以修改/扩展运行逻辑，实现时需要合理分割函数功能便于重写。
+ANORA 支持**继承 Executor** 以修改/扩展运行逻辑：
 
-### 6.6 Context
+- `BasicExecutor`：基础执行器，提供标准的迭代执行逻辑
+- `ReplayExecutor`：回放执行器，用于演示模式，按时间轴重放录制的事件
+
+扩展示例：
+
+- 实现时需要合理分割函数功能便于重写
+- 可重写 `executeOneIteration()` 改变单次迭代行为
+- 可重写事件发射逻辑添加自定义监控
+
+### 6.8 Context
 
 ```typescript
 type ExecutorContext = {
   ipcTypeId: string // 后端类型
+  iterationDelay?: number // 迭代间延迟（毫秒，用于调试）
   [key: string]: unknown // 其他的可能由节点访问的属性
 }
 ```
@@ -657,7 +730,66 @@ type ExecutorContext = {
 
 ---
 
-## 7. 项目结构
+## 7. Demo/Replay 系统
+
+### 7.1 设计思路
+
+Demo 系统用于录制和回放图的执行过程，主要用于**演示和教学**场景。
+
+核心设计：
+
+- 录制 Executor 发出的事件序列（带时间戳）
+- 回放时使用 `ReplayExecutor` 重放这些事件
+- 前端组件订阅事件，录制和回放使用**相同的 UI 更新逻辑**
+
+### 7.2 录制格式
+
+```typescript
+interface DemoRecording {
+  version: '2.0.0'
+  metadata: {
+    createdAt: string
+    duration: number
+    totalEvents: number
+  }
+  initialGraph: SerializedGraph // 初始图状态
+  events: TimestampedEvent[] // 带时间戳的事件序列
+}
+
+interface TimestampedEvent {
+  timestamp: number // 相对时间（ms）
+  event: SerializedExecutorEvent // 序列化的执行器事件
+}
+```
+
+### 7.3 回放功能
+
+`ReplayExecutor` 提供以下能力：
+
+- **时间轴播放**：按录制时的时间间隔重放事件
+- **播放速度控制**：支持 0.5x ~ 4x 速度
+- **时间跳转**：`seekToTime(timeMs)` 跳转到指定时间点
+- **关键帧聚合**：`getKeyframes(intervalMs)` 按时间间隔聚合事件
+- **状态重建**：`getStateAtIndex(index)` 获取指定时刻的 UI 状态
+
+### 7.4 UI 特性
+
+回放视图（`ReplayView.vue`）提供：
+
+- 进度条显示（支持拖动）
+- 关键帧标记（13ms 间隔）
+- 播放/暂停/单步/重启控制
+- 速度选择（0.5x / 1x / 1.5x / 2x / 4x）
+- 平滑进度动画（requestAnimationFrame）
+- **无顶部工具栏**（适合嵌入外部系统）
+
+### 7.5 IPC 控制
+
+回放模式支持通过 IPC 消息进行外部控制，详见 [IPC 控制文档](./replay-ipc-guide.md)。
+
+---
+
+## 8. 项目结构
 
 以保证语义清晰且可扩展为优先，同时保证核心内容和 Mod 以相同方式提供：
 
@@ -667,119 +799,163 @@ src/
 │   ├── runtime/                    # ← 可独立运行、无 UI 耦合
 │   │   ├── nodes/
 │   │   │   ├── BaseNode.ts
-│   │   │   ├── WebNode.ts
-│   │   │   ├── BackendNode.ts
+│   │   │   ├── NodeTypes.ts        # WebNode & BackendNode
 │   │   │   └── SubGraphNode.ts
 │   │   ├── ports/
-│   │   │   └── BasePort.ts
+│   │   │   ├── BasePort.ts
+│   │   │   └── NullPort.ts
 │   │   ├── executor/
-│   │   │   └── BasicExecutor.ts
-│   │   ├── registry/
-│   │   │   ├── BaseRegistry.ts
-│   │   │   ├── NodeRegistry.ts     # ← 子类自动注册、插件加载入口
-│   │   │   ├── PortRegistry.ts
-│   │   │   └── ExecutorRegistry.ts
-│   │   └── serialization/
-│   │       └── DefaultSerializer.ts
+│   │   │   ├── BasicExecutor.ts
+│   │   │   └── BasicContext.ts
+│   │   ├── demo/                   # ← 录制与回放
+│   │   │   ├── DemoRecorder.ts
+│   │   │   ├── DemoPlayer.ts       # ReplayExecutor
+│   │   │   └── types.ts            # DemoRecording format
+│   │   ├── graph/
+│   │   │   └── AnoraGraph.ts
+│   │   └── registry/
+│   │       ├── BaseRegistry.ts
+│   │       ├── AnoraRegister.ts    # @AnoraRegister decorator
+│   │       ├── NodeRegistry.ts
+│   │       ├── PortRegistry.ts
+│   │       └── ExecutorRegistry.ts
 │   └── ui/                         # ← Node/Port 的视图层
 │       ├── components/
-│       │   ├── BaseNode.vue
-│       │   └── BasePort.vue
+│       │   ├── BaseNodeView.vue
+│       │   ├── BasePortView.vue
+│       │   └── EdgeView.vue
 │       ├── composables/
-│       └── editor/
-│           └── GraphView.vue
-└── mods/                           # ← 内容扩展
-    ├── core/                       # ← 核心内容同样作为 mod 提供，保持一致性
-    │   ├── runtime/
-    │   │   ├── nodes/
-    │   │   │   ├── web-nodes/
-    │   │   │   │   └── ForwardNode.ts
-    │   │   │   └── backend-nodes/
-    │   │   │       └── WryNode.ts
-    │   │   ├── ports/
-    │   │   │   └── StringPort.ts
-    │   │   └── executor/
-    │   │       └── LoggingExecutor.ts
-    │   └── ui/
-    │       ├── nodes/
-    │       │   ├── web-nodes/
-    │       │   │   └── ForwardNode.vue
-    │       │   └── backend-nodes/
-    │       │       └── WryNode.vue
-    │       └── ports/
-    │           └── StringPort.vue
-    └── <other-mod>/                # ← 其他扩展模块
-        ├── runtime/
-        │   ├── nodes/
-        │   ├── ports/
-        │   └── executor/
-        └── ui/
-            ├── nodes/
-            └── ports/
+│       │   ├── useGraph.ts
+│       │   ├── useExecutor.ts
+│       │   ├── useIPC.ts           # Base IPC controller
+│       │   ├── useReplayIPC.ts     # Replay-specific IPC
+│       │   └── useDemo.ts
+│       ├── editor/
+│       │   ├── GraphEditor.vue
+│       │   ├── NodePalette.vue
+│       │   ├── ExecutorControls.vue
+│       │   ├── RecordingControls.vue
+│       │   └── Breadcrumb.vue
+│       └── registry/
+│           └── NodeViewRegistry.ts
+├── mods/                           # ← 内容扩展
+│   ├── core/                       # ← 核心节点作为 mod
+│   │   ├── runtime/
+│   │   │   ├── nodes/
+│   │   │   │   ├── ForwardNode.ts
+│   │   │   │   ├── BranchNode.ts
+│   │   │   │   ├── CompareNode.ts
+│   │   │   │   ├── ArithmeticNode.ts
+│   │   │   │   ├── AggregateNode.ts
+│   │   │   │   ├── DistributeNode.ts
+│   │   │   │   ├── ConsoleLogNode.ts
+│   │   │   │   └── ...
+│   │   │   └── ports/
+│   │   │       ├── StringPort.ts
+│   │   │       ├── NumberPort.ts
+│   │   │       ├── BooleanPort.ts
+│   │   │       ├── IntegerPort.ts
+│   │   │       ├── ArrayPort.ts
+│   │   │       └── ObjectPort.ts
+│   │   ├── ui/
+│   │   │   └── nodes/              # Custom node views (if any)
+│   │   └── locales/
+│   │       ├── en.ts
+│   │       └── zh-CN.ts
+│   └── godot-wry/                  # ← Godot 后端集成
+│       ├── runtime/
+│       │   └── nodes/
+│       │       └── GodotNode.ts    # BackendNode example
+│       └── locales/
+│           ├── en.ts
+│           └── zh-CN.ts
+├── stores/
+│   └── graph.ts                    # Pinia store for graph/executor state
+├── views/
+│   ├── EditorView.vue              # Main editor
+│   ├── DemoView.vue                # Recording mode
+│   └── ReplayView.vue              # Playback mode (no toolbar)
+└── router/
+    └── index.ts
 ```
+
+**关键设计：**
+
+- `base/runtime/` 完全无 UI 依赖，可在 Node.js 环境运行
+- `base/ui/` 提供 Vue 组件和 composables
+- Mod 通过 `@AnoraRegister` 装饰器自动注册节点
+- Mod 使用 Vite glob import 自动发现，无需手动导入
 
 ---
 
-## 8. UI 功能
+## 9. UI 功能
 
-### 8.1 基础交互
+### 9.1 基础交互
 
-- **撤销/重做**机制
-- **节点/边的选择与批量操作**：Vue-Flow 应该内置了相关功能
+- **撤销/重做**机制（基于 Vue-Flow）
+- **节点/边的选择与批量操作**：Vue-Flow 内置功能
 - **复制粘贴**功能
-- **快捷键定义**：暂时先不支持 Vue-Flow 内置之外的快捷键
+- **快捷键定义**：使用 Vue-Flow 内置快捷键
 - **自动布局算法**：使用 ELK
 
-### 8.2 视觉设计
+### 9.2 视觉设计
 
 - 图总是**从左向右**，需要合适的自动排版功能
 - 连线使用**贝塞尔曲线**
 - ContainerPort 可**展开/收起**，显示表示其内部元素的 Port
-- 连线样式（供 UI 实现参考，优先保证逻辑正确性）：
+- 连线样式：
   - 两端 Port 都**可见**：实线 + 小圆形周期性从出 Port 沿实线运动到入 Port
   - 任一 Port 被**折叠不可见**：虚线 + 线段从出 Port 到入 Port 移动
 
-### 8.3 SubGraph 交互
+### 9.3 SubGraph 交互
 
 - **双击**可以展开，将内部图显示给用户
 - 界面上方使用 **Breadcrumb** 显示当前的子图栈
 
-### 8.4 调试功能
+### 9.4 调试功能
 
 - 运行时给当前激活的节点外框使用**高光描线**
 - 可设置两个迭代之间的**延迟**（用于演示/调试）
 - 运行后输出值会**留在出 Port 上**，便于用户主动激活后面某个节点从中间继续运行
 
-### 8.5 IPC 接口
+### 9.5 IPC 接口
 
-需要提供从外部使用 IPC 控制 Executor 执行、状态快照、加载快照之类的功能：
+ANORA 支持从外部使用 IPC 控制 Executor 执行、状态快照、加载快照等功能。
+
+**架构设计：**
+
+- `useIPC()` - 基础 IPC 控制器（window.postMessage + godot-wry 桥接）
+- `useReplayIPC()` - 回放模式专用 IPC 扩展
+
+**通信方式：**
 
 ```typescript
-interface IPCMessage {
-  type: 'execute' | 'pause' | 'resume' | 'stop' | 'snapshot' | 'loadSnapshot' | 'getState'
-  payload?: any
-}
+// 接收消息
+window.addEventListener('message', (event) => {
+  const msg = event.data
+  console.log(`Received: ${msg.type}`, msg.payload)
+})
 
-// 当前使用 window.addEventListener("message"...) 实现
-window.addEventListener('message', handler)
+// 发送消息
+window.postMessage({ type: 'response', payload: { ... } }, '*')
 ```
+
+**详细文档：** 见 [IPC 控制文档](./replay-ipc-guide.md)
 
 ---
 
-## 9. 实现细节
-
-### 9.1 与 Vue-Flow 解耦
+## 10. 与 Vue-Flow 解耦
 
 - 使用 AnoraNode 初始化 VueFlowNode
 - 节点大小和位置都**独立于 AnoraNode 存储**
 
 ---
 
-## 10. BackendNode 示例：WRY
+## 11. BackendNode 示例：WRY
 
 用于与 godot-wry 等基于 tauri-wry 的后端通讯。
 
-### 10.1 JavaScript → Godot
+### 11.1 JavaScript → Godot
 
 使用 `ipc.postMessage()` 发送消息：
 
@@ -822,7 +998,7 @@ func _on_ipc_message(message):
 
 > **TIP**: 消息作为 JSON 字符串发送。虽然任何字符串都有效，但 JSON 更便于识别消息类型和发送复杂数据。
 
-### 10.2 Godot → JavaScript
+### 11.2 Godot → JavaScript
 
 使用 `post_message()` 发送消息：
 
