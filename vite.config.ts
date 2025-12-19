@@ -7,6 +7,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   esbuild: {
     // 只要 target ≥ es2022，标准装饰器直接过
     target: 'es2022',
