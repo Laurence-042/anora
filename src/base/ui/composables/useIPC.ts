@@ -12,24 +12,59 @@ type IPCHandler = (msg: IPCMessage) => void | Promise<void>
 class IPCController {
   private handlers = new Map<string, IPCHandler[]>()
   private boundHandle = this.handleMessage.bind(this)
+  private boundDocumentHandle = this.handleDocumentMessage.bind(this)
   private listening = false
 
   start(): void {
     if (this.listening) return
+    console.log('[IPC] started listening')
+
+    // Standard window.postMessage (for iframe, parent frame, testing)
     window.addEventListener('message', this.boundHandle)
+
+    // godot-wry compatibility: listens to document.dispatchEvent
+    document.addEventListener('message', this.boundDocumentHandle)
+
     this.listening = true
   }
 
   stop(): void {
     if (!this.listening) return
     window.removeEventListener('message', this.boundHandle)
+    document.removeEventListener('message', this.boundDocumentHandle)
     this.listening = false
     this.handlers.clear()
   }
 
   private async handleMessage(event: MessageEvent): Promise<void> {
+    console.log('[IPC] received window.postMessage:', JSON.stringify(event.data))
     const data = event.data as IPCMessage
     if (!data || !data.type) return
+    await this.dispatchToHandlers(data)
+  }
+
+  private async handleDocumentMessage(event: Event): Promise<void> {
+    const customEvent = event as CustomEvent
+    console.log('[IPC] received document.dispatchEvent:', JSON.stringify(customEvent.detail))
+
+    // Parse godot-wry message format
+    let data: IPCMessage
+    if (typeof customEvent.detail === 'string') {
+      try {
+        data = JSON.parse(customEvent.detail)
+      } catch (err) {
+        console.error('[IPC] failed to parse document message', err)
+        return
+      }
+    } else {
+      data = customEvent.detail
+    }
+
+    if (!data || !data.type) return
+    await this.dispatchToHandlers(data)
+  }
+
+  private async dispatchToHandlers(data: IPCMessage): Promise<void> {
     const handlers = this.handlers.get(data.type) ?? []
     for (const h of handlers) {
       try {

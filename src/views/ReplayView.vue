@@ -8,7 +8,7 @@
  * - 使用 graphStore 管理所有状态
  * - 回放进度控制
  */
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 // import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
@@ -59,28 +59,11 @@ let animationFrameId: number | null = null
 /** AnoraGraphView 引用 */
 const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
 
-// IPC
+// IPC - 组件挂载时初始化，确保外部可以立即发送命令
 let replayIpcHandle: {
   destroy: () => void
   postMessage?: (t: string, p?: unknown) => void
 } | null = null
-
-function ensureIpcInitialized() {
-  if (replayIpcHandle) return
-  replayIpcHandle = useReplayIPC({
-    getExecutor: () => replayExecutor.value,
-    applyStateAtIndex: (idx: number) => {
-      if (!replayExecutor.value) return
-      const state = replayExecutor.value.getStateAtIndex(idx)
-      graphStore.executingNodeIds = state.executingNodeIds
-      graphStore.edgeDataTransfers = state.edgeDataTransfers
-    },
-    loadRecordingFromText: async (text: string) => {
-      await loadRecordingText(text)
-    },
-    getKeyframes: () => keyframes.value,
-  })
-}
 
 // ==================== 计算属性 ====================
 
@@ -182,8 +165,6 @@ async function processLoadedRecording(data: DemoRecording): Promise<void> {
 
   replayExecutor.value = executor
 
-  // ensure IPC is active and register replay handlers (lazy init below)
-  ensureIpcInitialized()
   currentEventIndex.value = 0
   currentTime.value = 0
 
@@ -402,14 +383,6 @@ function cleanup(): void {
     replayExecutor.value.cancel()
     replayExecutor.value = null
   }
-  if (replayIpcHandle) {
-    try {
-      replayIpcHandle.destroy()
-    } catch (e) {
-      console.warn('replayIpc destroy failed', e)
-    }
-    replayIpcHandle = null
-  }
   recording.value = null
   keyframes.value = []
   graphStore.clearExecutionState()
@@ -418,7 +391,36 @@ function cleanup(): void {
   totalDuration.value = 0
 }
 
-onUnmounted(cleanup)
+// ==================== 生命周期 ====================
+
+onMounted(() => {
+  // 组件挂载时立即初始化 IPC，确保外部系统可以发送命令（如 replay.importRecording）
+  replayIpcHandle = useReplayIPC({
+    getExecutor: () => replayExecutor.value,
+    applyStateAtIndex: (idx: number) => {
+      if (!replayExecutor.value) return
+      const state = replayExecutor.value.getStateAtIndex(idx)
+      graphStore.executingNodeIds = state.executingNodeIds
+      graphStore.edgeDataTransfers = state.edgeDataTransfers
+    },
+    loadRecordingFromText: async (text: string) => {
+      await loadRecordingText(text)
+    },
+    getKeyframes: () => keyframes.value,
+  })
+})
+
+onUnmounted(() => {
+  cleanup()
+  if (replayIpcHandle) {
+    try {
+      replayIpcHandle.destroy()
+    } catch (e) {
+      console.warn('replayIpc destroy failed', e)
+    }
+    replayIpcHandle = null
+  }
+})
 </script>
 
 <template>
