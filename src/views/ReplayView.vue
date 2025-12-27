@@ -123,6 +123,7 @@ async function loadRecordingText(text: string): Promise<void> {
     await processLoadedRecording(data)
   } catch (err) {
     console.error('Failed to load recording:', err)
+    console.error(text)
     alert(t('errors.invalidDemoFile'))
   }
 }
@@ -403,8 +404,8 @@ onMounted(() => {
       graphStore.executingNodeIds = state.executingNodeIds
       graphStore.edgeDataTransfers = state.edgeDataTransfers
     },
-    loadRecordingFromText: async (text: string) => {
-      await loadRecordingText(text)
+    loadRecording: async (data: DemoRecording) => {
+      await processLoadedRecording(data)
     },
     getKeyframes: () => keyframes.value,
   })

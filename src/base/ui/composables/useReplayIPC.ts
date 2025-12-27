@@ -1,5 +1,5 @@
 import { useIPC } from './useIPC'
-import type { ReplayExecutor } from '@/base/runtime/demo'
+import type { DemoRecording, ReplayExecutor } from '@/base/runtime/demo'
 import type { IPCMessage } from '@/base/runtime/types'
 
 // IPC 消息数据类型
@@ -17,10 +17,6 @@ interface PlayForData {
   duration?: number
 }
 
-interface ImportRecordingData {
-  content?: string
-}
-
 /**
  * Replay IPC composable
  * - Registers replay-related IPC handlers on top of the base IPC controller
@@ -29,7 +25,7 @@ interface ImportRecordingData {
 export function useReplayIPC(options: {
   getExecutor: () => unknown | null
   applyStateAtIndex: (idx: number) => void
-  loadRecordingFromText?: (text: string) => Promise<void>
+  loadRecording?: (data: DemoRecording) => Promise<void>
   getKeyframes?: () => Array<{
     time: number
     startIndex: number
@@ -149,13 +145,18 @@ export function useReplayIPC(options: {
   )
 
   // import recording text
-  if (options.loadRecordingFromText) {
+  if (options.loadRecording) {
     unsubscribers.push(
       on('replay.importRecording', async (msg) => {
-        const data = (msg as IPCMessage<ImportRecordingData>).data ?? { content: '' }
-        const text = String(data.content || '')
+        const data = (msg as IPCMessage<DemoRecording>).data
+
+        if (!data) {
+          postMessage('replay.importRecording.error', { error: 'no-data' })
+          return
+        }
+
         try {
-          await options.loadRecordingFromText!(text)
+          await options.loadRecording!(data)
           postMessage('replay.importRecording.ok')
         } catch (err) {
           postMessage('replay.importRecording.error', { error: String(err) })
