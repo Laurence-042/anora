@@ -1,6 +1,6 @@
 # ANORA 回放模式 IPC 控制指南
 
-本文档详细说明如何通过 IPC 消息从外部程序控制 ANORA 的回放（Replay）模式。
+本文档说明如何通过 IPC 消息从外部程序控制 ANORA 的回放（Replay）模式。
 
 ## 目录
 
@@ -29,10 +29,10 @@
 
 **核心特性：**
 
-- **节点式编程**：用户通过拖放节点、连接端口（Port）来构建逻辑
-- **实时执行**：图（Graph）可以被执行器（Executor）实时运行
+- **节点式编程**：通过拖放节点、连接端口构建逻辑
+- **实时执行**：图可被执行器实时运行
 - **模块化扩展**：通过 Mod 系统扩展节点类型和功能
-- **跨平台集成**：可嵌入浏览器、Electron、Godot（通过 godot-wry）等环境
+- **跨平台集成**：可嵌入浏览器、Electron、Godot（godot-wry）等环境
 
 **应用场景：**
 
@@ -45,65 +45,55 @@
 
 ## 什么是回放模式
 
-**回放模式**（Replay Mode）是 ANORA 的**演示和教学**功能，用于录制并回放图的执行过程。
+**回放模式**（Replay Mode）用于录制并回放图的执行过程。
 
 ### 工作原理
 
 1. **录制阶段**：
-   - 用户在编辑器中执行图时，可以启动录制
-   - 系统记录所有执行事件（节点激活、数据传播、状态变化等）
-   - 每个事件带有精确的时间戳
-   - 录制结果保存为 JSON 格式文件
+   - 用户执行图时启动录制
+   - 记录所有执行事件（节点激活、数据传播、状态变化等）
+   - 每个事件带时间戳
+   - 保存为 JSON 格式
 
 2. **回放阶段**：
    - 加载录制文件到回放视图
-   - 回放执行器（ReplayExecutor）按时间轴重放事件
-   - UI 实时显示节点激活、数据流动等视觉效果
-   - 用户可以暂停、跳转、调速观看
+   - ReplayExecutor 按时间轴重放事件
+   - UI 实时显示节点激活、数据流动
+   - 支持暂停、跳转、调速
 
-### 典型用途
+### 典型用例
 
-- **教程制作**：录制编程步骤，供学习者反复观看
-- **游戏演示**：在 ProxyOS 游戏中展示任务解法
-- **文档生成**：自动生成带截图的执行流程说明
-- **调试分析**：回放问题场景，逐帧分析执行逻辑
-
-### 回放视图特性
-
-- 时间轴进度条（可拖动）
-- 关键帧标记（便于快速导航）
-- 播放速度控制（0.5x ~ 4x）
-- 播放/暂停/单步控制
-- **无顶部工具栏**（专为嵌入外部系统设计）
+- **教程制作**：录制编程步骤供学习者观看
+- **游戏演示**：在 ProxyOS 中展示任务解法
+- **文档生成**：自动生成执行流程截图
+- **调试分析**：回放问题场景，逐帧分析
 
 ---
 
 ## 为什么需要 IPC 控制
 
-回放模式通常需要集成到外部系统中使用，例如：
+回放模式常需集成到外部系统：
 
 | 使用场景           | IPC 控制的作用                                |
 | ------------------ | --------------------------------------------- |
 | **游戏内教程系统** | Godot 控制播放进度，根据玩家操作同步暂停/继续 |
 | **在线教育平台**   | 网页平台控制多个回放实例同步播放              |
 | **自动化测试**     | 脚本控制回放并截图，生成测试报告              |
-| **多语言文档生成** | 自动跳转到关键帧，生成不同语言版本的截图      |
+| **多语言文档生成** | 自动跳转到关键帧，生成不同语言版本截图        |
 | **交互式演示**     | 用户点击步骤列表，回放跳转到对应时间点        |
 
-**IPC 控制的优势：**
+**IPC 控制优势：**
 
-- 外部程序完全掌控播放逻辑（无需用户手动点击 UI）
-- 支持自动化工作流（脚本化控制）
-- 多实例同步（一次命令控制多个回放窗口）
-- 嵌入式集成（回放视图无工具栏，完全由外部控制）
+- 外部程序完全掌控播放逻辑（无需手动操作 UI）
+- 支持自动化工作流
+- 多实例同步
+- 嵌入式集成（无工具栏，完全外部控制）
 
 ---
 
 ## 快速开始
 
 ### 1. 嵌入回放视图
-
-通过 iframe 或 WebView 加载回放页面：
 
 ```html
 <!-- Web 环境 -->
@@ -115,7 +105,7 @@
 $WebView.load_url("http://localhost:5173/demo")
 ```
 
-### 2. 发送第一个命令
+### 2. 发送命令
 
 ```javascript
 // JavaScript (iframe)
@@ -135,7 +125,7 @@ $WebView.post_message(msg)
 // JavaScript
 window.addEventListener('message', (event) => {
   if (event.data.type === 'replay.state') {
-    console.log('状态:', event.data.payload.state)
+    console.log('状态:', event.data.data.state)
   }
 })
 ```
@@ -145,16 +135,12 @@ window.addEventListener('message', (event) => {
 func _on_ipc_message(message: String):
     var data = JSON.parse_string(message)
     if data.type == "replay.state":
-        print("状态: ", data.payload.state)
+        print("状态: ", data.data.state)
 ```
 
 ---
 
-## 概述
-
-ANORA 回放模式支持通过 IPC（Inter-Process Communication）消息进行外部控制。这允许外部系统（如 Godot、Electron、iframe 父页面等）完全控制回放行为，而无需用户手动操作 UI。
-
-**架构：**
+## 通信架构
 
 ```
 外部程序 → postMessage → ANORA (useReplayIPC) → ReplayExecutor → UI 更新
@@ -163,9 +149,12 @@ ANORA 回放模式支持通过 IPC（Inter-Process Communication）消息进行�
 
 **通信协议：**
 
-- **发送命令**：使用 `window.postMessage()` 发送 JSON 格式消息
-- **接收响应**：监听 `window.addEventListener('message', ...)` 接收响应
-- **消息类型**：所有回放控制命令以 `replay.` 前缀标识
+- **发送命令**：`window.postMessage()` 发送 JSON 消息
+- **接收响应**：`window.addEventListener('message', ...)` 监听响应
+- **消息类型**：回放控制命令以 `replay.` 前缀标识
+- **传输层兼容**：
+  - 标准浏览器：`window.postMessage`
+  - Godot-WRY：`document.dispatchEvent` (自定义事件)
 
 ---
 
@@ -208,8 +197,7 @@ interface TimestampedEvent {
   "events": [
     { "timestamp": 0, "event": { "type": "executor:started" } },
     { "timestamp": 15, "event": { "type": "node:activated", "nodeId": "node-1" } },
-    { "timestamp": 23, "event": { "type": "port:dataWritten", "portId": "port-5", "value": 42 } },
-    ...
+    { "timestamp": 23, "event": { "type": "port:dataWritten", "portId": "port-5", "value": 42 } }
   ]
 }
 ```
@@ -223,7 +211,22 @@ interface TimestampedEvent {
 ```typescript
 interface IPCMessage {
   type: string // 命令类型，如 'replay.play'
-  payload?: unknown // 命令参数（可选）
+  data?: unknown // 命令参数（可选）
+}
+```
+
+**示例：**
+
+```json
+{
+  "type": "replay.play"
+}
+```
+
+```json
+{
+  "type": "replay.seek",
+  "data": { "timeMs": 5000 }
 }
 ```
 
@@ -232,7 +235,16 @@ interface IPCMessage {
 ```typescript
 interface IPCResponse {
   type: string // 响应类型，如 'replay.state'
-  payload: unknown // 响应数据
+  data: unknown // 响应数据
+}
+```
+
+**示例：**
+
+```json
+{
+  "type": "replay.state",
+  "data": { "state": "Running" }
 }
 ```
 
@@ -257,7 +269,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.state",
-  "payload": { "state": "Running" }
+  "data": { "state": "Running" }
 }
 ```
 
@@ -278,7 +290,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.state",
-  "payload": { "state": "Paused" }
+  "data": { "state": "Paused" }
 }
 ```
 
@@ -299,7 +311,16 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.state",
-  "payload": { "state": "Running" | "Paused" }
+  "data": { "state": "Running" }
+}
+```
+
+或
+
+```json
+{
+  "type": "replay.state",
+  "data": { "state": "Paused" }
 }
 ```
 
@@ -316,7 +337,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seek",
-  "payload": { "timeMs": 5000 } // 跳转到 5 秒处
+  "data": { "timeMs": 5000 }
 }
 ```
 
@@ -325,7 +346,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seek",
-  "payload": { "eventIndex": 42 } // 跳转到第 42 个事件
+  "data": { "eventIndex": 42 }
 }
 ```
 
@@ -334,7 +355,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seeked",
-  "payload": {
+  "data": {
     "timeMs": 5000,
     "eventIndex": 42
   }
@@ -354,7 +375,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "payload": { "keyframeIndex": 3 } // 跳转到第 3 个关键帧
+  "data": { "keyframeIndex": 3 }
 }
 ```
 
@@ -363,7 +384,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "payload": { "direction": "before" }
+  "data": { "direction": "before" }
 }
 ```
 
@@ -372,7 +393,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "payload": { "direction": "after" }
+  "data": { "direction": "after" }
 }
 ```
 
@@ -381,7 +402,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.keyframe",
-  "payload": {
+  "data": {
     "keyframeIndex": 3,
     "timeMs": 7500,
     "eventIndex": 67
@@ -408,7 +429,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playFor",
-  "payload": { "durationMs": 3000 } // 播放 3 秒后暂停
+  "data": { "durationMs": 3000 }
 }
 ```
 
@@ -417,7 +438,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.state",
-  "payload": { "state": "Running" }
+  "data": { "state": "Running" }
 }
 ```
 
@@ -426,7 +447,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playForComplete",
-  "payload": {
+  "data": {
     "requestedDurationMs": 3000,
     "actualDurationMs": 3012,
     "finalTimeMs": 8512
@@ -453,7 +474,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.importRecording",
-  "payload": {
+  "data": {
     "recordingText": "{\"version\":\"2.0.0\",\"metadata\":{...},\"initialGraph\":{...},\"events\":[...]}"
   }
 }
@@ -464,7 +485,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.recordingLoaded",
-  "payload": {
+  "data": {
     "version": "2.0.0",
     "duration": 15000,
     "totalEvents": 234
@@ -477,7 +498,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.error",
-  "payload": {
+  "data": {
     "command": "replay.importRecording",
     "error": "Invalid JSON format"
   }
@@ -490,7 +511,7 @@ interface IPCResponse {
 
 ANORA 会主动发送以下类型的响应消息：
 
-| 响应类型                 | 触发时机         | Payload 内容                                             |
+| 响应类型                 | 触发时机         | 数据内容                                                 |
 | ------------------------ | ---------------- | -------------------------------------------------------- |
 | `replay.state`           | 播放状态改变     | `{ state: ExecutorState }`                               |
 | `replay.seeked`          | 跳转完成         | `{ timeMs, eventIndex }`                                 |
@@ -512,7 +533,7 @@ ANORA 会主动发送以下类型的响应消息：
 
 ### Godot-WRY 集成
 
-在 Godot 中通过 `godot-wry` 插件控制 ANORA 回放：
+在 Godot 中通过 `godot-wry` 插件控制 ANORA 回放。
 
 ```gdscript
 extends Node
@@ -538,14 +559,14 @@ func pause_demo():
 func seek_to_time(time_ms: int):
     var msg = JSON.stringify({
         "type": "replay.seek",
-        "payload": {"timeMs": time_ms}
+        "data": {"timeMs": time_ms}
     })
     webview.post_message(msg)
 
 func load_recording(recording_json: String):
     var msg = JSON.stringify({
         "type": "replay.importRecording",
-        "payload": {"recordingText": recording_json}
+        "data": {"recordingText": recording_json}
     })
     webview.post_message(msg)
 
@@ -553,11 +574,11 @@ func _on_ipc_message(message: String):
     var data = JSON.parse_string(message)
     match data.type:
         "replay.state":
-            print("Replay state changed: ", data.payload.state)
+            print("Replay state changed: ", data.data.state)
         "replay.seeked":
-            print("Seeked to: ", data.payload.timeMs, "ms")
+            print("Seeked to: ", data.data.timeMs, "ms")
         "replay.error":
-            print("Error: ", data.payload.error)
+            print("Error: ", data.data.error)
 ```
 
 **使用示例：**
@@ -584,7 +605,7 @@ func show_tutorial():
 
 ### iframe 嵌入
 
-在 Web 页面中通过 iframe 嵌入 ANORA 回放：
+在 Web 页面中通过 iframe 嵌入 ANORA 回放。
 
 ```html
 <!DOCTYPE html>
@@ -612,19 +633,19 @@ func show_tutorial():
         if (event.origin !== 'http://localhost:5173') return
 
         const msg = event.data
-        console.log('Received from ANORA:', msg.type, msg.payload)
+        console.log('Received from ANORA:', msg.type, msg.data)
 
         // 处理响应
         if (msg.type === 'replay.state') {
-          console.log('State:', msg.payload.state)
+          console.log('State:', msg.data.state)
         } else if (msg.type === 'replay.error') {
-          alert('Error: ' + msg.payload.error)
+          alert('Error: ' + msg.data.error)
         }
       })
 
       // 发送命令到 ANORA
-      function sendCommand(type, payload = null) {
-        const msg = { type, payload }
+      function sendCommand(type, data = null) {
+        const msg = { type, data }
         iframe.contentWindow.postMessage(msg, 'http://localhost:5173')
       }
 
@@ -663,7 +684,7 @@ func show_tutorial():
 ```json
 {
   "type": "replay.error",
-  "payload": {
+  "data": {
     "command": "replay.seek",
     "error": "Invalid seek target: must provide timeMs or eventIndex"
   }
@@ -672,51 +693,51 @@ func show_tutorial():
 
 ### 健壮性建议
 
-1. **验证消息来源**：
+1. **验证消息来源：**
 
-   ```javascript
-   window.addEventListener('message', (event) => {
-     if (event.origin !== 'https://your-anora-domain.com') return
-     // 处理消息
-   })
-   ```
+```javascript
+window.addEventListener('message', (event) => {
+  if (event.origin !== 'https://your-anora-domain.com') return
+  // 处理消息
+})
+```
 
-2. **超时处理**：
+2. **超时处理：**
 
-   ```javascript
-   function sendCommandWithTimeout(type, payload, timeoutMs = 5000) {
-     return new Promise((resolve, reject) => {
-       const handler = (event) => {
-         if (event.data.type === `${type}.response`) {
-           clearTimeout(timer)
-           window.removeEventListener('message', handler)
-           resolve(event.data.payload)
-         }
-       }
+```javascript
+function sendCommandWithTimeout(type, data, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const handler = (event) => {
+      if (event.data.type === `${type}.response`) {
+        clearTimeout(timer)
+        window.removeEventListener('message', handler)
+        resolve(event.data.data)
+      }
+    }
 
-       const timer = setTimeout(() => {
-         window.removeEventListener('message', handler)
-         reject(new Error('IPC command timeout'))
-       }, timeoutMs)
+    const timer = setTimeout(() => {
+      window.removeEventListener('message', handler)
+      reject(new Error('IPC command timeout'))
+    }, timeoutMs)
 
-       window.addEventListener('message', handler)
-       sendCommand(type, payload)
-     })
-   }
-   ```
+    window.addEventListener('message', handler)
+    sendCommand(type, data)
+  })
+}
+```
 
-3. **状态同步**：
+3. **状态同步：**
 
-   ```javascript
-   let currentState = 'Idle'
+```javascript
+let currentState = 'Idle'
 
-   window.addEventListener('message', (event) => {
-     if (event.data.type === 'replay.state') {
-       currentState = event.data.payload.state
-       updateUI(currentState)
-     }
-   })
-   ```
+window.addEventListener('message', (event) => {
+  if (event.data.type === 'replay.state') {
+    currentState = event.data.data.state
+    updateUI(currentState)
+  }
+})
+```
 
 ---
 
@@ -732,7 +753,7 @@ async function runAutomatedDemo() {
   await loadRecording('demo-1.json')
   await sleep(500)
 
-  // 2. 播放前 3 秒
+  // 2. 播放 3 秒
   sendCommand('replay.playFor', { durationMs: 3000 })
   await waitForMessage('replay.playForComplete')
 
@@ -754,7 +775,7 @@ function waitForMessage(type) {
     const handler = (event) => {
       if (event.data.type === type) {
         window.removeEventListener('message', handler)
-        resolve(event.data.payload)
+        resolve(event.data.data)
       }
     }
     window.addEventListener('message', handler)
@@ -773,9 +794,9 @@ const iframes = [
   document.getElementById('anora-3'),
 ]
 
-function broadcastCommand(type, payload) {
+function broadcastCommand(type, data) {
   iframes.forEach((iframe) => {
-    iframe.contentWindow.postMessage({ type, payload }, '*')
+    iframe.contentWindow.postMessage({ type, data }, '*')
   })
 }
 
@@ -799,4 +820,5 @@ broadcastCommand('replay.seek', { timeMs: 5000 })
 ## 更新日志
 
 - **2024-01** - 初始版本，支持 7 种基础命令
+- **2024-12** - 更新消息格式，统一使用 `data` 字段替代 `payload`
 - **待定** - 计划支持自定义事件订阅、批量命令执行

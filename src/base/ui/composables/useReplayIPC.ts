@@ -1,5 +1,25 @@
 import { useIPC } from './useIPC'
 import type { ReplayExecutor } from '@/base/runtime/demo'
+import type { IPCMessage } from '@/base/runtime/types'
+
+// IPC 消息数据类型
+interface SeekData {
+  time?: number
+  index?: number
+}
+
+interface KeyframeData {
+  keyframeIndex?: number
+  before?: boolean
+}
+
+interface PlayForData {
+  duration?: number
+}
+
+interface ImportRecordingData {
+  content?: string
+}
 
 /**
  * Replay IPC composable
@@ -23,7 +43,7 @@ export function useReplayIPC(options: {
   // play
   unsubscribers.push(
     on('replay.play', async () => {
-      const ex = options.getExecutor() as unknown as ReplayExecutor | null
+      const ex = options.getExecutor() as ReplayExecutor | null
       if (!ex) return
       if (ex.isPaused) ex.resume()
       postMessage('replay.played')
@@ -33,7 +53,7 @@ export function useReplayIPC(options: {
   // pause
   unsubscribers.push(
     on('replay.pause', async () => {
-      const ex = options.getExecutor() as unknown as ReplayExecutor | null
+      const ex = options.getExecutor() as ReplayExecutor | null
       ex?.pause()
       postMessage('replay.paused')
     }),
@@ -42,7 +62,7 @@ export function useReplayIPC(options: {
   // toggle
   unsubscribers.push(
     on('replay.toggle', async () => {
-      const ex = options.getExecutor() as unknown as ReplayExecutor | null
+      const ex = options.getExecutor() as ReplayExecutor | null
       if (!ex) return
       if (ex.isPlaying) ex.pause()
       else if (ex.isPaused) ex.resume()
@@ -53,11 +73,10 @@ export function useReplayIPC(options: {
   // seek by time
   unsubscribers.push(
     on('replay.seek', async (msg) => {
-      const ex = options.getExecutor() as unknown as ReplayExecutor | null
-      type SeekPayload = { time?: number; index?: number }
-      const payload = (msg as unknown as { payload?: SeekPayload })?.payload ?? ({} as SeekPayload)
-      const time = typeof payload.time === 'number' ? payload.time : undefined
-      const index = typeof payload.index === 'number' ? payload.index : undefined
+      const ex = options.getExecutor() as ReplayExecutor | null
+      const data = (msg as IPCMessage<SeekData>).data ?? {}
+      const time = typeof data.time === 'number' ? data.time : undefined
+      const index = typeof data.index === 'number' ? data.index : undefined
       if (time !== undefined && ex) {
         const targetIndex = ex.seekToTime(time)
         options.applyStateAtIndex?.(targetIndex)
@@ -70,17 +89,16 @@ export function useReplayIPC(options: {
         postMessage('replay.seeked', { index })
         return
       }
-      postMessage('replay.seeked', { error: 'invalid-payload' })
+      postMessage('replay.seeked', { error: 'invalid-data' })
     }),
   )
 
   // seek to keyframe
   unsubscribers.push(
     on('replay.seekToKeyframe', async (msg) => {
-      type KfPayload = { keyframeIndex?: number; before?: boolean }
-      const payload = (msg as unknown as { payload?: KfPayload })?.payload ?? ({} as KfPayload)
-      const kfIndex = typeof payload.keyframeIndex === 'number' ? payload.keyframeIndex : -1
-      const before = !!payload.before
+      const data = (msg as IPCMessage<KeyframeData>).data ?? {}
+      const kfIndex = typeof data.keyframeIndex === 'number' ? data.keyframeIndex : -1
+      const before = !!data.before
       const keyframes = options.getKeyframes ? options.getKeyframes() : []
       if (kfIndex < 0 || kfIndex >= keyframes.length) {
         postMessage('replay.seekToKeyframe', { error: 'out-of-range' })
@@ -92,7 +110,7 @@ export function useReplayIPC(options: {
         return
       }
       const time = before ? Math.max(0, kf.time - 1) : kf.time
-      const ex = options.getExecutor() as unknown as ReplayExecutor | null
+      const ex = options.getExecutor() as ReplayExecutor | null
       if (!ex) {
         postMessage('replay.seekToKeyframe', { error: 'no-executor' })
         return
@@ -107,11 +125,9 @@ export function useReplayIPC(options: {
   const playForTimers = new Map<number, number>()
   unsubscribers.push(
     on('replay.playFor', async (msg) => {
-      type PlayForPayload = { duration?: number }
-      const payload =
-        (msg as unknown as { payload?: PlayForPayload })?.payload ?? ({} as PlayForPayload)
-      const duration = Number(payload.duration || 0) || 0
-      const ex = options.getExecutor() as unknown as ReplayExecutor | null
+      const data = (msg as IPCMessage<PlayForData>).data ?? {}
+      const duration = Number(data.duration || 0) || 0
+      const ex = options.getExecutor() as ReplayExecutor | null
       if (!ex) {
         postMessage('replay.playFor', { error: 'no-executor' })
         return
@@ -136,10 +152,8 @@ export function useReplayIPC(options: {
   if (options.loadRecordingFromText) {
     unsubscribers.push(
       on('replay.importRecording', async (msg) => {
-        const payload = (msg as unknown as { payload?: { content?: string } })?.payload ?? {
-          content: '',
-        }
-        const text = String(payload.content || '')
+        const data = (msg as IPCMessage<ImportRecordingData>).data ?? { content: '' }
+        const text = String(data.content || '')
         try {
           await options.loadRecordingFromText!(text)
           postMessage('replay.importRecording.ok')

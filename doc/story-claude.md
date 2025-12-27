@@ -664,7 +664,7 @@ src/
 ```typescript
 interface IPCMessage {
   type: 'execute' | 'pause' | 'resume' | 'stop' | 'snapshot' | 'loadSnapshot' | 'getState'
-  payload?: any
+  data?: any
 }
 
 // 当前使用 window.addEventListener("message"...) 实现

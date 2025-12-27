@@ -188,9 +188,9 @@ export type IPCMessageType =
 /**
  * IPC 消息接口
  */
-export interface IPCMessage {
+export interface IPCMessage<T = unknown> {
   type: IPCMessageType
-  payload?: unknown
+  data?: T
 }
 
 // ==================== 定义类型 ====================

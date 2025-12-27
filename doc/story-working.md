@@ -933,11 +933,11 @@ ANORA 支持从外部使用 IPC 控制 Executor 执行、状态快照、加载�
 // 接收消息
 window.addEventListener('message', (event) => {
   const msg = event.data
-  console.log(`Received: ${msg.type}`, msg.payload)
+  console.log(`Received: ${msg.type}`, msg.data)
 })
 
 // 发送消息
-window.postMessage({ type: 'response', payload: { ... } }, '*')
+window.postMessage({ type: 'response', data: { ... } }, '*')
 ```
 
 **详细文档：** 见 [IPC 控制文档](./replay-ipc-guide.md)

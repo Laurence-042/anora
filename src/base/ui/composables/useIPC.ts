@@ -85,8 +85,8 @@ class IPCController {
     }
   }
 
-  postMessage(type: string, payload?: unknown): void {
-    const message: IPCMessage = { type: type as IPCMessage['type'], payload }
+  postMessage(type: string, data?: unknown): void {
+    const message: IPCMessage = { type: type as IPCMessage['type'], data }
 
     // godot-wry ipc bridge
     try {

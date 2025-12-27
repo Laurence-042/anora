@@ -11,8 +11,8 @@ interface WryMessage {
   type: string
   /** 消息 ID，用于匹配响应 */
   id: string
-  /** 消息负载 */
-  payload: unknown
+  /** 消息数据 */
+  data: unknown
 }
 
 /**
@@ -253,7 +253,7 @@ export class WryIpcNode extends BackendNode<
   /**
    * 发送消息到 Godot 后端
    */
-  private async sendToGodot(method: string, payload: unknown): Promise<WryResponse> {
+  private async sendToGodot(method: string, data: unknown): Promise<WryResponse> {
     if (!this.isWryAvailable()) {
       return {
         id: '',
@@ -266,7 +266,7 @@ export class WryIpcNode extends BackendNode<
     const message: WryMessage = {
       type: method,
       id: messageId,
-      payload,
+      data,
     }
 
     return new Promise<WryResponse>((resolve) => {
@@ -310,11 +310,11 @@ export class WryIpcNode extends BackendNode<
     // 从 context 获取方法名
     const method = this.getMethod()
 
-    // 从动态入 Port 组装 payload
+    // 从动态入 Port 组装 data
     const params = this.getParams()
-    const payload: Record<string, unknown> = {}
+    const data: Record<string, unknown> = {}
     for (const param of params) {
-      payload[param.name] = inData[param.name]
+      data[param.name] = inData[param.name]
     }
 
     if (!method) {
@@ -329,7 +329,7 @@ export class WryIpcNode extends BackendNode<
       }
     }
 
-    const response = await this.sendToGodot(method, payload)
+    const response = await this.sendToGodot(method, data)
 
     if (response.success) {
       // 激活 done 控制 Port

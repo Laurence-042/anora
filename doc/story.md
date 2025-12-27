@@ -549,6 +549,6 @@ Graph在创建边时会进行检查，检查项包括但不限于
   - ```typescript
     interface IPCMessage {
       type: 'execute' | 'pause' | 'resume' | 'stop' | 'snapshot' | 'loadSnapshot' | 'getState'
-      payload?: any
+      data?: any
     }
     ```
