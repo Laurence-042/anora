@@ -8,11 +8,13 @@ import { useI18n } from 'vue-i18n'
 import { ElTooltip } from 'element-plus'
 import { NodeRegistry } from '@/base/runtime/registry'
 import { NodeViewRegistry } from '@/base/ui/registry'
-import { BaseNode } from '@/base/runtime/nodes'
-import { useGraphStore } from '@/stores/graph'
 
 const { t } = useI18n()
-const graphStore = useGraphStore()
+
+// ==================== Emits ====================
+const emit = defineEmits<{
+  'add-node': [typeId: string]
+}>()
 
 /** 搜索关键字 */
 const searchQuery = ref('')
@@ -98,17 +100,9 @@ const groupedTypes = computed(() => {
   return groups
 })
 
-/** 添加节点 */
+/** 触发添加节点事件 */
 function addNode(typeId: string): void {
-  const NodeClass = NodeRegistry.get(typeId)
-  if (!NodeClass) {
-    console.error(`Unknown node type: ${typeId}`)
-    return
-  }
-
-  // NodeClass 实现了 INodeConstructor，实际创建的是 BaseNode 实例
-  const node = new NodeClass() as BaseNode
-  graphStore.addNode(node)
+  emit('add-node', typeId)
 }
 
 /** 处理拖放开始 */

@@ -74,18 +74,13 @@ const props = defineProps({
 
 // ==================== Emits ====================
 const emit = defineEmits<{
-  /** 连接创建 */
   connect: [connection: Connection]
-  /** 节点双击 */
   nodeDoubleClick: [nodeId: string, node: SubGraphNode | null]
-  /** 画布点击 */
   paneClick: []
-  /** 节点拖拽结束 */
   nodeDragStop: [nodeId: string, position: { x: number; y: number }]
-  /** 节点变更（选择、删除） */
   nodesChange: [changes: unknown[]]
-  /** 边变更（删除） */
   edgesChange: [changes: unknown[]]
+  drop: [data: { event: DragEvent; position: { x: number; y: number } }]
 }>()
 
 // ==================== Vue-Flow ====================
@@ -115,8 +110,8 @@ const vfNodes = computed<Node[]>(() => {
       data: { node: markRaw(node) },
       draggable: !props.readonly,
       selectable: !props.readonly,
-      class: isSelected ? 'selected' : undefined,
-    })
+      ...(isSelected ? { selected: true } : {}),
+    } as Node)
   }
   return nodes
 })
@@ -219,6 +214,33 @@ function onEdgesChange(changes: unknown[]): void {
   emit('edgesChange', changes)
 }
 
+/** 处理画布拖放 */
+function onPaneDrop(event: DragEvent): void {
+  if (props.readonly) return
+  event.preventDefault()
+
+  // 获取画布坐标（Vue Flow 会自动处理坐标转换）
+  const vueFlowElement = event.currentTarget as HTMLElement
+  const rect = vueFlowElement.getBoundingClientRect()
+
+  // 相对于画布的坐标
+  const position = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+  }
+
+  emit('drop', { event, position })
+}
+
+/** 阻止默认拖放行为 */
+function onPaneDragOver(event: DragEvent): void {
+  if (props.readonly) return
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
 // ==================== 公开方法 ====================
 defineExpose({
   fitView: () => fitView({ padding: 0.2 }),
@@ -235,10 +257,13 @@ defineExpose({
       :default-edge-options="{ type: 'default' }"
       :snap-to-grid="true"
       :snap-grid="[20, 20]"
+      :multi-selection-key-code="'Shift'"
       fit-view-on-init
       @node-drag-stop="onNodeDragStop"
       @nodes-change="onNodesChange"
       @edges-change="onEdgesChange"
+      @drop="onPaneDrop"
+      @dragover="onPaneDragOver"
     >
       <Background :variant="BackgroundVariant.Dots" :gap="20" :size="1" pattern-color="#3a3a5c" />
       <slot />

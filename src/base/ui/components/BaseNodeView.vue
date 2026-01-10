@@ -108,7 +108,7 @@ function togglePortExpand(portId: string): void {
   }
 }
 
-/** 状态边框颜色 */
+/** 状态边框颜色（不包括选中状态，选中由 CSS 处理） */
 const statusBorderColor = computed(() => {
   if (isExecuting.value) return '#fbbf24' // amber - executing
   switch (executionStatus.value) {
@@ -117,7 +117,7 @@ const statusBorderColor = computed(() => {
     case NodeExecutionStatus.FAILED:
       return '#ef4444' // red
     default:
-      return isSelected.value ? '#60a5fa' : 'transparent' // blue when selected
+      return undefined // 让 CSS 处理默认和选中状态
   }
 })
 

@@ -33,8 +33,10 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
-.node-selected {
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+/* VueFlow 选中状态 - 匹配 VueFlow 的节点类名结构 */
+.vue-flow__node.selected {
+  border-color: var(--node-accent) !important;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5) !important;
 }
 
 .node-executing {

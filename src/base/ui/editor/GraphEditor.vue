@@ -8,12 +8,14 @@
  * - 录制功能
  * - 图导入/导出
  */
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Connection } from '@vue-flow/core'
 
 import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
+import { BaseNode } from '@/base/runtime/nodes'
+import { NodeRegistry } from '@/base/runtime/registry'
 import { ExecutorState } from '@/base/runtime/executor'
 
 import AnoraGraphView from '../components/AnoraGraphView.vue'
@@ -92,6 +94,55 @@ function onEdgesChange(changes: unknown[]): void {
   }
 }
 
+// ==================== 节点操作 ====================
+
+/**
+ * 统一的节点创建和添加方法
+ * @param typeId 节点类型 ID
+ * @param position 可选的位置参数（屏幕坐标），如果不提供则自动计算
+ */
+function createAndAddNode(typeId: string, position?: { x: number; y: number }): void {
+  const NodeClass = NodeRegistry.get(typeId)
+  if (!NodeClass) {
+    console.error(`Unknown node type: ${typeId}`)
+    return
+  }
+
+  // 创建节点实例
+  const node = new NodeClass() as BaseNode
+  graphStore.addNode(node)
+
+  // 设置位置
+  if (position) {
+    // 使用提供的位置（已经是画布坐标）
+    graphStore.updateNodePosition(node.id, position)
+  } else {
+    // 自动计算位置（堆叠式布局）
+    const existingCount = graphStore.nodePositions.size
+    graphStore.updateNodePosition(node.id, {
+      x: 100 + (existingCount % 5) * 250,
+      y: 100 + Math.floor(existingCount / 5) * 180,
+    })
+  }
+}
+
+/**
+ * 处理拖放添加节点
+ */
+function onDrop(event: { event: DragEvent; position: { x: number; y: number } }): void {
+  const typeId = event.event.dataTransfer?.getData('application/anora-node')
+  if (typeId) {
+    createAndAddNode(typeId, event.position)
+  }
+}
+
+/**
+ * 处理从面板点击添加节点
+ */
+function onNodePaletteAdd(typeId: string): void {
+  createAndAddNode(typeId)
+}
+
 // ==================== 工具栏操作 ====================
 
 /** 自动布局 */
@@ -158,23 +209,6 @@ function handleKeydown(event: KeyboardEvent): void {
 
 // ==================== 生命周期 ====================
 
-/** 监听图变化，为新节点设置默认位置 */
-watch(
-  () => graphStore.nodes,
-  (nodes) => {
-    for (const node of nodes) {
-      if (!graphStore.nodePositions.has(node.id)) {
-        const existingCount = graphStore.nodePositions.size
-        graphStore.updateNodePosition(node.id, {
-          x: 100 + (existingCount % 5) * 250,
-          y: 100 + Math.floor(existingCount / 5) * 180,
-        })
-      }
-    }
-  },
-  { immediate: true },
-)
-
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
 })
@@ -226,9 +260,10 @@ onUnmounted(() => {
         @node-drag-stop="onNodeDragStop"
         @nodes-change="onNodesChange"
         @edges-change="onEdgesChange"
+        @drop="onDrop"
       >
         <!-- 节点面板 -->
-        <NodePalette />
+        <NodePalette @add-node="onNodePaletteAdd" />
       </AnoraGraphView>
     </div>
 
