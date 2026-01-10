@@ -33,8 +33,8 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
-/* VueFlow 选中状态 - 匹配 VueFlow 的节点类名结构 */
-.vue-flow__node.selected {
+/* 选中状态 - 通过 VueFlow 的 .selected 类级联到内部节点 */
+.vue-flow__node.selected .anora-node {
   border-color: var(--node-accent) !important;
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5) !important;
 }

@@ -87,9 +87,6 @@ const nodeDisplayName = computed(() => {
 /** 节点图标 */
 const nodeIcon = computed(() => nodeMeta.value.icon)
 
-/** 是否被选中 */
-const isSelected = computed(() => graphStore.isNodeSelected(node.value.id))
-
 /** 是否正在执行 */
 const isExecuting = computed(() => graphStore.isNodeExecuting(node.value.id))
 
@@ -129,7 +126,6 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   <div
     class="anora-node"
     :class="{
-      'node-selected': isSelected,
       'node-executing': isExecuting,
       'node-success': executionStatus === NodeExecutionStatus.SUCCESS,
       'node-failed': executionStatus === NodeExecutionStatus.FAILED,
