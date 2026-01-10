@@ -43,6 +43,40 @@ export class AnoraGraph {
   /** 入 Port ID 到连接的出 Port ID 列表的映射 */
   private inPortConnections: Map<string, string[]> = new Map()
 
+  /** 图更新监听器列表 */
+  private updateListeners: Array<() => void> = []
+
+  /**
+   * 添加图更新监听器
+   * @returns 取消监听的函数
+   */
+  onUpdate(callback: () => void): () => void {
+    this.updateListeners.push(callback)
+    // 返回取消监听函数
+    return () => {
+      const index = this.updateListeners.indexOf(callback)
+      if (index > -1) {
+        this.updateListeners.splice(index, 1)
+      }
+    }
+  }
+
+  /**
+   * 移除所有更新监听器
+   */
+  clearUpdateListeners(): void {
+    this.updateListeners = []
+  }
+
+  /**
+   * 触发更新回调
+   */
+  private notifyUpdate(): void {
+    for (const listener of this.updateListeners) {
+      listener()
+    }
+  }
+
   // ==================== 节点操作 ====================
 
   /**
@@ -56,6 +90,8 @@ export class AnoraGraph {
       this.portToNode.set(port.id, node)
       this.registerContainerPortChildren(port, node)
     }
+
+    this.notifyUpdate()
   }
 
   /**
@@ -91,6 +127,7 @@ export class AnoraGraph {
     }
 
     this.nodes.delete(nodeId)
+    this.notifyUpdate()
   }
 
   /**
@@ -149,6 +186,7 @@ export class AnoraGraph {
     }
     this.inPortConnections.get(toPortId)!.push(fromPortId)
 
+    this.notifyUpdate()
     return true
   }
 
@@ -176,6 +214,8 @@ export class AnoraGraph {
         inConnections.splice(index, 1)
       }
     }
+
+    this.notifyUpdate()
   }
 
   /**

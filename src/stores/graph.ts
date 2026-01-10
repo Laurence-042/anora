@@ -2,6 +2,12 @@
  * 图状态管理 Store
  * 管理 AnoraGraph、执行状态、UI 状态等
  *
+ * 响应式更新机制：
+ * - currentGraph 使用 shallowRef，不追踪内部变化
+ * - graphRevision 计数器在图结构变化时自动递增
+ * - AnoraGraph.onUpdate() 回调在 addNode/removeNode/addEdge/removeEdge 时触发
+ * - setupGraphCallback() 在切换图时为新图设置 onUpdate 回调
+ *
  * 注意：此 Store 不关心录制/回放，那些逻辑由 RecordingControls 组件自行管理
  */
 import { defineStore } from 'pinia'
@@ -37,6 +43,9 @@ export const useGraphStore = defineStore('graph', () => {
 
   /** 当前正在编辑的图 */
   const currentGraph = shallowRef<AnoraGraph>(new AnoraGraph())
+
+  /** 图版本计数器（用于触发响应式更新） */
+  const graphRevision = ref<number>(0)
 
   /** 节点位置映射（UI 层位置由 store 统一管理） */
   const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
@@ -79,7 +88,11 @@ export const useGraphStore = defineStore('graph', () => {
   // ==================== 计算属性 ====================
 
   /** 所有节点 */
-  const nodes = computed(() => currentGraph.value.getAllNodes())
+  const nodes = computed(() => {
+    // 依赖 graphRevision 来触发重新计算
+    graphRevision.value
+    return currentGraph.value.getAllNodes()
+  })
 
   /** 当前面包屑路径 */
   const breadcrumbPath = computed(() => {
@@ -95,11 +108,26 @@ export const useGraphStore = defineStore('graph', () => {
   // ==================== 图操作 ====================
 
   /**
+   * 设置图的 onUpdate 回调（自动递增 revision）
+   * 会先清除旧的监听器，避免重复监听
+   */
+  function setupGraphCallback(graph: AnoraGraph): void {
+    // 清除旧监听器（避免切换图时累积监听器）
+    graph.clearUpdateListeners()
+    // 添加新监听器
+    graph.onUpdate(() => {
+      graphRevision.value++
+      triggerRef(currentGraph)
+    })
+  }
+
+  /**
    * 初始化根图
    */
   function initializeRootGraph(): void {
     rootSubGraph.value = new SubGraphNode(undefined, 'Root')
     const graph = new AnoraGraph()
+    setupGraphCallback(graph)
     rootSubGraph.value.setGraph(graph)
     currentGraph.value = graph
     subGraphStack.value = []
@@ -111,7 +139,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function addNode(node: BaseNode): void {
     currentGraph.value.addNode(node)
-    triggerRef(currentGraph)
+    // graphRevision 由 onUpdate 回调自动递增
   }
 
   /**
@@ -120,7 +148,7 @@ export const useGraphStore = defineStore('graph', () => {
   function removeNode(nodeId: string): void {
     currentGraph.value.removeNode(nodeId)
     selectedNodeIds.value.delete(nodeId)
-    triggerRef(currentGraph)
+    // graphRevision 由 onUpdate 回调自动递增
   }
 
   /**
@@ -128,9 +156,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function addEdge(fromPortId: string, toPortId: string): boolean {
     const result = currentGraph.value.addEdge(fromPortId, toPortId)
-    if (result) {
-      triggerRef(currentGraph)
-    }
+    // graphRevision 由 onUpdate 回调自动递增
     return result
   }
 
@@ -140,7 +166,7 @@ export const useGraphStore = defineStore('graph', () => {
   function removeEdge(fromPortId: string, toPortId: string): void {
     currentGraph.value.removeEdge(fromPortId, toPortId)
     selectedEdges.value.delete(`${fromPortId}->${toPortId}`)
-    triggerRef(currentGraph)
+    // graphRevision 由 onUpdate 回调自动递增
   }
 
   /**
@@ -148,6 +174,7 @@ export const useGraphStore = defineStore('graph', () => {
    * 当节点属性（如 label、context）被修改时调用
    */
   function notifyNodeChanged(_nodeId?: string): void {
+    graphRevision.value++
     triggerRef(currentGraph)
   }
 
@@ -160,11 +187,14 @@ export const useGraphStore = defineStore('graph', () => {
       return
     }
 
+    const graph = node.graph as AnoraGraph
+    setupGraphCallback(graph)
+
     subGraphStack.value.push({
       node,
       label: node.label,
     })
-    currentGraph.value = node.graph as AnoraGraph
+    currentGraph.value = graph
     selectedNodeIds.value.clear()
     selectedEdges.value.clear()
     triggerRef(currentGraph)
@@ -178,15 +208,16 @@ export const useGraphStore = defineStore('graph', () => {
 
     subGraphStack.value.pop()
 
+    let graph: AnoraGraph
     if (subGraphStack.value.length === 0) {
-      currentGraph.value = (rootSubGraph.value.graph ?? new AnoraGraph()) as AnoraGraph
+      graph = (rootSubGraph.value.graph ?? new AnoraGraph()) as AnoraGraph
     } else {
       const parent = subGraphStack.value[subGraphStack.value.length - 1]
-      if (parent && parent.node.graph) {
-        currentGraph.value = parent.node.graph as AnoraGraph
-      }
+      graph = (parent?.node.graph ?? new AnoraGraph()) as AnoraGraph
     }
 
+    setupGraphCallback(graph)
+    currentGraph.value = graph
     selectedNodeIds.value.clear()
     selectedEdges.value.clear()
     triggerRef(currentGraph)
@@ -202,15 +233,16 @@ export const useGraphStore = defineStore('graph', () => {
       subGraphStack.value.pop()
     }
 
+    let graph: AnoraGraph
     if (subGraphStack.value.length === 0) {
-      currentGraph.value = (rootSubGraph.value.graph ?? new AnoraGraph()) as AnoraGraph
+      graph = (rootSubGraph.value.graph ?? new AnoraGraph()) as AnoraGraph
     } else {
       const current = subGraphStack.value[subGraphStack.value.length - 1]
-      if (current && current.node.graph) {
-        currentGraph.value = current.node.graph as AnoraGraph
-      }
+      graph = (current?.node.graph ?? new AnoraGraph()) as AnoraGraph
     }
 
+    setupGraphCallback(graph)
+    currentGraph.value = graph
     selectedNodeIds.value.clear()
     selectedEdges.value.clear()
     triggerRef(currentGraph)
@@ -298,7 +330,9 @@ export const useGraphStore = defineStore('graph', () => {
       case ExecutorEventType.Complete:
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
-        triggerRef(currentGraph) // 刷新以显示执行后的 Port 值
+        // 手动递增 revision 以刷新显示执行后的 Port 值（节点内部数据变化，不由 graph.onUpdate 触发）
+        graphRevision.value++
+        triggerRef(currentGraph)
         break
 
       case ExecutorEventType.Cancelled:
@@ -437,6 +471,7 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function loadFromSerialized(data: import('@/base/runtime/types').SerializedGraph): void {
     const { graph, nodePositions: positions } = AnoraGraph.fromSerialized(data)
+    setupGraphCallback(graph)
     currentGraph.value = graph
     nodePositions.value = positions
     rootSubGraph.value.setGraph(graph)

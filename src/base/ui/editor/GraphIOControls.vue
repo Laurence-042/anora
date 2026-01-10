@@ -6,6 +6,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import type { SerializedGraph } from '@/base/runtime/types'
+import type { DemoRecording } from '@/base/runtime/demo/types'
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
@@ -48,19 +49,45 @@ function importGraph(file: File): void {
   reader.onload = (e) => {
     const content = e.target?.result as string
     try {
-      const data = JSON.parse(content) as SerializedGraph
-      if (!data.schemaVersion || !data.nodes || !data.edges) {
+      const data = JSON.parse(content)
+
+      // 检测文件类型：replay 文件或普通图文件
+      let graphData: SerializedGraph
+
+      if (isReplayFile(data)) {
+        // 从 replay 文件中提取初始图
+        const recording = data as DemoRecording
+        graphData = recording.initialGraph
+        console.log('Loaded graph from replay file:', recording.metadata?.title || file.name)
+      } else {
+        // 普通图文件
+        graphData = data as SerializedGraph
+      }
+
+      // 验证图数据格式
+      if (!graphData.schemaVersion || !graphData.nodes || !graphData.edges) {
         throw new Error('Invalid graph format')
       }
 
       // 直接加载到 graphStore
-      graphStore.loadFromSerialized(data)
+      graphStore.loadFromSerialized(graphData)
     } catch (err) {
       console.error('Failed to parse graph file:', err)
       alert(t('errors.invalidGraph') || 'Invalid graph file')
     }
   }
   reader.readAsText(file)
+}
+
+/** 检测是否为 replay 文件 */
+function isReplayFile(data: unknown): data is DemoRecording {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'version' in data &&
+    'initialGraph' in data &&
+    'events' in data
+  )
 }
 </script>
 
