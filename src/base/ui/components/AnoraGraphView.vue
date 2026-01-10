@@ -118,6 +118,9 @@ const vfNodes = computed<Node[]>(() => {
 
 /** 将 AnoraGraph 边转换为 Vue-Flow 边 */
 const vfEdges = computed<Edge[]>(() => {
+  // 依赖 graphRevision 以触发更新
+  props.graphRevision
+
   const edges: Edge[] = []
 
   for (const node of props.graph.getAllNodes()) {
