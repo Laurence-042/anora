@@ -445,6 +445,7 @@ onUnmounted(() => {
         ref="graphViewRef"
         :graph="graphStore.currentGraph!"
         :node-positions="graphStore.nodePositions"
+        :graph-revision="graphStore.graphRevision"
         :readonly="true"
         :executing-node-ids="graphStore.executingNodeIds"
         :incompatible-edges="new Set()"

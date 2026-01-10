@@ -65,6 +65,11 @@ const props = defineProps({
     type: Object as PropType<Set<string>>,
     default: () => new Set(),
   },
+  /** 图版本计数器（用于触发响应式更新） */
+  graphRevision: {
+    type: Number,
+    default: 0,
+  },
 })
 
 // ==================== Emits ====================
@@ -93,6 +98,10 @@ function getNodeViewType(typeId: string): string {
 
 /** 将 AnoraGraph 转换为 Vue-Flow 节点 */
 const vfNodes = computed<Node[]>(() => {
+  // 依赖 graphRevision 来触发重新计算
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  props.graphRevision
+
   const nodes: Node[] = []
   const allNodes = props.graph.getAllNodes()
 

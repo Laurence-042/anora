@@ -90,6 +90,7 @@ export const useGraphStore = defineStore('graph', () => {
   /** 所有节点 */
   const nodes = computed(() => {
     // 依赖 graphRevision 来触发重新计算
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     graphRevision.value
     return currentGraph.value.getAllNodes()
   })
@@ -507,6 +508,7 @@ export const useGraphStore = defineStore('graph', () => {
     // 状态
     rootSubGraph,
     currentGraph,
+    graphRevision,
     nodePositions,
     subGraphStack,
     selectedNodeIds,
