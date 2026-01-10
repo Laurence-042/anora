@@ -3,10 +3,11 @@
  * 管理 AnoraGraph、执行状态、UI 状态等
  *
  * 响应式更新机制：
- * - currentGraph 使用 shallowRef，不追踪内部变化
- * - graphRevision 计数器在图结构变化时自动递增
- * - AnoraGraph.onUpdate() 回调在 addNode/removeNode/addEdge/removeEdge 时触发
- * - setupGraphCallback() 在切换图时为新图设置 onUpdate 回调
+ * - currentGraph 使用 shallowRef，不追踪对象内部变化
+ * - graphRevision 是独立的 ref<number>，每次图结构变化时递增
+ * - AnoraGraph.onUpdate() 回调在图变化时自动触发 graphRevision++ 和 triggerRef()
+ * - 组件通过 graphRevision prop 触发重新渲染（Vue 能追踪基本类型的变化）
+ * - setupGraphCallback() 为新图设置 onUpdate 回调，并清除旧监听器
  *
  * 注意：此 Store 不关心录制/回放，那些逻辑由 RecordingControls 组件自行管理
  */
@@ -88,12 +89,7 @@ export const useGraphStore = defineStore('graph', () => {
   // ==================== 计算属性 ====================
 
   /** 所有节点 */
-  const nodes = computed(() => {
-    // 依赖 graphRevision 来触发重新计算
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    graphRevision.value
-    return currentGraph.value.getAllNodes()
-  })
+  const nodes = computed(() => currentGraph.value.getAllNodes())
 
   /** 当前面包屑路径 */
   const breadcrumbPath = computed(() => {
@@ -109,7 +105,7 @@ export const useGraphStore = defineStore('graph', () => {
   // ==================== 图操作 ====================
 
   /**
-   * 设置图的 onUpdate 回调（自动递增 revision）
+   * 设置图的 onUpdate 回调（自动递增 graphRevision）
    * 会先清除旧的监听器，避免重复监听
    */
   function setupGraphCallback(graph: AnoraGraph): void {
@@ -331,7 +327,7 @@ export const useGraphStore = defineStore('graph', () => {
       case ExecutorEventType.Complete:
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
-        // 手动递增 revision 以刷新显示执行后的 Port 值（节点内部数据变化，不由 graph.onUpdate 触发）
+        // 手动递增 graphRevision 以刷新显示执行后的 Port 值（节点内部数据变化，不由 graph.onUpdate 触发）
         graphRevision.value++
         triggerRef(currentGraph)
         break
