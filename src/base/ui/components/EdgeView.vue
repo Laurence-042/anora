@@ -11,7 +11,7 @@ import { storeToRefs } from 'pinia'
 const props = defineProps<EdgeProps>()
 
 const graphStore = useGraphStore()
-const { edgeDataTransfers, iterationDelay } = storeToRefs(graphStore)
+const { edgeDataTransfers } = storeToRefs(graphStore)
 
 /** 从边 ID 解析出 sourceHandleId 和 targetHandleId */
 const parsedHandleIds = computed(() => {
