@@ -555,28 +555,30 @@ export class BasicExecutor {
     const transfers: EdgeDataTransfer[] = []
 
     for (const outPort of outputPorts) {
+      // 只有端口有数据时才传播
+      if (!outPort.hasData) {
+        continue
+      }
+
       const connectedPorts = graph.getConnectedPorts(outPort)
 
       for (const targetPort of connectedPorts) {
         // 使用 peek() 获取数据（不清空出 Port）
         const data = outPort.peek()
 
-        // 即使值为 null 也要填入
-        if (data !== undefined) {
-          targetPort.write(data)
+        targetPort.write(data)
 
-          // 记录数据传递
-          transfers.push({
-            fromPortId: outPort.id,
-            toPortId: targetPort.id,
-            data,
-          })
+        // 记录数据传递
+        transfers.push({
+          fromPortId: outPort.id,
+          toPortId: targetPort.id,
+          data,
+        })
 
-          // 记录受影响的节点
-          const targetNode = graph.getNodeByPort(targetPort)
-          if (targetNode) {
-            affectedNodes.add(targetNode)
-          }
+        // 记录受影响的节点
+        const targetNode = graph.getNodeByPort(targetPort)
+        if (targetNode) {
+          affectedNodes.add(targetNode)
         }
       }
     }
