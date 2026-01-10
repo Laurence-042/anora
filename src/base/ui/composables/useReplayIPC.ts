@@ -1,6 +1,7 @@
 import { useIPC } from './useIPC'
 import type { DemoRecording, ReplayExecutor } from '@/base/runtime/demo'
 import type { IPCMessage } from '@/base/runtime/types'
+import { ExecutorEventType } from '@/base/runtime/executor'
 
 // IPC 消息数据类型
 interface SeekData {
@@ -117,23 +118,49 @@ export function useReplayIPC(options: {
     }),
   )
 
-  // play for duration (ms)
+  // play for duration (ms), or play to end if duration is -1
   const playForTimers = new Map<number, number>()
+  const playToEndHandlers = new Map<number, () => void>()
+  let playToEndCounter = 0
+
   unsubscribers.push(
     on('replay.playFor', async (msg) => {
       const data = (msg as IPCMessage<PlayForData>).data ?? {}
-      const duration = Number(data.duration || 0) || 0
+      const duration = Number(data.duration) || 0
       const ex = options.getExecutor() as ReplayExecutor | null
       if (!ex) {
         postMessage('replay.playFor', { error: 'no-executor' })
         return
       }
+
       // start playback
       if (ex.isPaused) ex.resume()
       else if (!ex.isPlaying) {
         // consumer might have to call execute externally
       }
-      // set timeout to pause
+
+      // Special case: duration === -1 means play to end
+      if (duration === -1) {
+        const handlerId = ++playToEndCounter
+        const unsubscribe = ex.on((event) => {
+          if (
+            event.type === ExecutorEventType.Complete ||
+            event.type === ExecutorEventType.Cancelled
+          ) {
+            postMessage('replay.playFor.completed', { duration: -1, playedToEnd: true })
+            const handler = playToEndHandlers.get(handlerId)
+            if (handler) {
+              handler()
+              playToEndHandlers.delete(handlerId)
+            }
+          }
+        })
+        playToEndHandlers.set(handlerId, unsubscribe)
+        postMessage('replay.playFor.started', { duration: -1, playToEnd: true })
+        return
+      }
+
+      // Normal case: set timeout to pause after duration
       const id = window.setTimeout(() => {
         ex.pause()
         postMessage('replay.playFor.completed', { duration })
@@ -168,6 +195,12 @@ export function useReplayIPC(options: {
   function destroy() {
     for (const u of unsubscribers) u()
     for (const id of playForTimers.keys()) window.clearTimeout(id)
+
+    // Clean up play-to-end handlers
+    for (const unsubscribe of playToEndHandlers.values()) {
+      unsubscribe()
+    }
+    playToEndHandlers.clear()
   }
 
   return {

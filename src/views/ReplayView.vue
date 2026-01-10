@@ -159,7 +159,7 @@ async function processLoadedRecording(data: DemoRecording): Promise<void> {
   totalDuration.value = executor.totalDuration
 
   // 生成关键帧
-  keyframes.value = executor.getKeyframes(13)
+  keyframes.value = executor.getKeyframes(100)
 
   // 监听事件
   executor.on(handleExecutorEvent)
