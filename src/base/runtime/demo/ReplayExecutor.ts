@@ -339,7 +339,8 @@ export class ReplayExecutor extends BasicExecutor {
             percentage: (currentKeyframeTime / totalDuration) * 100,
           })
         }
-        currentKeyframeTime = Math.floor(eventTime / intervalMs) * intervalMs
+        // 使用实际事件的时间戳作为关键帧时间，而不是对齐到间隔倍数
+        currentKeyframeTime = eventTime
         currentKeyframeStart = i
       }
     }
