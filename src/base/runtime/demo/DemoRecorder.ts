@@ -54,13 +54,26 @@ export class DemoRecorder {
   /**
    * 绑定执行器
    * 录制器需要知道要监听哪个执行器的事件
+   * 如果正在录制，会重新订阅新的执行器
    */
   bindExecutor(executor: BasicExecutor): void {
-    // 如果正在录制，先停止
-    if (this._isRecording) {
-      this.stopRecording()
+    const wasRecording = this._isRecording
+    
+    // 如果正在录制，先取消旧的订阅
+    if (wasRecording && this.unsubscribe) {
+      this.unsubscribe()
+      this.unsubscribe = null
     }
+    
     this.executor = executor
+    
+    // 如果之前在录制，立即重新订阅新的执行器
+    if (wasRecording && this.executor) {
+      this.unsubscribe = this.executor.on((event) => {
+        this.recordEvent(event)
+      })
+      console.log('[DemoRecorder] Rebound to new executor while recording')
+    }
   }
 
   /**

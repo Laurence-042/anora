@@ -8,7 +8,7 @@
  *
  * 回放功能由独立的 ReplayView 页面处理
  */
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import { DemoRecorder } from '@/base/runtime/demo'
@@ -23,10 +23,29 @@ const recorder = ref<DemoRecorder | null>(null)
 const isRecording = ref(false)
 const recordedEventCount = ref(0)
 
+// ========== 监听 executor 变化 ==========
+
+// 当 executor 变化时（如进入/退出子图），重新绑定
+watch(
+  () => graphStore.executor,
+  (newExecutor) => {
+    if (recorder.value && newExecutor) {
+      console.log('[RecordingControls] Executor changed, rebinding to recorder')
+      recorder.value.bindExecutor(newExecutor)
+    }
+  },
+)
+
 // ========== 录制操作 ==========
 
 function startRecording(): void {
-  if (recorder.value) return
+  // 如果已有录制器且正在录制，不允许重复开始
+  if (recorder.value && isRecording.value) return
+
+  // 如果有旧的录制器，先清理
+  if (recorder.value) {
+    recorder.value.stopRecording()
+  }
 
   const newRecorder = new DemoRecorder()
 
@@ -60,6 +79,7 @@ function stopRecording(): void {
   recorder.value.stopRecording()
   isRecording.value = false
   console.log('[RecordingControls] Recording stopped, events:', recorder.value.eventCount)
+  // 注意：不清空 recorder.value，保留数据以便导出
 }
 
 function downloadRecording(): void {
