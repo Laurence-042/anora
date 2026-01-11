@@ -308,6 +308,8 @@ export const useGraphStore = defineStore('graph', () => {
         break
 
       case ExecutorEventType.NodeComplete:
+        // 增加 graphRevision，触发节点视图更新执行状态
+        graphRevision.value++
         // 不在这里清除节点激活状态，让状态保持到下一次迭代开始
         // 这样单步执行时用户能看到节点的执行结果
         break

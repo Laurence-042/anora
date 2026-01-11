@@ -58,15 +58,15 @@ export class DemoRecorder {
    */
   bindExecutor(executor: BasicExecutor): void {
     const wasRecording = this._isRecording
-    
+
     // 如果正在录制，先取消旧的订阅
     if (wasRecording && this.unsubscribe) {
       this.unsubscribe()
       this.unsubscribe = null
     }
-    
+
     this.executor = executor
-    
+
     // 如果之前在录制，立即重新订阅新的执行器
     if (wasRecording && this.executor) {
       this.unsubscribe = this.executor.on((event) => {

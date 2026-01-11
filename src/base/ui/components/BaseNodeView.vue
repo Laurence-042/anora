@@ -3,7 +3,7 @@
  * BaseNodeView - 节点基础视图组件
  * 作为 Vue-Flow 的自定义节点组件
  */
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElTooltip } from 'element-plus'
 import type { NodeProps } from '@vue-flow/core'
@@ -44,6 +44,9 @@ function getNodeName(typeId: string): string {
 
 /** 本地 label 状态（用于响应式更新，避免 markRaw 导致的不响应） */
 const localLabel = ref(node.value.label)
+
+/** 本地 executionStatus 状态（用于响应式更新，避免 markRaw 导致的不响应） */
+const localExecutionStatus = ref(node.value.executionStatus)
 
 /** Label 编辑状态 */
 const isEditingLabel = ref(false)
@@ -93,6 +96,14 @@ const isExecuting = computed(() => graphStore.isNodeExecuting(node.value.id))
 /** 节点执行状态 */
 const executionStatus = computed(() => node.value.executionStatus)
 
+// 监听 graphRevision 变化，同步 executionStatus
+watch(
+  () => graphStore.graphRevision,
+  () => {
+    localExecutionStatus.value = node.value.executionStatus
+  },
+)
+
 /** 展开的 ContainerPort ID 集合 */
 const expandedPorts = ref<Set<string>>(new Set())
 
@@ -108,7 +119,7 @@ function togglePortExpand(portId: string): void {
 /** 状态边框颜色（不包括选中状态，选中由 CSS 处理） */
 const statusBorderColor = computed(() => {
   if (isExecuting.value) return '#fbbf24' // amber - executing
-  switch (executionStatus.value) {
+  switch (localExecutionStatus.value) {
     case NodeExecutionStatus.SUCCESS:
       return '#22c55e' // green
     case NodeExecutionStatus.FAILED:
