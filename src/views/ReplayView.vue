@@ -11,6 +11,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 // import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ElUpload } from 'element-plus'
+import type { UploadRequestOptions } from 'element-plus'
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
 import { useReplayIPC } from '@/base/ui/composables/useReplayIPC'
 import { ReplayExecutor } from '@/base/runtime/demo'
@@ -68,7 +70,10 @@ let replayIpcHandle: {
 // ==================== 计算属性 ====================
 
 const isLoaded = computed(
-  () => recording.value !== null && graphStore.currentGraph.getAllNodes().length > 0,
+  () =>
+    recording.value !== null &&
+    graphStore.currentGraph !== null &&
+    graphStore.currentGraph.getAllNodes().length > 0,
 )
 const isPlaying = computed(() => replayExecutor.value?.isPlaying ?? false)
 const isPaused = computed(() => replayExecutor.value?.isPaused ?? false)
@@ -97,22 +102,9 @@ const speedOptions = [0.5, 1, 1.5, 2, 4]
 
 // ==================== 文件加载 ====================
 
-const fileInput = ref<HTMLInputElement>()
-
-function handleUpload(): void {
-  fileInput.value?.click()
-}
-
-function handleFileChange(event: Event): void {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    loadRecordingFile(file)
-    target.value = ''
-  }
-}
-
-async function loadRecordingFile(file: File): Promise<void> {
+/** 自定义上传处理 */
+async function handleUploadRequest(options: UploadRequestOptions): Promise<void> {
+  const file = options.file as File
   const content = await file.text()
   await loadRecordingText(content)
 }
@@ -197,6 +189,8 @@ function handleExecutorEvent(event: ExecutorEvent): void {
     case ExecutorEventType.NodeComplete:
       graphStore.executingNodeIds.delete(event.node.id)
       graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
+      // 增加 graphRevision，触发节点视图更新执行状态
+      graphStore.graphRevision++
       break
 
     case ExecutorEventType.DataPropagate:
@@ -434,9 +428,16 @@ onUnmounted(() => {
       <div v-if="!isLoaded" class="empty-state">
         <div class="empty-icon">📂</div>
         <div class="empty-text">{{ t('demo.noRecordingLoaded') }}</div>
-        <button class="upload-action-btn" @click="handleUpload">
-          {{ t('demo.loadRecording') }}
-        </button>
+        <el-upload
+          :http-request="handleUploadRequest"
+          :show-file-list="false"
+          accept=".json"
+          :auto-upload="true"
+        >
+          <button class="upload-action-btn">
+            {{ t('demo.loadRecording') }}
+          </button>
+        </el-upload>
       </div>
 
       <!-- 图展示 -->
@@ -514,18 +515,6 @@ onUnmounted(() => {
         >
           <option v-for="speed in speedOptions" :key="speed" :value="speed">{{ speed }}x</option>
         </select>
-
-        <!-- 文件加载（底部替代入口） -->
-        <button class="toolbar-btn upload-btn" @click="handleUpload">
-          📂 {{ t('demo.loadRecording') }}
-        </button>
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".json"
-          style="display: none"
-          @change="handleFileChange"
-        />
       </div>
 
       <!-- 状态指示 -->
