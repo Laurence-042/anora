@@ -15,18 +15,28 @@ import { defineStore } from 'pinia'
 import { ref, computed, shallowRef, triggerRef } from 'vue'
 import { AnoraGraph } from '@/base/runtime/graph'
 import {
-  BasicExecutor,
   ExecutorEventType,
   ExecutionMode,
   ExecutorState,
   type ExecutorEvent,
   type EdgeDataTransfer,
   type ExecuteOptions,
+  type ExecutorEventListener,
 } from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
 import type { ExecutorContext } from '@/base/runtime/types'
+
+/**
+ * Executor 接口 - 定义 graphStore 需要的 executor 方法
+ * 这样可以接受 BasicExecutor 或任何兼容的执行器实例
+ */
+interface IExecutor {
+  readonly executorState: ExecutorState
+  on(listener: ExecutorEventListener): () => void
+  execute(graph: AnoraGraph, context: ExecutorContext, options?: ExecuteOptions): Promise<unknown>
+}
 
 /**
  * 子图栈项
@@ -64,11 +74,10 @@ export const useGraphStore = defineStore('graph', () => {
   const incompatibleEdges = ref<Set<string>>(new Set())
 
   // ==================== 执行器状态 ====================
+  // 注意：执行器实例由各个 View 自己维护（EditorView/ReplayView）
+  // graphStore 只负责管理执行状态，不持有执行器引用
 
-  /** 执行器实例 */
-  const executor = shallowRef<BasicExecutor>(new BasicExecutor())
-
-  /** 状态机状态（响应式副本，因为 shallowRef 不会追踪内部状态变化） */
+  /** 状态机状态（响应式副本） */
   const stateMachineState = ref<ExecutorState>(ExecutorState.Idle)
 
   /** 当前迭代次数 */
@@ -283,11 +292,9 @@ export const useGraphStore = defineStore('graph', () => {
 
   /**
    * 执行器事件处理
+   * 处理所有执行器发出的事件，更新 UI 状态
    */
   function handleExecutorEvent(event: ExecutorEvent): void {
-    // 每次事件都同步状态机状态
-    syncStateMachineState()
-
     switch (event.type) {
       case ExecutorEventType.Start:
         currentIteration.value = 0
@@ -349,14 +356,15 @@ export const useGraphStore = defineStore('graph', () => {
 
   /**
    * 开始执行
+   * @param executor 执行器实例（由调用方提供）
    * @param stepMode 是否使用步进模式
    */
-  async function startExecution(stepMode: boolean = false): Promise<void> {
+  async function startExecution(executor: IExecutor, stepMode: boolean = false): Promise<void> {
     // 只有空闲状态才能开始执行
     if (stateMachineState.value !== ExecutorState.Idle) return
 
     // 注册事件监听
-    const unsubscribe = executor.value.on(handleExecutorEvent)
+    const unsubscribe = executor.on(handleExecutorEvent)
 
     // 将迭代延迟传递给执行器上下文
     const context: ExecutorContext = {
@@ -370,51 +378,20 @@ export const useGraphStore = defineStore('graph', () => {
     }
 
     try {
-      syncStateMachineState() // 同步初始状态
-      await executor.value.execute(currentGraph.value, context, options)
+      stateMachineState.value = executor.executorState // 同步初始状态
+      await executor.execute(currentGraph.value, context, options)
     } finally {
       unsubscribe()
-      syncStateMachineState() // 同步最终状态
+      stateMachineState.value = executor.executorState // 同步最终状态
     }
   }
 
   /**
-   * 同步状态机状态到响应式 ref
+   * 同步执行器状态到 store
+   * @param executor 执行器实例
    */
-  function syncStateMachineState(): void {
-    stateMachineState.value = executor.value.executorState
-  }
-
-  /**
-   * 停止执行
-   */
-  function stopExecution(): void {
-    executor.value.cancel()
-    syncStateMachineState()
-  }
-
-  /**
-   * 暂停执行
-   */
-  function pauseExecution(): void {
-    executor.value.pause()
-    syncStateMachineState()
-  }
-
-  /**
-   * 恢复执行
-   */
-  function resumeExecution(): void {
-    executor.value.resume()
-    syncStateMachineState()
-  }
-
-  /**
-   * 单步执行
-   */
-  async function stepExecution(): Promise<void> {
-    await executor.value.stepForward()
-    syncStateMachineState()
+  function syncExecutorState(executor: IExecutor): void {
+    stateMachineState.value = executor.executorState
   }
 
   /**
@@ -512,7 +489,6 @@ export const useGraphStore = defineStore('graph', () => {
     selectedNodeIds,
     selectedEdges,
     incompatibleEdges,
-    executor,
     currentIteration,
     executingNodeIds,
     executorContext,
@@ -544,14 +520,13 @@ export const useGraphStore = defineStore('graph', () => {
     clearSelection,
     isNodeSelected,
 
-    // 执行器操作
-    startExecution,
-    stopExecution,
-    pauseExecution,
-    resumeExecution,
-    stepExecution,
-    isNodeExecuting,
+    // 执行器事件处理
     handleExecutorEvent,
+    syncExecutorState,
+
+    // 执行器操作（需要传入 executor 实例）
+    startExecution,
+    isNodeExecuting,
 
     // 边兼容性检查
     checkNodeEdgesCompatibility,

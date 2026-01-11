@@ -9,9 +9,14 @@
  */
 import type { AnoraGraph } from '../graph'
 import type { SerializedGraph } from '../types'
-import type { BasicExecutor, ExecutorEvent } from '../executor'
+import type { ExecutorEvent, ExecutorEventListener } from '../executor'
 import { ExecutorEventType } from '../executor'
 import type { DemoRecording, SerializedExecutorEvent, TimestampedEvent } from './types'
+
+/** Executor 接口 - DemoRecorder 需要的方法 */
+interface IExecutorForRecording {
+  on(listener: ExecutorEventListener): () => void
+}
 
 /** Demo 格式版本 */
 const DEMO_FORMAT_VERSION = '2.0.0' as const
@@ -30,7 +35,7 @@ export class DemoRecorder {
   private initialGraph: SerializedGraph | null = null
 
   /** 被绑定的执行器 */
-  private executor: BasicExecutor | null = null
+  private executor: IExecutorForRecording | null = null
 
   /** 被绑定的图 */
   private graph: AnoraGraph | null = null
@@ -56,7 +61,7 @@ export class DemoRecorder {
    * 录制器需要知道要监听哪个执行器的事件
    * 如果正在录制，会重新订阅新的执行器
    */
-  bindExecutor(executor: BasicExecutor): void {
+  bindExecutor(executor: IExecutorForRecording): void {
     const wasRecording = this._isRecording
 
     // 如果正在录制，先取消旧的订阅

@@ -18,7 +18,7 @@ import { useReplayIPC } from '@/base/ui/composables/useReplayIPC'
 import { ReplayExecutor } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
-import { ExecutorEventType, ExecutorState, type ExecutorEvent } from '@/base/runtime/executor'
+import { ExecutorState, type ExecutorEvent } from '@/base/runtime/executor'
 
 // router not used in embedded replay
 const { t } = useI18n()
@@ -140,7 +140,7 @@ async function processLoadedRecording(data: DemoRecording): Promise<void> {
   const executor = new ReplayExecutor()
   executor.loadRecording(data, graphStore.currentGraph)
 
-  // 设置进度回调
+  // 设置进度回调（仅用于 UI 进度显示）
   executor.onProgressChange = (current: number, _total: number, time: number, duration: number) => {
     currentEventIndex.value = current
     currentTime.value = time
@@ -153,8 +153,12 @@ async function processLoadedRecording(data: DemoRecording): Promise<void> {
   // 生成关键帧
   keyframes.value = executor.getKeyframes(100)
 
-  // 监听事件
-  executor.on(handleExecutorEvent)
+  // 手动绑定执行器事件到 graphStore 的处理器
+  // 这样 ReplayExecutor 和 BasicExecutor 使用相同的事件处理逻辑
+  const handleEvent = (event: ExecutorEvent) => {
+    graphStore.handleExecutorEvent(event)
+  }
+  executor.on(handleEvent)
 
   replayExecutor.value = executor
 
@@ -171,52 +175,19 @@ async function processLoadedRecording(data: DemoRecording): Promise<void> {
 }
 
 // ==================== 执行器事件处理 ====================
+// 注意：ReplayExecutor 的事件由 graphStore 统一处理（通过 setExecutor）
+// 这里只需监听播放结束事件来停止进度动画
 
-function handleExecutorEvent(event: ExecutorEvent): void {
-  switch (event.type) {
-    case ExecutorEventType.Start:
-    case ExecutorEventType.Iteration:
-      // 新迭代开始时清除状态
-      graphStore.executingNodeIds = new Set()
-      graphStore.edgeDataTransfers = new Map()
-      break
-
-    case ExecutorEventType.NodeStart:
-      graphStore.executingNodeIds.add(event.node.id)
-      graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
-      break
-
-    case ExecutorEventType.NodeComplete:
-      graphStore.executingNodeIds.delete(event.node.id)
-      graphStore.executingNodeIds = new Set(graphStore.executingNodeIds)
-      // 增加 graphRevision，触发节点视图更新执行状态
-      graphStore.graphRevision++
-      break
-
-    case ExecutorEventType.DataPropagate:
-      // 显示数据在边上传输（保持显示直到下一次迭代）
-      for (const transfer of event.transfers) {
-        const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
-        graphStore.edgeDataTransfers.set(edgeId, transfer)
-      }
-      graphStore.edgeDataTransfers = new Map(graphStore.edgeDataTransfers)
-      break
-
-    case ExecutorEventType.Complete:
-    case ExecutorEventType.Cancelled:
-      // 播放结束，清除执行状态
-      graphStore.executingNodeIds = new Set()
-      graphStore.edgeDataTransfers = new Map()
-      stopProgressAnimation()
-      break
-
-    case ExecutorEventType.Error:
-      graphStore.executingNodeIds = new Set()
-      graphStore.edgeDataTransfers = new Map()
-      stopProgressAnimation()
-      break
-  }
+function handleExecutorComplete(): void {
+  stopProgressAnimation()
 }
+
+// 监听播放完成
+watch(isCompleted, (completed) => {
+  if (completed) {
+    handleExecutorComplete()
+  }
+})
 
 // ==================== 进度动画 ====================
 

@@ -16,7 +16,7 @@ import { useGraphStore } from '@/stores/graph'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { BaseNode } from '@/base/runtime/nodes'
 import { NodeRegistry } from '@/base/runtime/registry'
-import { ExecutorState } from '@/base/runtime/executor'
+import { BasicExecutor, ExecutorState } from '@/base/runtime/executor'
 import { autoLayoutGraph } from '@/base/ui/utils/layout'
 
 import AnoraGraphView from '../components/AnoraGraphView.vue'
@@ -34,6 +34,9 @@ const graphStore = useGraphStore()
 
 /** AnoraGraphView 组件引用 */
 const graphViewRef = ref<InstanceType<typeof AnoraGraphView>>()
+
+/** 执行器实例（EditorView 维护） */
+const executor = ref(new BasicExecutor())
 
 // ==================== 事件处理 ====================
 
@@ -186,13 +189,14 @@ function handleKeydown(event: KeyboardEvent): void {
   if (event.key === 'F5' && !event.shiftKey) {
     event.preventDefault()
     if (graphStore.stateMachineState === ExecutorState.Idle) {
-      graphStore.startExecution()
+      graphStore.startExecution(executor.value)
     }
   }
 
   if (event.key === 'F5' && event.shiftKey) {
     event.preventDefault()
-    graphStore.stopExecution()
+    executor.value.cancel()
+    graphStore.syncExecutorState(executor.value)
   }
 
   if (event.key === 'Backspace' && graphStore.subGraphStack.length > 0) {
@@ -234,11 +238,11 @@ onUnmounted(() => {
       <div class="toolbar-divider" />
 
       <!-- 录制控制 -->
-      <RecordingControls />
+      <RecordingControls :executor="executor" />
 
       <div class="toolbar-divider" />
 
-      <ExecutorControls />
+      <ExecutorControls :executor="executor" />
       <button class="toolbar-btn" @click="autoLayout" :title="t('editor.autoLayout')">
         ⊞ {{ t('editor.layout') }}
       </button>

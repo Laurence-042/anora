@@ -8,11 +8,21 @@
  *
  * 回放功能由独立的 ReplayView 页面处理
  */
-import { ref, onUnmounted, watch } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import { DemoRecorder } from '@/base/runtime/demo'
 import type { DemoRecording } from '@/base/runtime/demo'
+import type { ExecutorEventListener } from '@/base/runtime/executor'
+
+/** Executor 接口 - DemoRecorder 需要的方法 */
+interface IExecutorForRecording {
+  on(listener: ExecutorEventListener): () => void
+}
+
+const props = defineProps<{
+  executor: IExecutorForRecording
+}>()
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
@@ -22,19 +32,6 @@ const graphStore = useGraphStore()
 const recorder = ref<DemoRecorder | null>(null)
 const isRecording = ref(false)
 const recordedEventCount = ref(0)
-
-// ========== 监听 executor 变化 ==========
-
-// 当 executor 变化时（如进入/退出子图），重新绑定
-watch(
-  () => graphStore.executor,
-  (newExecutor) => {
-    if (recorder.value && newExecutor) {
-      console.log('[RecordingControls] Executor changed, rebinding to recorder')
-      recorder.value.bindExecutor(newExecutor)
-    }
-  },
-)
 
 // ========== 录制操作 ==========
 
@@ -48,12 +45,7 @@ function startRecording(): void {
   }
 
   const newRecorder = new DemoRecorder()
-
-  // 绑定 executor
-  const executor = graphStore.executor
-  if (executor) {
-    newRecorder.bindExecutor(executor)
-  }
+  newRecorder.bindExecutor(props.executor)
 
   // 绑定 graph
   const graph = graphStore.currentGraph

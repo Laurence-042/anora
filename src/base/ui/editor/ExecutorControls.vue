@@ -6,7 +6,28 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
-import { ExecutorState } from '@/base/runtime/executor'
+import {
+  ExecutorState,
+  type ExecuteOptions,
+  type ExecutorEventListener,
+} from '@/base/runtime/executor'
+import type { AnoraGraph } from '@/base/runtime/graph'
+import type { ExecutorContext } from '@/base/runtime/types'
+
+/** Executor 接口 - 包含该组件需要的所有方法 */
+interface IExecutorForControls {
+  readonly executorState: ExecutorState
+  on(listener: ExecutorEventListener): () => void
+  execute(graph: AnoraGraph, context: ExecutorContext, options?: ExecuteOptions): Promise<unknown>
+  cancel(): void
+  pause(): void
+  resume(): void
+  stepForward(): Promise<void>
+}
+
+const props = defineProps<{
+  executor: IExecutorForControls
+}>()
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
@@ -53,33 +74,37 @@ const statusColor = computed(() => {
 /** 开始执行（连续模式） */
 async function handleStart(): Promise<void> {
   graphStore.iterationDelay = delayInput.value
-  await graphStore.startExecution(false)
+  await graphStore.startExecution(props.executor, false)
 }
 
 /** 开始执行（步进模式） */
 async function handleStartStep(): Promise<void> {
   graphStore.iterationDelay = delayInput.value
-  await graphStore.startExecution(true)
+  await graphStore.startExecution(props.executor, true)
 }
 
 /** 停止执行 */
 function handleStop(): void {
-  graphStore.stopExecution()
+  props.executor.cancel()
+  graphStore.syncExecutorState(props.executor)
 }
 
 /** 暂停执行 */
 function handlePause(): void {
-  graphStore.pauseExecution()
+  props.executor.pause()
+  graphStore.syncExecutorState(props.executor)
 }
 
 /** 恢复执行 */
 function handleResume(): void {
-  graphStore.resumeExecution()
+  props.executor.resume()
+  graphStore.syncExecutorState(props.executor)
 }
 
 /** 单步执行 */
-function handleStep(): void {
-  graphStore.stepExecution()
+async function handleStep(): Promise<void> {
+  await props.executor.stepForward()
+  graphStore.syncExecutorState(props.executor)
 }
 
 // 暴露状态枚举给模板
