@@ -8,7 +8,7 @@
  * - 录制功能
  * - 图导入/导出
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Connection } from '@vue-flow/core'
 
@@ -17,6 +17,7 @@ import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { BaseNode } from '@/base/runtime/nodes'
 import { NodeRegistry } from '@/base/runtime/registry'
 import { ExecutorState } from '@/base/runtime/executor'
+import { autoLayoutGraph } from '@/base/ui/utils/layout'
 
 import AnoraGraphView from '../components/AnoraGraphView.vue'
 import ExecutorControls from './ExecutorControls.vue'
@@ -146,23 +147,25 @@ function onNodePaletteAdd(typeId: string): void {
 // ==================== 工具栏操作 ====================
 
 /** 自动布局 */
-function autoLayout(): void {
-  const nodes = graphStore.nodes
-  const cols = Math.ceil(Math.sqrt(nodes.length))
-  const nodeWidth = 220
-  const nodeHeight = 150
-  const padding = 40
-
-  nodes.forEach((node, index) => {
-    const row = Math.floor(index / cols)
-    const col = index % cols
-    graphStore.updateNodePosition(node.id, {
-      x: col * (nodeWidth + padding) + padding,
-      y: row * (nodeHeight + padding) + padding,
+async function autoLayout(): Promise<void> {
+  try {
+    const newPositions = await autoLayoutGraph(graphStore.currentGraph, graphStore.nodePositions, {
+      direction: 'RIGHT', // 从左到右布局
+      spacing: 100, // 增大间距以确保边可见
+      alignPorts: true,
     })
-  })
 
-  setTimeout(() => graphViewRef.value?.fitView(), 100)
+    // 批量更新节点位置
+    for (const [nodeId, position] of newPositions) {
+      graphStore.updateNodePosition(nodeId, position)
+    }
+
+    // 等待 Vue 更新 DOM 后调整视图
+    await nextTick()
+    graphViewRef.value?.fitView()
+  } catch (error) {
+    console.error('[GraphEditor] Auto layout failed:', error)
+  }
 }
 
 /** 删除选中的节点 */

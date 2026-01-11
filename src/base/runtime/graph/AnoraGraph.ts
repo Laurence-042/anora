@@ -147,6 +147,13 @@ export class AnoraGraph {
   // ==================== 边操作 ====================
 
   /**
+   * 获取所有边
+   */
+  getAllEdges(): Array<{ fromPortId: string; toPortId: string }> {
+    return [...this.edges]
+  }
+
+  /**
    * 添加边（连接两个 Port）
    */
   addEdge(fromPortId: string, toPortId: string): boolean {
