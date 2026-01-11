@@ -239,13 +239,29 @@ function play(): void {
 
   replayExecutor.value.playbackSpeed = playbackSpeed.value
 
+  // 如果是暂停状态，恢复播放
   if (replayExecutor.value.isPaused) {
-    // 如果是暂停状态，恢复播放
     replayExecutor.value.resume()
-  } else if (replayExecutor.value.executorState === ExecutorState.Idle) {
-    // 如果是空闲状态，开始执行
-    replayExecutor.value.execute(graphStore.currentGraph)
+    return
   }
+
+  // 如果不是空闲状态，不处理
+  if (replayExecutor.value.executorState !== ExecutorState.Idle) return
+
+  // 如果已经播放完成（在末尾），先重启
+  if (isCompleted.value) {
+    restart()
+    // restart 会重新加载录制，需要等待下一帧再播放
+    setTimeout(() => {
+      if (replayExecutor.value) {
+        replayExecutor.value.execute(graphStore.currentGraph)
+      }
+    }, 0)
+    return
+  }
+
+  // 否则直接开始执行
+  replayExecutor.value.execute(graphStore.currentGraph)
 }
 
 function pause(): void {
