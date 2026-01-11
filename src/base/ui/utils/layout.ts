@@ -37,12 +37,37 @@ export async function autoLayoutGraph(
     return nodePositions
   }
 
-  // 构建 ELK 图结构
-  const elkNodes: ElkNode['children'] = nodes.map((node) => ({
-    id: node.id,
-    width: 240, // 节点宽度
-    height: calculateNodeHeight(node), // 根据端口数量动态计算高度
-  }))
+  // 构建 ELK 图结构（包含端口信息）
+  const elkNodes: ElkNode['children'] = nodes.map((node) => {
+    const nodeHeight = calculateNodeHeight(node)
+    const inputPorts = node.getInputPorts()
+    const outputPorts = node.getOutputPorts()
+
+    // 为每个端口创建 ELK 端口定义
+    const ports = [
+      ...inputPorts.map((port, index) => ({
+        id: port.id,
+        width: 10,
+        height: 10,
+        x: 0, // 输入端口在左侧
+        y: 40 + index * 24, // 垂直排列，从顶部开始
+      })),
+      ...outputPorts.map((port, index) => ({
+        id: port.id,
+        width: 10,
+        height: 10,
+        x: 240, // 输出端口在右侧（节点宽度）
+        y: 40 + index * 24, // 垂直排列，从顶部开始
+      })),
+    ]
+
+    return {
+      id: node.id,
+      width: 240,
+      height: nodeHeight,
+      ports,
+    }
+  })
 
   const elkEdges = graph
     .getAllEdges()
@@ -56,8 +81,8 @@ export async function autoLayoutGraph(
 
       return {
         id: `${edge.fromPortId}->${edge.toPortId}`,
-        sources: [sourceNodeId],
-        targets: [targetNodeId],
+        sources: [edge.fromPortId], // 直接使用端口 ID
+        targets: [edge.toPortId], // 直接使用端口 ID
       }
     })
     .filter((edge): edge is NonNullable<typeof edge> => edge !== null)

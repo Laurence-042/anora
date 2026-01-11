@@ -427,13 +427,6 @@ export class AnoraGraph {
   // ==================== 序列化 ====================
 
   /**
-   * 获取所有边
-   */
-  getAllEdges(): Array<{ fromPortId: string; toPortId: string }> {
-    return [...this.edges]
-  }
-
-  /**
    * 序列化图
    * @param nodePositions 可选的节点位置映射（从 UI 层传入）
    */
