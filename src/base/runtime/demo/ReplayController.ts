@@ -301,9 +301,11 @@ export class ReplayController {
    */
   seekToKeyframe(keyframeIndex: number, before: boolean = false): void {
     const kf = this._keyframes.value[keyframeIndex]
-    if (!kf) return
+    if (!kf || !this._recording.value) return
 
-    const time = before ? Math.max(0, kf.time - 1) : kf.time
+    // 获取关键帧结束位置的时间（即 endIndex 事件的时间戳）
+    const endTime = this._recording.value.events[kf.endIndex]?.timestamp ?? kf.time
+    const time = before ? Math.max(0, kf.time - 1) : endTime
     this.seekToTime(time)
   }
 
