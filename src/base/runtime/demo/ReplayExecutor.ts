@@ -244,21 +244,29 @@ export class ReplayExecutor extends BasicExecutor {
   getStateAtIndex(targetIndex: number): {
     executingNodeIds: Set<string>
     edgeDataTransfers: Map<string, { fromPortId: string; toPortId: string; data: unknown }>
+    nodeStatus: Map<string, { success: boolean; error?: string }>
   } {
     const executingNodeIds = new Set<string>()
     const edgeDataTransfers = new Map<
       string,
       { fromPortId: string; toPortId: string; data: unknown }
     >()
+    const nodeStatus = new Map<string, { success: boolean; error?: string }>()
 
-    if (!this.recording) return { executingNodeIds, edgeDataTransfers }
+    if (!this.recording) return { executingNodeIds, edgeDataTransfers, nodeStatus }
 
     for (let i = 0; i <= targetIndex && i < this.recording.events.length; i++) {
       const event = this.recording.events[i]!.event
 
       switch (event.type) {
         case 'start':
+          // Clear everything on start
+          executingNodeIds.clear()
+          edgeDataTransfers.clear()
+          nodeStatus.clear()
+          break
         case 'iteration':
+          // Only clear transient state, keep node completion status
           executingNodeIds.clear()
           edgeDataTransfers.clear()
           break
@@ -267,6 +275,10 @@ export class ReplayExecutor extends BasicExecutor {
           break
         case 'node-complete':
           executingNodeIds.delete(event.nodeId)
+          nodeStatus.set(event.nodeId, {
+            success: event.success,
+            error: event.error,
+          })
           break
         case 'data-propagate':
           for (const transfer of event.transfers) {
@@ -283,7 +295,7 @@ export class ReplayExecutor extends BasicExecutor {
       }
     }
 
-    return { executingNodeIds, edgeDataTransfers }
+    return { executingNodeIds, edgeDataTransfers, nodeStatus }
   }
 
   /**

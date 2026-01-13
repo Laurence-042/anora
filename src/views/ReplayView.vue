@@ -19,6 +19,7 @@ import { ReplayExecutor } from '@/base/runtime/demo'
 import { useGraphStore } from '@/stores/graph'
 import type { DemoRecording } from '@/base/runtime/demo'
 import { ExecutorState, type ExecutorEvent } from '@/base/runtime/executor'
+import { NodeExecutionStatus } from '@/base/runtime/types'
 
 // router not used in embedded replay
 const { t } = useI18n()
@@ -232,6 +233,52 @@ watch(isPlaying, (playing) => {
   }
 })
 
+// ==================== 状态应用 ====================
+
+/**
+ * 应用指定索引处的回放状态到 UI
+ * 统一的状态应用逻辑，避免重复代码
+ */
+function applyReplayState(targetIndex: number): void {
+  if (!replayExecutor.value) return
+
+  const state = replayExecutor.value.getStateAtIndex(targetIndex)
+
+  console.log('[applyReplayState]', {
+    targetIndex,
+    executingNodeIds: Array.from(state.executingNodeIds),
+    edgeDataTransfers: Array.from(state.edgeDataTransfers.entries()),
+    nodeStatus: Array.from(state.nodeStatus.entries()),
+  })
+
+  // 应用执行节点集合
+  graphStore.executingNodeIds = state.executingNodeIds
+
+  // 应用边数据传输
+  graphStore.edgeDataTransfers = state.edgeDataTransfers
+
+  // 应用节点的执行状态
+  for (const node of graphStore.currentGraph.getAllNodes()) {
+    const status = state.nodeStatus.get(node.id)
+    if (status) {
+      // 节点已完成执行
+      node.executionStatus = status.success
+        ? NodeExecutionStatus.SUCCESS
+        : NodeExecutionStatus.FAILED
+      if (status.error) node.lastError = status.error
+    } else if (state.executingNodeIds.has(node.id)) {
+      // 节点正在执行
+      node.executionStatus = NodeExecutionStatus.EXECUTING
+    } else {
+      // 节点空闲
+      node.executionStatus = NodeExecutionStatus.IDLE
+    }
+  }
+
+  // 触发 graphRevision 更新，确保节点执行状态显示同步
+  graphStore.graphRevision++
+}
+
 // ==================== 播放控制 ====================
 
 function play(): void {
@@ -335,9 +382,7 @@ function seekToTime(timeMs: number): void {
   const targetIndex = replayExecutor.value.seekToTime(timeMs)
 
   // 重建该时间点的 UI 状态
-  const state = replayExecutor.value.getStateAtIndex(targetIndex)
-  graphStore.executingNodeIds = state.executingNodeIds
-  graphStore.edgeDataTransfers = state.edgeDataTransfers
+  applyReplayState(targetIndex)
 
   // 更新本地状态
   currentEventIndex.value = targetIndex + 1
@@ -380,13 +425,13 @@ onMounted(() => {
   replayIpcHandle = useReplayIPC({
     getExecutor: () => replayExecutor.value,
     applyStateAtIndex: (idx: number) => {
-      if (!replayExecutor.value) return
-      const state = replayExecutor.value.getStateAtIndex(idx)
-      graphStore.executingNodeIds = state.executingNodeIds
-      graphStore.edgeDataTransfers = state.edgeDataTransfers
+      applyReplayState(idx)
     },
     loadRecording: async (data: DemoRecording) => {
       await processLoadedRecording(data)
+    },
+    play: () => {
+      play()
     },
     getKeyframes: () => keyframes.value,
   })

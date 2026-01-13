@@ -27,6 +27,7 @@ export function useReplayIPC(options: {
   getExecutor: () => unknown | null
   applyStateAtIndex: (idx: number) => void
   loadRecording?: (data: DemoRecording) => Promise<void>
+  play: () => void
   getKeyframes?: () => Array<{
     time: number
     startIndex: number
@@ -134,9 +135,13 @@ export function useReplayIPC(options: {
       }
 
       // start playback
-      if (ex.isPaused) ex.resume()
-      else if (!ex.isPlaying) {
-        // consumer might have to call execute externally
+      if (ex.isPaused) {
+        ex.resume()
+      } else if (!ex.isPlaying) {
+        // Idle state - need to start execution
+        if (options.play) {
+          options.play()
+        }
       }
 
       // Special case: duration === -1 means play to end
