@@ -31,18 +31,12 @@ export class ReplayExecutor extends BasicExecutor {
   /** 回放速度倍率 */
   playbackSpeed: number = 1.0
 
-  /** 进度变化回调 */
-  onProgressChange?: (
-    current: number,
-    total: number,
-    currentTime: number,
-    totalTime: number,
-  ) => void
-
+  /** 获取当前事件索引（-1 表示未开始） */
   get currentIndex(): number {
     return this.currentEventIndex
   }
 
+  /** 获取总事件数 */
   get totalEvents(): number {
     return this.recording?.events.length ?? 0
   }
@@ -71,7 +65,6 @@ export class ReplayExecutor extends BasicExecutor {
     this._graph = graph
     this.currentEventIndex = -1
     this.cancelRequested = false
-    this.notifyProgress()
   }
 
   /**
@@ -131,7 +124,6 @@ export class ReplayExecutor extends BasicExecutor {
       this.emit(executorEvent)
     }
 
-    this.notifyProgress()
     return true
   }
 
@@ -232,11 +224,10 @@ export class ReplayExecutor extends BasicExecutor {
     }
 
     // 设置当前索引（减1是因为 executeOneIteration 会先 ++）
+    // 设置当前索引（减1是因为 executeOneIteration 会先 ++）
     this.currentEventIndex = targetIndex
-    this.notifyProgress()
     return targetIndex
   }
-
   /**
    * 重放从开始到指定索引的所有事件（用于 seek 后重建状态）
    * 不发出事件，只返回最终状态
@@ -296,18 +287,6 @@ export class ReplayExecutor extends BasicExecutor {
     }
 
     return { executingNodeIds, edgeDataTransfers, nodeStatus }
-  }
-
-  /**
-   * 通知进度变化
-   */
-  private notifyProgress(): void {
-    this.onProgressChange?.(
-      this.currentEventIndex + 1,
-      this.totalEvents,
-      this.currentTime,
-      this.totalDuration,
-    )
   }
 
   /**

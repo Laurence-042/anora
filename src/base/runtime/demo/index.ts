@@ -5,3 +5,4 @@
 export * from './types'
 export * from './DemoRecorder'
 export * from './ReplayExecutor'
+export * from './ReplayController'

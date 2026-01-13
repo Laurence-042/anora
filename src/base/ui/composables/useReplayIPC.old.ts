@@ -1,23 +1,9 @@
-/**
- * useReplayIPC - 回放 IPC 接口（重构版）
- *
- * 职责：
- * - 注册 IPC 消息处理器
- * - 将 IPC 消息转发给 ReplayController
- * - 发送响应消息
- *
- * 改进：
- * - 不再直接操作 executor 和状态
- * - 所有逻辑委托给 ReplayController
- * - 简化消息处理流程
- */
-
 import { useIPC } from './useIPC'
-import type { ReplayController } from '@/base/runtime/demo'
-import type { DemoRecording } from '@/base/runtime/demo'
+import type { DemoRecording, ReplayExecutor } from '@/base/runtime/demo'
 import type { IPCMessage } from '@/base/runtime/types'
 import { ExecutorEventType } from '@/base/runtime/executor'
 
+// IPC 消息数据类型
 interface SeekData {
   time?: number
   index?: number
@@ -33,24 +19,31 @@ interface PlayForData {
 }
 
 /**
- * useReplayIPC
- * @param options.controller - ReplayController 实例
- * @param options.loadRecording - 加载录制的回调函数
+ * Replay IPC composable
+ * - Registers replay-related IPC handlers on top of the base IPC controller
+ * - Consumers must provide callbacks to operate on the local ReplayExecutor / UI state
  */
 export function useReplayIPC(options: {
-  controller: ReplayController
+  getExecutor: () => unknown | null
+  applyStateAtIndex: (idx: number) => void
   loadRecording?: (data: DemoRecording) => Promise<void>
+  play: () => void
+  getKeyframes?: () => Array<{
+    time: number
+    startIndex: number
+    endIndex: number
+    percentage: number
+  }>
 }) {
   const { on, postMessage } = useIPC()
   const unsubscribers: Array<() => void> = []
-  const { controller } = options
-
-  // ==================== 播放控制 ====================
 
   // play
   unsubscribers.push(
     on('replay.play', async () => {
-      await controller.play()
+      const ex = options.getExecutor() as ReplayExecutor | null
+      if (!ex) return
+      if (ex.isPaused) ex.resume()
       postMessage('replay.played')
     }),
   )
@@ -58,7 +51,8 @@ export function useReplayIPC(options: {
   // pause
   unsubscribers.push(
     on('replay.pause', async () => {
-      controller.pause()
+      const ex = options.getExecutor() as ReplayExecutor | null
+      ex?.pause()
       postMessage('replay.paused')
     }),
   )
@@ -66,48 +60,33 @@ export function useReplayIPC(options: {
   // toggle
   unsubscribers.push(
     on('replay.toggle', async () => {
-      controller.togglePlayPause()
+      const ex = options.getExecutor() as ReplayExecutor | null
+      if (!ex) return
+      if (ex.isPlaying) ex.pause()
+      else if (ex.isPaused) ex.resume()
       postMessage('replay.toggled')
     }),
   )
 
-  // step forward
-  unsubscribers.push(
-    on('replay.stepForward', async () => {
-      await controller.stepForward()
-      postMessage('replay.stepped')
-    }),
-  )
-
-  // restart
-  unsubscribers.push(
-    on('replay.restart', async () => {
-      await controller.restart()
-      postMessage('replay.restarted')
-    }),
-  )
-
-  // ==================== 跳转控制 ====================
-
-  // seek by time or index
+  // seek by time
   unsubscribers.push(
     on('replay.seek', async (msg) => {
+      const ex = options.getExecutor() as ReplayExecutor | null
       const data = (msg as IPCMessage<SeekData>).data ?? {}
       const time = typeof data.time === 'number' ? data.time : undefined
       const index = typeof data.index === 'number' ? data.index : undefined
-
-      if (time !== undefined) {
-        const targetIndex = controller.seekToTime(time)
+      if (time !== undefined && ex) {
+        const targetIndex = ex.seekToTime(time)
+        options.applyStateAtIndex?.(targetIndex)
         postMessage('replay.seeked', { time, index: targetIndex })
         return
       }
-
-      if (index !== undefined) {
-        controller.seekToIndex(index)
+      if (index !== undefined && ex) {
+        // rebuild UI state at index
+        options.applyStateAtIndex(index)
         postMessage('replay.seeked', { index })
         return
       }
-
       postMessage('replay.seeked', { error: 'invalid-data' })
     }),
   )
@@ -118,33 +97,29 @@ export function useReplayIPC(options: {
       const data = (msg as IPCMessage<KeyframeData>).data ?? {}
       const kfIndex = typeof data.keyframeIndex === 'number' ? data.keyframeIndex : -1
       const before = !!data.before
-
-      if (kfIndex < 0) {
-        postMessage('replay.seekToKeyframe', { error: 'invalid-keyframe-index' })
+      const keyframes = options.getKeyframes ? options.getKeyframes() : []
+      if (kfIndex < 0 || kfIndex >= keyframes.length) {
+        postMessage('replay.seekToKeyframe', { error: 'out-of-range' })
         return
       }
-
-      controller.seekToKeyframe(kfIndex, before)
-      postMessage('replay.seekToKeyframe', { keyframeIndex: kfIndex })
+      const kf = keyframes[kfIndex]
+      if (!kf) {
+        postMessage('replay.seekToKeyframe', { error: 'invalid-keyframe' })
+        return
+      }
+      const time = before ? Math.max(0, kf.time - 1) : kf.time
+      const ex = options.getExecutor() as ReplayExecutor | null
+      if (!ex) {
+        postMessage('replay.seekToKeyframe', { error: 'no-executor' })
+        return
+      }
+      const targetIndex = ex.seekToTime(time)
+      options.applyStateAtIndex(targetIndex)
+      postMessage('replay.seekToKeyframe', { keyframeIndex: kfIndex, index: targetIndex, time })
     }),
   )
 
-  // ==================== 播放速度 ====================
-
-  // set speed
-  unsubscribers.push(
-    on('replay.setSpeed', async (msg) => {
-      const data = (msg as IPCMessage<{ speed: number }>).data
-      const speed = typeof data?.speed === 'number' ? data.speed : 1.0
-
-      controller.setPlaybackSpeed(speed)
-      postMessage('replay.speedSet', { speed })
-    }),
-  )
-
-  // ==================== 定时播放 ====================
-
-  // play for duration (or play to end if duration === -1)
+  // play for duration (ms), or play to end if duration is -1
   const playForTimers = new Map<number, number>()
   const playToEndHandlers = new Map<number, () => void>()
   let playToEndCounter = 0
@@ -153,42 +128,38 @@ export function useReplayIPC(options: {
     on('replay.playFor', async (msg) => {
       const data = (msg as IPCMessage<PlayForData>).data ?? {}
       const duration = Number(data.duration) || 0
-
-      if (!controller.isLoaded.value) {
-        postMessage('replay.playFor', { error: 'not-loaded' })
+      const ex = options.getExecutor() as ReplayExecutor | null
+      if (!ex) {
+        postMessage('replay.playFor', { error: 'no-executor' })
         return
       }
 
       // start playback
-      await controller.play()
+      if (ex.isPaused) {
+        ex.resume()
+      } else if (!ex.isPlaying) {
+        // Idle state - need to start execution
+        if (options.play) {
+          options.play()
+        }
+      }
 
       // Special case: duration === -1 means play to end
       if (duration === -1) {
         const handlerId = ++playToEndCounter
-        const unsubscribe = controller.onExecutorEvent
-          ? (() => {
-              const originalHandler = controller.onExecutorEvent
-              controller.onExecutorEvent = (event) => {
-                originalHandler?.(event)
-                if (
-                  event.type === ExecutorEventType.Complete ||
-                  event.type === ExecutorEventType.Cancelled
-                ) {
-                  postMessage('replay.playFor.completed', { duration: -1, playedToEnd: true })
-                  const handler = playToEndHandlers.get(handlerId)
-                  if (handler) {
-                    handler()
-                    playToEndHandlers.delete(handlerId)
-                  }
-                  // restore original handler
-                  controller.onExecutorEvent = originalHandler
-                }
-              }
-              return () => {
-                controller.onExecutorEvent = originalHandler
-              }
-            })()
-          : () => {}
+        const unsubscribe = ex.on((event) => {
+          if (
+            event.type === ExecutorEventType.Complete ||
+            event.type === ExecutorEventType.Cancelled
+          ) {
+            postMessage('replay.playFor.completed', { duration: -1, playedToEnd: true })
+            const handler = playToEndHandlers.get(handlerId)
+            if (handler) {
+              handler()
+              playToEndHandlers.delete(handlerId)
+            }
+          }
+        })
         playToEndHandlers.set(handlerId, unsubscribe)
         postMessage('replay.playFor.started', { duration: -1, playToEnd: true })
         return
@@ -196,7 +167,7 @@ export function useReplayIPC(options: {
 
       // Normal case: set timeout to pause after duration
       const id = window.setTimeout(() => {
-        controller.pause()
+        ex.pause()
         postMessage('replay.playFor.completed', { duration })
         playForTimers.delete(id)
       }, duration)
@@ -205,8 +176,7 @@ export function useReplayIPC(options: {
     }),
   )
 
-  // ==================== 导入录制 ====================
-
+  // import recording text
   if (options.loadRecording) {
     unsubscribers.push(
       on('replay.importRecording', async (msg) => {
@@ -226,8 +196,6 @@ export function useReplayIPC(options: {
       }),
     )
   }
-
-  // ==================== 清理 ====================
 
   function destroy() {
     for (const u of unsubscribers) u()
