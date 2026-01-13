@@ -125,6 +125,19 @@ export class ReplayController {
   // ==================== 生命周期 ====================
 
   /**
+   * 订阅执行器事件
+   * 允许多个订阅者同时监听事件，不会互相干扰
+   * @returns 取消订阅的函数
+   */
+  subscribeToExecutorEvents(listener: (event: ExecutorEvent) => void): () => void {
+    if (!this._executor.value) {
+      console.warn('[ReplayController] No executor to subscribe to')
+      return () => {}
+    }
+    return this._executor.value.on(listener)
+  }
+
+  /**
    * 加载录制数据
    */
   async loadRecording(recording: DemoRecording, graph: AnoraGraph): Promise<void> {

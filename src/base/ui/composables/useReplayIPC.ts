@@ -29,7 +29,7 @@ interface KeyframeData {
 }
 
 interface PlayForData {
-  duration?: number
+  durationMs?: number
 }
 
 /**
@@ -152,7 +152,7 @@ export function useReplayIPC(options: {
   unsubscribers.push(
     on('replay.playFor', async (msg) => {
       const data = (msg as IPCMessage<PlayForData>).data ?? {}
-      const duration = Number(data.duration) || 0
+      const durationMs = typeof data.durationMs === 'number' ? data.durationMs : 0
 
       if (!controller.isLoaded.value) {
         postMessage('replay.playFor', { error: 'not-loaded' })
@@ -162,46 +162,36 @@ export function useReplayIPC(options: {
       // start playback
       await controller.play()
 
-      // Special case: duration === -1 means play to end
-      if (duration === -1) {
+      // Special case: durationMs === -1 means play to end
+      if (durationMs < 0) {
         const handlerId = ++playToEndCounter
-        const unsubscribe = controller.onExecutorEvent
-          ? (() => {
-              const originalHandler = controller.onExecutorEvent
-              controller.onExecutorEvent = (event) => {
-                originalHandler?.(event)
-                if (
-                  event.type === ExecutorEventType.Complete ||
-                  event.type === ExecutorEventType.Cancelled
-                ) {
-                  postMessage('replay.playFor.completed', { duration: -1, playedToEnd: true })
-                  const handler = playToEndHandlers.get(handlerId)
-                  if (handler) {
-                    handler()
-                    playToEndHandlers.delete(handlerId)
-                  }
-                  // restore original handler
-                  controller.onExecutorEvent = originalHandler
-                }
-              }
-              return () => {
-                controller.onExecutorEvent = originalHandler
-              }
-            })()
-          : () => {}
+
+        // 直接订阅执行器事件，不干扰 onExecutorEvent
+        const unsubscribe = controller.subscribeToExecutorEvents((event) => {
+          if (
+            event.type === ExecutorEventType.Complete ||
+            event.type === ExecutorEventType.Cancelled
+          ) {
+            postMessage('replay.playFor.completed', { durationMs: -1, playedToEnd: true })
+            // 取消订阅
+            unsubscribe()
+            playToEndHandlers.delete(handlerId)
+          }
+        })
+
         playToEndHandlers.set(handlerId, unsubscribe)
-        postMessage('replay.playFor.started', { duration: -1, playToEnd: true })
+        postMessage('replay.playFor.started', { durationMs: -1, playToEnd: true })
         return
       }
 
       // Normal case: set timeout to pause after duration
       const id = window.setTimeout(() => {
         controller.pause()
-        postMessage('replay.playFor.completed', { duration })
+        postMessage('replay.playFor.completed', { durationMs })
         playForTimers.delete(id)
-      }, duration)
+      }, durationMs)
       playForTimers.set(id, id)
-      postMessage('replay.playFor.started', { duration, timerId: id })
+      postMessage('replay.playFor.started', { durationMs, timerId: id })
     }),
   )
 
