@@ -80,7 +80,7 @@ export class ReplayExecutor extends BasicExecutor {
     }
 
     // 重置回放索引
-    this.currentEventIndex = -1
+    this.currentEventIndex = options?.isFromBeginning ? -1 : this.currentEventIndex
 
     // 调用基类的 execute，它会处理状态机转换和执行循环
     return super.execute(graph, context, options)

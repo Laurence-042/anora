@@ -101,4 +101,5 @@ export type ExecutorEventListener = (event: ExecutorEvent) => void
 export interface ExecuteOptions {
   /** 运行模式，默认 Continuous */
   mode?: ExecutionMode
+  isFromBeginning?: boolean
 }
