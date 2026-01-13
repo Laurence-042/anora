@@ -257,9 +257,9 @@ export class ReplayExecutor extends BasicExecutor {
           nodeStatus.clear()
           break
         case 'iteration':
-          // Only clear transient state, keep node completion status
+          // 只清除正在执行的节点，保留边数据传输和节点完成状态
+          // 边数据传输会在下一次 data-propagate 时被覆盖
           executingNodeIds.clear()
-          edgeDataTransfers.clear()
           break
         case 'node-start':
           executingNodeIds.add(event.nodeId)

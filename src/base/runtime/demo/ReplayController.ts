@@ -18,7 +18,7 @@ import { ref, computed, type Ref } from 'vue'
 import type { AnoraGraph } from '../graph'
 import type { DemoRecording } from './types'
 import { ReplayExecutor } from './ReplayExecutor'
-import { ExecutorState, ExecutorEventType, type ExecutorEvent } from '../executor'
+import { ExecutorState, ExecutorEventType, type ExecutorEvent, ExecutionMode } from '../executor'
 
 /**
  * 关键帧信息
@@ -214,12 +214,14 @@ export class ReplayController {
   async stepForward(): Promise<void> {
     if (!this._executor.value || !this._graph.value) return
 
-    // 如果还没开始，先启动并暂停
+    // 如果还没开始，使用 StepByStep 模式启动（进入 Paused 状态而不是 Running）
     if (this._executor.value.executorState === ExecutorState.Idle) {
-      await this._executor.value.execute(this._graph.value)
-      this._executor.value.pause()
+      await this._executor.value.execute(this._graph.value, undefined, {
+        mode: ExecutionMode.StepByStep,
+      })
     }
 
+    // 执行一步
     this._executor.value.stepForward()
   }
 
