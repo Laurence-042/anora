@@ -25,7 +25,7 @@ import {
 } from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
-import { DEFAULT_EXECUTOR_CONTEXT } from '@/base/runtime/types'
+import { DEFAULT_EXECUTOR_CONTEXT, NodeExecutionStatus } from '@/base/runtime/types'
 import type { ExecutorContext } from '@/base/runtime/types'
 
 /**
@@ -300,6 +300,11 @@ export const useGraphStore = defineStore('graph', () => {
         currentIteration.value = 0
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
+        // 重置所有节点状态
+        for (const node of currentGraph.value.getAllNodes()) {
+          node.executionStatus = NodeExecutionStatus.IDLE
+          node.lastError = undefined
+        }
         break
 
       case ExecutorEventType.Iteration:
@@ -307,18 +312,28 @@ export const useGraphStore = defineStore('graph', () => {
         // 新迭代开始时清除上一迭代的节点激活状态和边数据
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
+        // 注意：不重置节点的完成状态（SUCCESS/FAILED），保持跨迭代可见
         break
 
       case ExecutorEventType.NodeStart:
         // 创建新 Set 以触发响应式更新
         executingNodeIds.value = new Set([...executingNodeIds.value, event.node.id])
+        // 设置节点状态为执行中
+        event.node.executionStatus = NodeExecutionStatus.EXECUTING
         break
 
       case ExecutorEventType.NodeComplete:
-        // 增加 graphRevision，触发节点视图更新执行状态
-        graphRevision.value++
-        // 不在这里清除节点激活状态，让状态保持到下一次迭代开始
-        // 这样单步执行时用户能看到节点的执行结果
+        // 从执行中节点集合移除
+        executingNodeIds.value = new Set(
+          [...executingNodeIds.value].filter((id) => id !== event.node.id),
+        )
+        // 设置节点完成状态
+        event.node.executionStatus = event.success
+          ? NodeExecutionStatus.SUCCESS
+          : NodeExecutionStatus.FAILED
+        if (event.error) {
+          event.node.lastError = event.error.message
+        }
         break
 
       case ExecutorEventType.DataPropagate:
@@ -336,8 +351,6 @@ export const useGraphStore = defineStore('graph', () => {
       case ExecutorEventType.Complete:
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
-        // 手动递增 graphRevision 以刷新显示执行后的 Port 值（节点内部数据变化，不由 graph.onUpdate 触发）
-        graphRevision.value++
         triggerRef(currentGraph)
         break
 
@@ -352,6 +365,9 @@ export const useGraphStore = defineStore('graph', () => {
         console.error('[Executor Error]', event.error.message, event.error.stack)
         break
     }
+
+    // 增加 graphRevision，触发节点视图更新执行状态
+    graphRevision.value++
   }
 
   /**

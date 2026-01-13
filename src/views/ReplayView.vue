@@ -237,25 +237,19 @@ watch(isPlaying, (playing) => {
 
 /**
  * 应用指定索引处的回放状态到 UI
- * 统一的状态应用逻辑，避免重复代码
+ * 统一的状态应用逻辑，与 handleExecutorEvent 保持一致
+ * 创建新的 Set/Map 实例以触发 Vue 响应式更新
  */
 function applyReplayState(targetIndex: number): void {
-  if (!replayExecutor.value) return
+  if (!replayExecutor.value || !graphStore.currentGraph) return
 
   const state = replayExecutor.value.getStateAtIndex(targetIndex)
 
-  console.log('[applyReplayState]', {
-    targetIndex,
-    executingNodeIds: Array.from(state.executingNodeIds),
-    edgeDataTransfers: Array.from(state.edgeDataTransfers.entries()),
-    nodeStatus: Array.from(state.nodeStatus.entries()),
-  })
+  // 创建新 Set 实例以触发响应式更新（与 handleExecutorEvent 一致）
+  graphStore.executingNodeIds = new Set(state.executingNodeIds)
 
-  // 应用执行节点集合
-  graphStore.executingNodeIds = state.executingNodeIds
-
-  // 应用边数据传输
-  graphStore.edgeDataTransfers = state.edgeDataTransfers
+  // 创建新 Map 实例以触发响应式更新（与 handleExecutorEvent 一致）
+  graphStore.edgeDataTransfers = new Map(state.edgeDataTransfers)
 
   // 应用节点的执行状态
   for (const node of graphStore.currentGraph.getAllNodes()) {
@@ -272,10 +266,11 @@ function applyReplayState(targetIndex: number): void {
     } else {
       // 节点空闲
       node.executionStatus = NodeExecutionStatus.IDLE
+      node.lastError = undefined
     }
   }
 
-  // 触发 graphRevision 更新，确保节点执行状态显示同步
+  // 触发 graphRevision 更新，确保节点执行状态显示同步（与 handleExecutorEvent 一致）
   graphStore.graphRevision++
 }
 
