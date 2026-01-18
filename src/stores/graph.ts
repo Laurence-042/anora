@@ -93,7 +93,7 @@ export const useGraphStore = defineStore('graph', () => {
   const executorContext = ref<ExecutorContext>({ ...DEFAULT_EXECUTOR_CONTEXT })
 
   /** 迭代间延迟（毫秒，用于调试） */
-  const iterationDelay = ref<number>(0)
+  const iterationDelay = ref<number>(1000)
 
   /** 边上传递的数据（用于调试/演示显示） */
   const edgeDataTransfers = ref<Map<string, EdgeDataTransfer>>(new Map())

@@ -300,23 +300,35 @@ export abstract class BaseNode<
    * 表示节点是否可以激活并运行（由 Executor 调用）
    *
    * 基类逻辑：
-   * - 有入边连接：所有被连接的入 Port 都有数据时 READY
-   * - 无入边连接：只执行一次
+   * - 有入边连接（不含 inActivateOnPort）：所有被连接的入 Port 都有数据时 READY
+   * - 无入边连接（不含 inActivateOnPort）：只执行一次，除非 inActivateOnPort 有数据
+   *
+   * 注意：当 inActivateOnPort 被写入时，Executor 会自动从上游拉取其他入 Port 的数据，
+   * 因此 areConnectedInPortsFilled 检查会通过。
    *
    * 子类可以覆盖此方法实现特殊激活规则
    * @param connectedPorts Executor 传入的当前被连接的 Ports 的 ID 集合
    */
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
-    // 检查是否有任何入 Port 被连接
-    if (this.hasAnyInPortConnected(connectedPorts)) {
+    // 检查是否有任何入 Port 被连接（不含 inActivateOnPort）
+    const hasNormalConnections = this.hasAnyInPortConnected(connectedPorts)
+
+    if (hasNormalConnections) {
       // 有连接：所有被连接的入 Port 都有数据时才 READY
+      // （当 inActivateOnPort 触发时，Executor 会自动拉取数据，所以这里会通过）
       if (this.areConnectedInPortsFilled(connectedPorts)) {
         return ActivationReadyStatus.Ready
       }
       return ActivationReadyStatus.NotReadyUntilAllPortsFilled
     }
 
-    // 无连接：只执行一次
+    // 无正常连接的情况：
+    // - 如果 inActivateOnPort 有数据，可以触发再次激活
+    // - 否则只执行一次
+    if (this.inActivateOnPort.hasData) {
+      return ActivationReadyStatus.Ready
+    }
+
     if (this._hasActivatedOnce) {
       return ActivationReadyStatus.NotReady
     }

@@ -213,9 +213,9 @@ abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = Nod
   // connectedPorts 为 Executor 传入，表示当前被连接的 Ports 的 ID 列表
   // Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
   // 基类实现：
-  //   - 所有"被连接的" inDependsOnPort 和 inPorts 都被填入数据才会 READY
-  //   - inActivateOnPort 不参与首次激活条件，但被写入时可触发再次激活
-  //   - 如果没有任何 inDependsOnPort 和 inPorts 被连接也算 READY
+  //   - 有入边连接（不含 inActivateOnPort）：所有被连接的入 Port 都有数据时 READY
+  //   - 无入边连接（不含 inActivateOnPort）：只执行一次，除非 inActivateOnPort 有数据
+  //   - inActivateOnPort 用于环结构中的反馈激活，但不绕过正常的数据依赖检查
   // 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
   // 子类可以覆盖此方法实现特殊激活规则（如 DistributeNode 的多次输出、AggregateNode 的双模式激活）
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus
@@ -629,6 +629,7 @@ enum ActivationReadyStatus {
    - 统一检查这些执行后节点的准备状态（主要用于`DistributeNode`这类在激活后的多个迭代都会保持READY的节点）
    - 从执行后节点的所有出 Port 里取出数据填入其连接的另一节点的入 Port
      - 即使值为 null 或 ContainerPort 内的子 Port 为 null 也要填入
+   - **特殊处理 activateOn**：当数据被推到某节点的 `inActivateOnPort` 时，Executor 会额外从上游出 Port **拉取**该节点其他入 Port 需要的数据（因为推式传递会在节点执行后清空入 Port，而 activateOn 触发的再次激活需要这些数据）
    - **特殊处理直通节点**：如果目标节点是 `directThrough=true` 的 ForwardNode，立即执行并继续传播
    - 查询其他受影响节点的准备状态
 

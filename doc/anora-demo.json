@@ -4,23 +4,33 @@
     "schemaVersion": 1,
     "nodes": [
       {
-        "id": "f6f05e02-594b-4c9b-a8d6-a9cfe5df8c4a",
+        "id": "node-todo-list",
         "typeId": "core.ParameterNode",
-        "label": "Parameter",
+        "label": "待办列表",
         "context": {
-          "value": "3"
+          "value": "[\"买牛奶\", \"写代码\", \"做运动\"]"
         },
         "position": {
-          "x": 22,
-          "y": 12
+          "x": 380,
+          "y": 280
         },
-        "inExecPort": {
-          "id": "e456a363-0d94-406e-a98a-7e1d17e12751",
+        "inDependsOnPort": {
+          "id": "7af10132-40b6-49b9-ac5a-a0205cca2773",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "1a26e7d8-eda6-4f71-af1d-683f076b1085",
+        "outDependsOnPort": {
+          "id": "5cf53a03-e7e0-4be0-a9c0-ae0aff7f3546",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "b434123a-3f7b-42bf-9e42-a6a198062a68",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "751bec2a-cf20-41a0-9e78-dfd6c5b93985",
           "dataType": "null",
           "data": null
         },
@@ -29,30 +39,90 @@
         "inPorts": {},
         "outPorts": {
           "value": {
-            "id": "f8778360-2bcc-455a-84ff-6353d4cd2937",
+            "id": "port-todo-list-value",
             "dataType": "null",
-            "data": 3
+            "data": [
+              "买牛奶",
+              "写代码",
+              "做运动"
+            ]
+          }
+        },
+        "size": {
+          "width": 442,
+          "height": 147
+        }
+      },
+      {
+        "id": "node-index-init",
+        "typeId": "core.ParameterNode",
+        "label": "索引初始值",
+        "context": {
+          "value": "0"
+        },
+        "position": {
+          "x": 420,
+          "y": 40
+        },
+        "inDependsOnPort": {
+          "id": "69bed8b7-b43e-43dd-89aa-5bd7fc1f69e8",
+          "dataType": "null",
+          "data": null
+        },
+        "outDependsOnPort": {
+          "id": "245e0147-ef1a-40a8-be18-dbaf90f8ec1e",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "dd1a3dff-c70c-4fa5-bcce-95b0d42dd8d7",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "ad57788d-ef4c-4446-9d4d-a31c146f8058",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {},
+        "outPorts": {
+          "value": {
+            "id": "port-index-init-value",
+            "dataType": "null",
+            "data": 0
           }
         }
       },
       {
-        "id": "86c99ffb-45ba-4327-942f-16c9231960ce",
+        "id": "node-current-index",
         "typeId": "core.ForwardNode",
-        "label": "today_todo_count",
+        "label": "当前索引",
         "context": {
-          "directThrough": true
+          "directThrough": false
         },
         "position": {
-          "x": 482,
-          "y": 46
+          "x": 900,
+          "y": 40
         },
-        "inExecPort": {
-          "id": "ca0647ac-e2a1-474a-a396-3ce067829459",
+        "inDependsOnPort": {
+          "id": "791c3a5d-f8ae-4e9b-a60b-7fca50bc6bfc",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "e5dfe6ef-0a26-4ff9-8bf6-49ea8b44b9f5",
+        "outDependsOnPort": {
+          "id": "e52d1752-3bd9-4004-bd9b-6c9369dccaba",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "4a29197c-a548-49d4-bea9-2dca7e3afb32",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "ea57ed0a-e73e-461e-8250-1c7f170b134f",
           "dataType": "null",
           "data": null
         },
@@ -60,69 +130,117 @@
         "outControlPorts": {},
         "inPorts": {
           "value": {
-            "id": "40d2b95a-9c0a-4e87-a433-333d54260f19",
+            "id": "port-current-index-in",
             "dataType": "null",
             "data": null
           }
         },
         "outPorts": {
           "value": {
-            "id": "e1f9ece7-583c-44d7-b283-1b9be96d9fdf",
-            "dataType": "null",
-            "data": 3
-          }
-        }
-      },
-      {
-        "id": "d4ba066f-d485-467d-b920-3f682a9dd073",
-        "typeId": "core.ParameterNode",
-        "label": "Parameter",
-        "context": {
-          "value": "1"
-        },
-        "position": {
-          "x": 482,
-          "y": 274
-        },
-        "inExecPort": {
-          "id": "77406f8c-567f-4f94-8b15-77e09646d664",
-          "dataType": "null",
-          "data": null
-        },
-        "outExecPort": {
-          "id": "2af1c08b-05a3-4969-aeac-491912c3cf7d",
-          "dataType": "null",
-          "data": null
-        },
-        "inControlPorts": {},
-        "outControlPorts": {},
-        "inPorts": {},
-        "outPorts": {
-          "value": {
-            "id": "65b6b788-0013-4143-b415-cc5e887c4f9c",
+            "id": "port-current-index-out",
             "dataType": "null",
             "data": 1
           }
         }
       },
       {
-        "id": "2f8f32dc-3c97-4bb1-b725-9ce844053d4f",
-        "typeId": "core.ArithmeticNode",
-        "label": "Arithmetic",
-        "context": {
-          "operation": "-"
-        },
+        "id": "node-array-length",
+        "typeId": "core.ArrayLengthNode",
+        "label": "列表长度",
+        "context": null,
         "position": {
           "x": 942,
-          "y": 83
+          "y": 398
         },
-        "inExecPort": {
-          "id": "f8b33a65-f769-4b16-968f-67df2850cb4c",
+        "inDependsOnPort": {
+          "id": "c451d901-137d-4899-a6c9-b5442c94f73c",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "aa14ecd1-f362-44f3-a45e-7889e20b743e",
+        "outDependsOnPort": {
+          "id": "58a7ebbe-541e-4a82-a251-6d7e19d8e1a9",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "2d7edf7b-5fe9-412d-aae9-82e87c56769e",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "bcc119f7-3ce2-4fe4-b4ec-a46e2d353af0",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {
+          "array": {
+            "id": "port-array-length-array",
+            "dataType": "array",
+            "data": null,
+            "children": [
+              {
+                "id": "609d8f97-b007-4ff2-bbf6-bb9d73c1abe0",
+                "dataType": "string",
+                "data": null,
+                "keyInParent": 0
+              },
+              {
+                "id": "81f30c1d-4b37-4b7e-9e4b-a7a404244301",
+                "dataType": "string",
+                "data": null,
+                "keyInParent": 1
+              },
+              {
+                "id": "52be5b10-b8dd-47b4-aec1-fb138f4173a9",
+                "dataType": "string",
+                "data": null,
+                "keyInParent": 2
+              }
+            ]
+          }
+        },
+        "outPorts": {
+          "length": {
+            "id": "port-array-length-length",
+            "dataType": "integer",
+            "data": 3
+          }
+        },
+        "size": {
+          "width": 224,
+          "height": 125
+        }
+      },
+      {
+        "id": "node-compare-index",
+        "typeId": "core.CompareNode",
+        "label": "索引 < 长度",
+        "context": {
+          "operation": "<"
+        },
+        "position": {
+          "x": 1280,
+          "y": 400
+        },
+        "inDependsOnPort": {
+          "id": "05c1ff74-b806-4cc1-9c9f-3acbce7bb4c6",
+          "dataType": "null",
+          "data": null
+        },
+        "outDependsOnPort": {
+          "id": "21a777de-2b54-49a1-b7a5-32e1cdb275b1",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "6993a9dd-a6e7-44f2-a4ec-3de5dfd3321a",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "9d7ab702-0f5b-4de1-9f68-4bd107e83c4d",
           "dataType": "null",
           "data": null
         },
@@ -130,42 +248,174 @@
         "outControlPorts": {},
         "inPorts": {
           "left": {
-            "id": "8ca3d122-c08a-49b3-afbd-87ea188e45c5",
-            "dataType": "number",
-            "data": null
+            "id": "port-compare-index-left",
+            "dataType": "null",
+            "data": 1
           },
           "right": {
-            "id": "4c4566bd-2e28-4061-8bfb-306aa10825ed",
-            "dataType": "number",
+            "id": "port-compare-index-right",
+            "dataType": "null",
             "data": null
           }
         },
         "outPorts": {
           "result": {
-            "id": "d0a944aa-8c26-4585-9009-a6d3d668e76e",
-            "dataType": "number",
-            "data": 2
+            "id": "port-compare-index-result",
+            "dataType": "boolean",
+            "data": true
           }
         }
       },
       {
-        "id": "7aca03a1-bac5-46a4-bc49-c0e6b3737f41",
+        "id": "node-branch-continue",
+        "typeId": "core.BranchNode",
+        "label": "继续循环?",
+        "context": null,
+        "position": {
+          "x": 1740,
+          "y": 400
+        },
+        "inDependsOnPort": {
+          "id": "40eaa497-8b68-442a-85f2-95e4a11cf99d",
+          "dataType": "null",
+          "data": null
+        },
+        "outDependsOnPort": {
+          "id": "a56c863a-6206-4baf-bf76-e7556c860781",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "60d45b53-d1f1-451d-b33a-1397e396f5d8",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "6fc0d686-2d66-4074-9e99-ec2eb0377c8f",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {
+          "onTrue": {
+            "id": "port-branch-continue-true",
+            "dataType": "null",
+            "data": null
+          },
+          "onFalse": {
+            "id": "port-branch-continue-false",
+            "dataType": "null",
+            "data": null
+          }
+        },
+        "inPorts": {
+          "condition": {
+            "id": "port-branch-continue-condition",
+            "dataType": "boolean",
+            "data": null
+          }
+        },
+        "outPorts": {}
+      },
+      {
+        "id": "node-array-access",
+        "typeId": "core.ArrayAccessNode",
+        "label": "获取元素",
+        "context": null,
+        "position": {
+          "x": 2240,
+          "y": -160
+        },
+        "inDependsOnPort": {
+          "id": "c5e0ca05-660e-401b-a778-201cac2b193e",
+          "dataType": "null",
+          "data": null
+        },
+        "outDependsOnPort": {
+          "id": "7eb4fdba-9cb3-48ea-b6e1-1e1e2aa2d4c6",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "78938c99-5d84-4933-86f1-d98cac2a939d",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "5933ed55-f6a9-462e-bb44-5510e1510cb4",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {
+          "array": {
+            "id": "port-array-access-array",
+            "dataType": "array",
+            "data": null,
+            "children": [
+              {
+                "id": "f22a2638-6d7d-4c34-b0cd-db7017640736",
+                "dataType": "string",
+                "data": null,
+                "keyInParent": 0
+              },
+              {
+                "id": "090e8d0a-322f-4866-aec8-db1db3cc089b",
+                "dataType": "string",
+                "data": null,
+                "keyInParent": 1
+              },
+              {
+                "id": "2115c735-950b-4c15-8da8-a9d9ae681ed5",
+                "dataType": "string",
+                "data": null,
+                "keyInParent": 2
+              }
+            ]
+          },
+          "index": {
+            "id": "port-array-access-index",
+            "dataType": "integer",
+            "data": null
+          }
+        },
+        "outPorts": {
+          "value": {
+            "id": "port-array-access-value",
+            "dataType": "null",
+            "data": "买牛奶"
+          }
+        }
+      },
+      {
+        "id": "node-current-todo",
         "typeId": "core.ForwardNode",
-        "label": "tomorrow_todo_count",
+        "label": "当前待办",
         "context": {
           "directThrough": true
         },
         "position": {
-          "x": 1402,
-          "y": 129
+          "x": 2560,
+          "y": -160
         },
-        "inExecPort": {
-          "id": "86175c2a-51b3-457c-876e-b99daf741ac2",
+        "inDependsOnPort": {
+          "id": "202d3155-ce9d-450b-beb3-541b912716ba",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "21b12e19-9cf7-49bc-9063-fed1090cf077",
+        "outDependsOnPort": {
+          "id": "169d77e3-761c-4928-ac77-14d9554bfe85",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "f91edd64-3826-4c8b-974f-107a1c33840c",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "0e6bb1b7-6896-4d2c-9374-c5d5f3d84721",
           "dataType": "null",
           "data": null
         },
@@ -173,39 +423,49 @@
         "outControlPorts": {},
         "inPorts": {
           "value": {
-            "id": "3f0c8122-d391-4401-884c-ad70efed5cd5",
+            "id": "port-current-todo-in",
             "dataType": "null",
             "data": null
           }
         },
         "outPorts": {
           "value": {
-            "id": "a6bb8df3-84fd-4066-a989-35e8f0f669ad",
+            "id": "port-current-todo-out",
             "dataType": "null",
-            "data": 2
+            "data": "买牛奶"
           }
         }
       },
       {
-        "id": "3bd7b47b-6b21-4154-abe7-14d8cbb356d7",
+        "id": "node-notify-todo",
         "typeId": "core.NotifyNode",
-        "label": "Notify",
+        "label": "显示待办",
         "context": {
-          "title": "明天还有事要做，今天早点睡吧~",
+          "title": "检查待办事项",
           "type": "info",
-          "duration": 3000
+          "duration": 2000
         },
         "position": {
-          "x": 2782,
-          "y": 225
+          "x": 3000,
+          "y": -160
         },
-        "inExecPort": {
-          "id": "c4d7400e-891c-4e6d-b069-654168f533ea",
+        "inDependsOnPort": {
+          "id": "7bcbfe2c-a8c4-4929-aa54-ff181451b438",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "eb21497d-b3e3-42bd-9940-9391228934b6",
+        "outDependsOnPort": {
+          "id": "a06fbba0-78bf-4ca1-a4c2-fb172590d2a6",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "9ad16791-bbd8-4e61-b46a-9c0043031ed6",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "ce0e121e-d3be-40f9-8912-9bfbf0063a72",
           "dataType": "null",
           "data": null
         },
@@ -213,7 +473,7 @@
         "outControlPorts": {},
         "inPorts": {
           "message": {
-            "id": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3",
+            "id": "port-notify-todo-message",
             "dataType": "string",
             "data": null
           }
@@ -221,107 +481,33 @@
         "outPorts": {}
       },
       {
-        "id": "5d7dec8c-aeaa-4970-b568-d390a5821c40",
-        "typeId": "core.CompareNode",
-        "label": "Compare",
-        "context": {
-          "operation": ">"
-        },
-        "position": {
-          "x": 1862,
-          "y": 166
-        },
-        "inExecPort": {
-          "id": "c2179ca2-1d8c-4024-aaa9-b5ded21c8484",
-          "dataType": "null",
-          "data": null
-        },
-        "outExecPort": {
-          "id": "88f53ffd-e785-4dd7-ab55-1105f22b9256",
-          "dataType": "null",
-          "data": null
-        },
-        "inControlPorts": {},
-        "outControlPorts": {},
-        "inPorts": {
-          "left": {
-            "id": "e8fa4ecc-8067-414f-92ac-96b40f91b751",
-            "dataType": "null",
-            "data": null
-          },
-          "right": {
-            "id": "e7723a1f-bdb5-44e3-9f4a-0fc01b3e1e28",
-            "dataType": "null",
-            "data": null
-          }
-        },
-        "outPorts": {
-          "result": {
-            "id": "ce50cf89-73d9-4b44-bcd8-480136c8f07d",
-            "dataType": "boolean",
-            "data": true
-          }
-        }
-      },
-      {
-        "id": "56c619f4-60b3-4437-a235-e8e9f88164cc",
-        "typeId": "core.BranchNode",
-        "label": "Branch",
-        "context": null,
-        "position": {
-          "x": 2322,
-          "y": 206
-        },
-        "inExecPort": {
-          "id": "840b469a-6ca0-4fa6-99de-a36c0b66f83a",
-          "dataType": "null",
-          "data": null
-        },
-        "outExecPort": {
-          "id": "ba122be9-a490-479a-946b-aa13bbcd118d",
-          "dataType": "null",
-          "data": null
-        },
-        "inControlPorts": {},
-        "outControlPorts": {
-          "onTrue": {
-            "id": "f92c1b8a-9c0d-4a61-a6e6-94c0590bf064",
-            "dataType": "null",
-            "data": null
-          },
-          "onFalse": {
-            "id": "f03f9cb3-4f6c-4f19-8e9c-6fff6081f7f1",
-            "dataType": "null",
-            "data": null
-          }
-        },
-        "inPorts": {
-          "condition": {
-            "id": "234a3ce4-f586-4a76-b596-b6d9aae3beff",
-            "dataType": "boolean",
-            "data": null
-          }
-        },
-        "outPorts": {}
-      },
-      {
-        "id": "2fbe97c4-ef5d-4449-a150-261cfc5b4125",
+        "id": "node-increment-one",
         "typeId": "core.ParameterNode",
-        "label": "Parameter",
+        "label": "增量 1",
         "context": {
-          "value": "0"
+          "value": "1"
         },
         "position": {
-          "x": 1402,
-          "y": 357
+          "x": 400,
+          "y": -220
         },
-        "inExecPort": {
-          "id": "5458cba0-7f4b-474f-ab92-c03c6c959d07",
+        "inDependsOnPort": {
+          "id": "49081fa0-70ea-4b98-8ade-a4cdf94c52cf",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "6ac2f032-bbde-403a-af2b-7e31e0c217a3",
+        "outDependsOnPort": {
+          "id": "5f5846df-9795-452e-82ff-296fc27304c9",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "5a3ee5f5-6de5-415b-a47d-1e110c469e6f",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "c16563a2-72b4-4263-baef-78d2b3e76279",
           "dataType": "null",
           "data": null
         },
@@ -330,32 +516,103 @@
         "inPorts": {},
         "outPorts": {
           "value": {
-            "id": "7218937a-4aee-4f21-a9c1-572b8bc28eb7",
+            "id": "port-increment-one-value",
             "dataType": "null",
-            "data": 0
+            "data": 1
           }
+        },
+        "size": {
+          "width": 260,
+          "height": 142
         }
       },
       {
-        "id": "96ce94ef-4a7a-4f10-9c7b-500b4296f9e1",
-        "typeId": "core.NotifyNode",
-        "label": "Notify",
+        "id": "node-add-index",
+        "typeId": "core.ArithmeticNode",
+        "label": "索引+1",
         "context": {
-          "title": "预定的事务都完成了，有没有忘记的？",
-          "type": "info",
-          "duration": 3000
+          "operation": "+"
         },
         "position": {
-          "x": 2782,
-          "y": 453
+          "x": 900,
+          "y": -220
         },
-        "inExecPort": {
-          "id": "cf83ded0-f0a0-416d-a3df-ca73b4c56fc1",
+        "inDependsOnPort": {
+          "id": "0943c394-e052-4f67-abd2-804b66e7cc33",
           "dataType": "null",
           "data": null
         },
-        "outExecPort": {
-          "id": "ac172573-6145-4467-a7a3-d5b6822ff87c",
+        "outDependsOnPort": {
+          "id": "22f81161-3791-4eee-bf02-e26ef11c624c",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "d541baad-80a1-4288-829f-6f1016dfe6b6",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "e3c3caf9-4cfc-4992-b954-dccd01f47ac4",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {
+          "left": {
+            "id": "port-add-index-left",
+            "dataType": "number",
+            "data": null
+          },
+          "right": {
+            "id": "port-add-index-right",
+            "dataType": "number",
+            "data": 1
+          }
+        },
+        "outPorts": {
+          "result": {
+            "id": "port-add-index-result",
+            "dataType": "number",
+            "data": 1
+          }
+        },
+        "size": {
+          "width": 309,
+          "height": 127
+        }
+      },
+      {
+        "id": "node-loop-complete",
+        "typeId": "core.NotifyNode",
+        "label": "循环完成",
+        "context": {
+          "title": "所有待办检查完毕",
+          "type": "success",
+          "duration": 3000
+        },
+        "position": {
+          "x": 2200,
+          "y": 420
+        },
+        "inDependsOnPort": {
+          "id": "06323a52-2dd0-4935-bcf3-d82b3bc28662",
+          "dataType": "null",
+          "data": null
+        },
+        "outDependsOnPort": {
+          "id": "a00c52e7-f79f-46d9-b483-ff167ff3bd4c",
+          "dataType": "null",
+          "data": null
+        },
+        "inActivateOnPort": {
+          "id": "ff721c7d-0ca4-4f0e-8316-621436888c9c",
+          "dataType": "null",
+          "data": null
+        },
+        "outActivateOnPort": {
+          "id": "ef645844-2526-4b30-a6ee-1fb8b765c9e8",
           "dataType": "null",
           "data": null
         },
@@ -363,7 +620,7 @@
         "outControlPorts": {},
         "inPorts": {
           "message": {
-            "id": "34cfb5da-9f0c-4da8-9979-5e6d81c54c90",
+            "id": "port-loop-complete-message",
             "dataType": "string",
             "data": null
           }
@@ -373,332 +630,471 @@
     ],
     "edges": [
       {
-        "fromPortId": "f8778360-2bcc-455a-84ff-6353d4cd2937",
-        "toPortId": "40d2b95a-9c0a-4e87-a433-333d54260f19"
+        "fromPortId": "port-todo-list-value",
+        "toPortId": "port-array-length-array"
       },
       {
-        "fromPortId": "e1f9ece7-583c-44d7-b283-1b9be96d9fdf",
-        "toPortId": "8ca3d122-c08a-49b3-afbd-87ea188e45c5"
+        "fromPortId": "port-todo-list-value",
+        "toPortId": "port-array-access-array"
       },
       {
-        "fromPortId": "65b6b788-0013-4143-b415-cc5e887c4f9c",
-        "toPortId": "4c4566bd-2e28-4061-8bfb-306aa10825ed"
+        "fromPortId": "port-index-init-value",
+        "toPortId": "port-current-index-in"
       },
       {
-        "fromPortId": "d0a944aa-8c26-4585-9009-a6d3d668e76e",
-        "toPortId": "3f0c8122-d391-4401-884c-ad70efed5cd5"
+        "fromPortId": "port-current-index-out",
+        "toPortId": "port-compare-index-left"
       },
       {
-        "fromPortId": "a6bb8df3-84fd-4066-a989-35e8f0f669ad",
-        "toPortId": "e8fa4ecc-8067-414f-92ac-96b40f91b751"
+        "fromPortId": "port-array-length-length",
+        "toPortId": "port-compare-index-right"
       },
       {
-        "fromPortId": "7218937a-4aee-4f21-a9c1-572b8bc28eb7",
-        "toPortId": "e7723a1f-bdb5-44e3-9f4a-0fc01b3e1e28"
+        "fromPortId": "port-compare-index-result",
+        "toPortId": "port-branch-continue-condition"
       },
       {
-        "fromPortId": "ce50cf89-73d9-4b44-bcd8-480136c8f07d",
-        "toPortId": "234a3ce4-f586-4a76-b596-b6d9aae3beff"
+        "fromPortId": "port-branch-continue-true",
+        "toPortId": "port-array-access-index"
       },
       {
-        "fromPortId": "f92c1b8a-9c0d-4a61-a6e6-94c0590bf064",
-        "toPortId": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3"
+        "fromPortId": "port-current-index-out",
+        "toPortId": "port-array-access-index"
       },
       {
-        "fromPortId": "f03f9cb3-4f6c-4f19-8e9c-6fff6081f7f1",
-        "toPortId": "34cfb5da-9f0c-4da8-9979-5e6d81c54c90"
+        "fromPortId": "port-array-access-value",
+        "toPortId": "port-current-todo-in"
+      },
+      {
+        "fromPortId": "port-current-todo-out",
+        "toPortId": "port-notify-todo-message"
+      },
+      {
+        "fromPortId": "port-add-index-result",
+        "toPortId": "port-current-index-in"
+      },
+      {
+        "fromPortId": "port-branch-continue-false",
+        "toPortId": "port-loop-complete-message"
+      },
+      {
+        "fromPortId": "port-increment-one-value",
+        "toPortId": "port-add-index-left"
+      },
+      {
+        "fromPortId": "port-current-index-out",
+        "toPortId": "port-add-index-right"
+      },
+      {
+        "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
+        "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32"
       }
     ]
   },
   "events": [
     {
-      "timestamp": 1632,
+      "timestamp": 1934,
       "event": {
         "type": "start"
       }
     },
     {
-      "timestamp": 1632,
+      "timestamp": 1935,
       "event": {
         "type": "iteration",
         "iteration": 1
       }
     },
     {
-      "timestamp": 1632,
+      "timestamp": 1935,
       "event": {
         "type": "node-start",
-        "nodeId": "f6f05e02-594b-4c9b-a8d6-a9cfe5df8c4a"
+        "nodeId": "node-todo-list"
       }
     },
     {
-      "timestamp": 1632,
+      "timestamp": 1936,
       "event": {
         "type": "node-start",
-        "nodeId": "d4ba066f-d485-467d-b920-3f682a9dd073"
+        "nodeId": "node-index-init"
       }
     },
     {
-      "timestamp": 1632,
+      "timestamp": 1936,
       "event": {
         "type": "node-start",
-        "nodeId": "2fbe97c4-ef5d-4449-a150-261cfc5b4125"
+        "nodeId": "node-increment-one"
       }
     },
     {
-      "timestamp": 1635,
+      "timestamp": 1957,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "f8778360-2bcc-455a-84ff-6353d4cd2937",
-            "toPortId": "40d2b95a-9c0a-4e87-a433-333d54260f19",
-            "data": 3
+            "fromPortId": "port-todo-list-value",
+            "toPortId": "port-array-length-array",
+            "data": [
+              "买牛奶",
+              "写代码",
+              "做运动"
+            ]
+          },
+          {
+            "fromPortId": "port-todo-list-value",
+            "toPortId": "port-array-access-array",
+            "data": [
+              "买牛奶",
+              "写代码",
+              "做运动"
+            ]
           }
         ]
       }
     },
     {
-      "timestamp": 1635,
-      "event": {
-        "type": "node-start",
-        "nodeId": "86c99ffb-45ba-4327-942f-16c9231960ce"
-      }
-    },
-    {
-      "timestamp": 1637,
+      "timestamp": 1977,
       "event": {
         "type": "node-complete",
-        "nodeId": "86c99ffb-45ba-4327-942f-16c9231960ce",
+        "nodeId": "node-todo-list",
         "success": true
       }
     },
     {
-      "timestamp": 1637,
+      "timestamp": 1979,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "e1f9ece7-583c-44d7-b283-1b9be96d9fdf",
-            "toPortId": "8ca3d122-c08a-49b3-afbd-87ea188e45c5",
-            "data": 3
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 1648,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "f6f05e02-594b-4c9b-a8d6-a9cfe5df8c4a",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 1648,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "65b6b788-0013-4143-b415-cc5e887c4f9c",
-            "toPortId": "4c4566bd-2e28-4061-8bfb-306aa10825ed",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 1657,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "d4ba066f-d485-467d-b920-3f682a9dd073",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 1658,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "7218937a-4aee-4f21-a9c1-572b8bc28eb7",
-            "toPortId": "e7723a1f-bdb5-44e3-9f4a-0fc01b3e1e28",
+            "fromPortId": "port-index-init-value",
+            "toPortId": "port-current-index-in",
             "data": 0
           }
         ]
       }
     },
     {
-      "timestamp": 1668,
+      "timestamp": 1999,
       "event": {
         "type": "node-complete",
-        "nodeId": "2fbe97c4-ef5d-4449-a150-261cfc5b4125",
+        "nodeId": "node-index-init",
         "success": true
       }
     },
     {
-      "timestamp": 2671,
+      "timestamp": 2000,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-increment-one-value",
+            "toPortId": "port-add-index-left",
+            "data": 1
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 2017,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-increment-one",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 3023,
       "event": {
         "type": "iteration",
         "iteration": 2
       }
     },
     {
-      "timestamp": 2671,
+      "timestamp": 3024,
       "event": {
         "type": "node-start",
-        "nodeId": "2f8f32dc-3c97-4bb1-b725-9ce844053d4f"
+        "nodeId": "node-current-index"
       }
     },
     {
-      "timestamp": 2677,
+      "timestamp": 3024,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-array-length"
+      }
+    },
+    {
+      "timestamp": 3044,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "d0a944aa-8c26-4585-9009-a6d3d668e76e",
-            "toPortId": "3f0c8122-d391-4401-884c-ad70efed5cd5",
-            "data": 2
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-compare-index-left",
+            "data": 0
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-array-access-index",
+            "data": 0
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-add-index-right",
+            "data": 0
           }
         ]
       }
     },
     {
-      "timestamp": 2677,
-      "event": {
-        "type": "node-start",
-        "nodeId": "7aca03a1-bac5-46a4-bc49-c0e6b3737f41"
-      }
-    },
-    {
-      "timestamp": 2679,
+      "timestamp": 3062,
       "event": {
         "type": "node-complete",
-        "nodeId": "7aca03a1-bac5-46a4-bc49-c0e6b3737f41",
+        "nodeId": "node-current-index",
         "success": true
       }
     },
     {
-      "timestamp": 2679,
+      "timestamp": 3063,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "a6bb8df3-84fd-4066-a989-35e8f0f669ad",
-            "toPortId": "e8fa4ecc-8067-414f-92ac-96b40f91b751",
-            "data": 2
+            "fromPortId": "port-array-length-length",
+            "toPortId": "port-compare-index-right",
+            "data": 3
           }
         ]
       }
     },
     {
-      "timestamp": 2689,
+      "timestamp": 3081,
       "event": {
         "type": "node-complete",
-        "nodeId": "2f8f32dc-3c97-4bb1-b725-9ce844053d4f",
+        "nodeId": "node-array-length",
         "success": true
       }
     },
     {
-      "timestamp": 3697,
+      "timestamp": 4083,
       "event": {
         "type": "iteration",
         "iteration": 3
       }
     },
     {
-      "timestamp": 3697,
+      "timestamp": 4084,
       "event": {
         "type": "node-start",
-        "nodeId": "5d7dec8c-aeaa-4970-b568-d390a5821c40"
+        "nodeId": "node-compare-index"
       }
     },
     {
-      "timestamp": 3702,
+      "timestamp": 4084,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-array-access"
+      }
+    },
+    {
+      "timestamp": 4084,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-add-index"
+      }
+    },
+    {
+      "timestamp": 4103,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "ce50cf89-73d9-4b44-bcd8-480136c8f07d",
-            "toPortId": "234a3ce4-f586-4a76-b596-b6d9aae3beff",
+            "fromPortId": "port-compare-index-result",
+            "toPortId": "port-branch-continue-condition",
             "data": true
           }
         ]
       }
     },
     {
-      "timestamp": 3704,
+      "timestamp": 4119,
       "event": {
         "type": "node-complete",
-        "nodeId": "5d7dec8c-aeaa-4970-b568-d390a5821c40",
+        "nodeId": "node-compare-index",
         "success": true
       }
     },
     {
-      "timestamp": 4705,
+      "timestamp": 4120,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-array-access-value",
+            "toPortId": "port-current-todo-in",
+            "data": "买牛奶"
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 4120,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-current-todo"
+      }
+    },
+    {
+      "timestamp": 4138,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-current-todo",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 4138,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-current-todo-out",
+            "toPortId": "port-notify-todo-message",
+            "data": "买牛奶"
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 4155,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-array-access",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 4156,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-add-index-result",
+            "toPortId": "port-current-index-in",
+            "data": 1
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 4171,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-add-index",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 5182,
       "event": {
         "type": "iteration",
         "iteration": 4
       }
     },
     {
-      "timestamp": 4705,
+      "timestamp": 5183,
       "event": {
         "type": "node-start",
-        "nodeId": "56c619f4-60b3-4437-a235-e8e9f88164cc"
+        "nodeId": "node-current-index"
       }
     },
     {
-      "timestamp": 4709,
+      "timestamp": 5183,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-branch-continue"
+      }
+    },
+    {
+      "timestamp": 5184,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-notify-todo"
+      }
+    },
+    {
+      "timestamp": 5205,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "f92c1b8a-9c0d-4a61-a6e6-94c0590bf064",
-            "toPortId": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3",
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-compare-index-left",
+            "data": 1
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-array-access-index",
+            "data": 1
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-add-index-right",
+            "data": 1
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 5237,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-current-index",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 5238,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
+            "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32",
+            "data": null
+          },
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "port-array-access-index",
             "data": null
           }
         ]
       }
     },
     {
-      "timestamp": 4710,
+      "timestamp": 5259,
       "event": {
         "type": "node-complete",
-        "nodeId": "56c619f4-60b3-4437-a235-e8e9f88164cc",
+        "nodeId": "node-branch-continue",
         "success": true
       }
     },
     {
-      "timestamp": 5712,
-      "event": {
-        "type": "iteration",
-        "iteration": 5
-      }
-    },
-    {
-      "timestamp": 5712,
-      "event": {
-        "type": "node-start",
-        "nodeId": "3bd7b47b-6b21-4154-abe7-14d8cbb356d7"
-      }
-    },
-    {
-      "timestamp": 5717,
+      "timestamp": 5281,
       "event": {
         "type": "node-complete",
-        "nodeId": "3bd7b47b-6b21-4154-abe7-14d8cbb356d7",
+        "nodeId": "node-notify-todo",
         "success": true
       }
     },
     {
-      "timestamp": 6719,
+      "timestamp": 6283,
       "event": {
         "type": "complete",
         "result": {
           "finishReason": "completed",
-          "iterations": 5,
-          "duration": 5088
+          "iterations": 4,
+          "duration": 4349
         }
       }
     }
@@ -706,8 +1102,8 @@
   "metadata": {
     "title": "Untitled Recording",
     "description": "",
-    "createdAt": "2026-01-11T07:08:51.079Z",
+    "createdAt": "2026-01-18T09:20:46.140Z",
     "iterationDelay": 0,
-    "duration": 6719
+    "duration": 6283
   }
 }
