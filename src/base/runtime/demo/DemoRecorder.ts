@@ -92,8 +92,12 @@ export class DemoRecorder {
   /**
    * 开始录制
    * @param nodePositions 节点位置映射（从外部传入，因为位置信息在 UI 层）
+   * @param nodeSizes 节点尺寸映射（从外部传入，因为尺寸信息在 UI 层）
    */
-  startRecording(nodePositions: Map<string, { x: number; y: number }>): void {
+  startRecording(
+    nodePositions: Map<string, { x: number; y: number }>,
+    nodeSizes?: Map<string, { width: number; height: number }>,
+  ): void {
     if (this._isRecording) return
     if (!this.executor) {
       console.warn('[DemoRecorder] No executor bound, call bindExecutor first')
@@ -107,13 +111,13 @@ export class DemoRecorder {
     // 清空之前的录制
     this.clear()
 
-    // 保存初始状态（包含节点位置）
+    // 保存初始状态（包含节点位置和尺寸）
     console.log(
       '[DemoRecorder] nodePositions received:',
       nodePositions.size,
       Array.from(nodePositions.entries()),
     )
-    this.initialGraph = this.graph.serialize(nodePositions)
+    this.initialGraph = this.graph.serialize(nodePositions, nodeSizes)
     console.log(
       '[DemoRecorder] serialized nodes positions:',
       this.initialGraph.nodes.map((n) => ({ id: n.id, pos: n.position })),

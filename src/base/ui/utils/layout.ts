@@ -4,9 +4,13 @@
  */
 import ELK, { type ElkNode } from 'elkjs/lib/elk.bundled.js'
 import type { AnoraGraph } from '@/base/runtime/graph'
-import type { BaseNode } from '@/base/runtime/nodes'
+import type { BaseNode, NodeStaticMeta } from '@/base/runtime/nodes'
+import { NodeRegistry } from '@/base/runtime/registry'
 
 const elk = new ELK()
+
+/** 默认节点宽度 */
+const DEFAULT_NODE_WIDTH = 240
 
 /** 布局选项 */
 export interface LayoutOptions {
@@ -19,15 +23,27 @@ export interface LayoutOptions {
 }
 
 /**
+ * 获取节点的默认尺寸（来自节点类的静态 meta）
+ */
+function getNodeDefaultSize(typeId: string): { width: number; height: number } | undefined {
+  const NodeClass = NodeRegistry.get(typeId)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const staticMeta: NodeStaticMeta = (NodeClass as any)?.meta ?? {}
+  return staticMeta.defaultSize
+}
+
+/**
  * 使用 ELK 对图进行自动布局
  * @param graph Anora 图
  * @param nodePositions 当前节点位置映射
+ * @param nodeSizes 节点尺寸映射（用户自定义的尺寸）
  * @param options 布局选项
  * @returns 更新后的节点位置映射
  */
 export async function autoLayoutGraph(
   graph: AnoraGraph,
   nodePositions: Map<string, { x: number; y: number }>,
+  nodeSizes?: Map<string, { width: number; height: number }>,
   options: LayoutOptions = {},
 ): Promise<Map<string, { x: number; y: number }>> {
   const { direction = 'RIGHT', spacing = 80, alignPorts = true } = options
@@ -39,7 +55,13 @@ export async function autoLayoutGraph(
 
   // 构建 ELK 图结构（包含端口信息）
   const elkNodes: ElkNode['children'] = nodes.map((node) => {
-    const nodeHeight = calculateNodeHeight(node)
+    // 获取节点尺寸：优先使用用户自定义尺寸 > 节点默认尺寸 > 计算尺寸
+    const customSize = nodeSizes?.get(node.id)
+    const defaultSize = getNodeDefaultSize(node.typeId)
+
+    const nodeWidth = customSize?.width ?? defaultSize?.width ?? DEFAULT_NODE_WIDTH
+    const nodeHeight = customSize?.height ?? defaultSize?.height ?? calculateNodeHeight(node)
+
     const inputPorts = node.getInputPorts()
     const outputPorts = node.getOutputPorts()
 
@@ -56,14 +78,14 @@ export async function autoLayoutGraph(
         id: port.id,
         width: 10,
         height: 10,
-        x: 240, // 输出端口在右侧（节点宽度）
+        x: nodeWidth, // 输出端口在右侧（使用实际节点宽度）
         y: 40 + index * 24, // 垂直排列，从顶部开始
       })),
     ]
 
     return {
       id: node.id,
-      width: 240,
+      width: nodeWidth,
       height: nodeHeight,
       ports,
     }

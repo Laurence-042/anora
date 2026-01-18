@@ -152,11 +152,16 @@ function onNodePaletteAdd(typeId: string): void {
 /** 自动布局 */
 async function autoLayout(): Promise<void> {
   try {
-    const newPositions = await autoLayoutGraph(graphStore.currentGraph, graphStore.nodePositions, {
-      direction: 'RIGHT', // 从左到右布局
-      spacing: 100, // 增大间距以确保边可见
-      alignPorts: true,
-    })
+    const newPositions = await autoLayoutGraph(
+      graphStore.currentGraph,
+      graphStore.nodePositions,
+      graphStore.nodeSizes,
+      {
+        direction: 'RIGHT', // 从左到右布局
+        spacing: 100, // 增大间距以确保边可见
+        alignPorts: true,
+      },
+    )
 
     // 批量更新节点位置
     for (const [nodeId, position] of newPositions) {
@@ -255,6 +260,7 @@ onUnmounted(() => {
         ref="graphViewRef"
         :graph="graphStore.currentGraph"
         :node-positions="graphStore.nodePositions"
+        :node-sizes="graphStore.nodeSizes"
         :graph-revision="graphStore.graphRevision"
         :readonly="false"
         :executing-node-ids="graphStore.executingNodeIds"

@@ -57,8 +57,8 @@ function startRecording(): void {
     recordedEventCount.value = count
   }
 
-  // 开始录制（传入节点位置）
-  newRecorder.startRecording(graphStore.nodePositions)
+  // 开始录制（传入节点位置和尺寸）
+  newRecorder.startRecording(graphStore.nodePositions, graphStore.nodeSizes)
 
   recorder.value = newRecorder
   isRecording.value = true

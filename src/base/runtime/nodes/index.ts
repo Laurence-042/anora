@@ -6,6 +6,7 @@ export type {
   NodeContextChangeEvent,
   NodeContextChangeListener,
   NodeStaticMeta,
+  NodeSize,
 } from './BaseNode'
 export { WebNode, BackendNode } from './NodeTypes'
 export { SubGraphNode, SubGraphEntryNode, SubGraphExitNode } from './SubGraphNode'

@@ -34,6 +34,14 @@ export interface NodeContextChangeEvent {
 export type NodeContextChangeListener = (event: NodeContextChangeEvent) => void
 
 /**
+ * 节点尺寸
+ */
+export interface NodeSize {
+  width: number
+  height: number
+}
+
+/**
  * 节点静态元数据接口
  * 定义节点的固有属性（图标、分类等）
  */
@@ -42,6 +50,8 @@ export interface NodeStaticMeta {
   icon?: string
   /** 分类 (用于节点面板分组) */
   category?: string
+  /** 默认尺寸（宽高），不设置则使用自动尺寸 */
+  defaultSize?: NodeSize
 }
 
 /**

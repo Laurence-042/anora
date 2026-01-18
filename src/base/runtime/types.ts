@@ -145,7 +145,9 @@ export interface SerializedNode {
   typeId: string
   label: string
   context: unknown
-  position: { x: number; y: number }
+  position?: { x: number; y: number }
+  /** 节点尺寸（可选，不设置则使用默认或自动尺寸） */
+  size?: { width: number; height: number }
   inExecPort: SerializedPort
   outExecPort: SerializedPort
   inControlPorts: Record<string, SerializedPort>

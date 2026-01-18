@@ -40,6 +40,11 @@ const props = defineProps({
     type: Object as PropType<Map<string, { x: number; y: number }>>,
     required: true,
   },
+  /** 节点尺寸映射 */
+  nodeSizes: {
+    type: Object as PropType<Map<string, { width: number; height: number }>>,
+    default: () => new Map(),
+  },
   /** 是否只读模式（禁用拖拽、连线等） */
   readonly: {
     type: Boolean,
@@ -102,12 +107,13 @@ const vfNodes = computed<Node[]>(() => {
 
   for (const node of allNodes) {
     const pos = props.nodePositions.get(node.id) ?? { x: 0, y: 0 }
+    const size = props.nodeSizes.get(node.id)
     const isSelected = props.selectedNodeIds?.has(node.id) ?? false
     nodes.push({
       id: node.id,
       type: getNodeViewType(node.typeId),
       position: pos,
-      data: { node: markRaw(node) },
+      data: { node: markRaw(node), readonly: props.readonly, size },
       draggable: !props.readonly,
       selectable: !props.readonly,
       ...(isSelected ? { selected: true } : {}),

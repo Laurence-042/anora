@@ -61,6 +61,9 @@ export const useGraphStore = defineStore('graph', () => {
   /** 节点位置映射（UI 层位置由 store 统一管理） */
   const nodePositions = ref<Map<string, { x: number; y: number }>>(new Map())
 
+  /** 节点尺寸映射（由用户调整或从默认值读取） */
+  const nodeSizes = ref<Map<string, { width: number; height: number }>>(new Map())
+
   /** 子图导航栈 */
   const subGraphStack = ref<SubGraphStackItem[]>([])
 
@@ -462,10 +465,11 @@ export const useGraphStore = defineStore('graph', () => {
    * 从序列化数据加载图（替代当前图）
    */
   function loadFromSerialized(data: import('@/base/runtime/types').SerializedGraph): void {
-    const { graph, nodePositions: positions } = AnoraGraph.fromSerialized(data)
+    const { graph, nodePositions: positions, nodeSizes: sizes } = AnoraGraph.fromSerialized(data)
     setupGraphCallback(graph)
     currentGraph.value = graph
     nodePositions.value = positions
+    nodeSizes.value = sizes
     rootSubGraph.value.setGraph(graph)
     subGraphStack.value = []
     selectedNodeIds.value.clear()
@@ -480,6 +484,20 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function updateNodePosition(nodeId: string, position: { x: number; y: number }): void {
     nodePositions.value.set(nodeId, position)
+  }
+
+  /**
+   * 更新节点尺寸
+   */
+  function updateNodeSize(nodeId: string, size: { width: number; height: number }): void {
+    nodeSizes.value.set(nodeId, size)
+  }
+
+  /**
+   * 获取节点尺寸（如果未设置则返回 undefined）
+   */
+  function getNodeSize(nodeId: string): { width: number; height: number } | undefined {
+    return nodeSizes.value.get(nodeId)
   }
 
   /**
@@ -501,6 +519,7 @@ export const useGraphStore = defineStore('graph', () => {
     currentGraph,
     graphRevision,
     nodePositions,
+    nodeSizes,
     subGraphStack,
     selectedNodeIds,
     selectedEdges,
@@ -528,6 +547,8 @@ export const useGraphStore = defineStore('graph', () => {
     navigateToLevel,
     loadFromSerialized,
     updateNodePosition,
+    updateNodeSize,
+    getNodeSize,
     clearExecutionState,
 
     // 选择操作

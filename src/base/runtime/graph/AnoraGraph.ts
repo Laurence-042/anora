@@ -18,6 +18,7 @@ interface Edge {
 export interface DeserializeResult {
   graph: AnoraGraph
   nodePositions: Map<string, { x: number; y: number }>
+  nodeSizes: Map<string, { width: number; height: number }>
 }
 
 /**
@@ -429,8 +430,12 @@ export class AnoraGraph {
   /**
    * 序列化图
    * @param nodePositions 可选的节点位置映射（从 UI 层传入）
+   * @param nodeSizes 可选的节点尺寸映射（从 UI 层传入）
    */
-  serialize(nodePositions?: Map<string, { x: number; y: number }>): SerializedGraph {
+  serialize(
+    nodePositions?: Map<string, { x: number; y: number }>,
+    nodeSizes?: Map<string, { width: number; height: number }>,
+  ): SerializedGraph {
     const serializedEdges: SerializedEdge[] = this.edges.map((edge) => ({
       fromPortId: edge.fromPortId,
       toPortId: edge.toPortId,
@@ -447,6 +452,13 @@ export class AnoraGraph {
             serialized.position = { x: pos.x, y: pos.y }
           }
         }
+        // 如果提供了尺寸映射，使用 UI 层的尺寸
+        if (nodeSizes) {
+          const size = nodeSizes.get(node.id)
+          if (size) {
+            serialized.size = { width: size.width, height: size.height }
+          }
+        }
         return serialized
       }),
       edges: serializedEdges,
@@ -455,11 +467,12 @@ export class AnoraGraph {
 
   /**
    * 从序列化数据创建新图（静态工厂方法）
-   * 返回图实例和节点位置映射
+   * 返回图实例、节点位置映射和节点尺寸映射
    */
   static fromSerialized(data: SerializedGraph): DeserializeResult {
     const graph = new AnoraGraph()
     const nodePositions = new Map<string, { x: number; y: number }>()
+    const nodeSizes = new Map<string, { width: number; height: number }>()
 
     // 恢复节点
     for (const nodeData of data.nodes) {
@@ -470,6 +483,10 @@ export class AnoraGraph {
         if (nodeData.position) {
           nodePositions.set(node.id, { x: nodeData.position.x, y: nodeData.position.y })
         }
+        // 提取尺寸信息
+        if (nodeData.size) {
+          nodeSizes.set(node.id, { width: nodeData.size.width, height: nodeData.size.height })
+        }
       }
     }
 
@@ -478,7 +495,7 @@ export class AnoraGraph {
       graph.addEdge(edgeData.fromPortId, edgeData.toPortId)
     }
 
-    return { graph, nodePositions }
+    return { graph, nodePositions, nodeSizes }
   }
 
   /**

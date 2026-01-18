@@ -3,16 +3,16 @@
  *
  * 统一管理节点的视图组件和元数据：
  * 1. 视图组件注册 - 用于 Vue-Flow 自定义节点渲染
- * 2. 元数据获取 - 从节点类静态属性读取 icon 和 category
+ * 2. 元数据获取 - 从节点类静态属性读取 icon、category 和 defaultSize
  *
  * 设计原则：
- * - 节点固有属性（icon、category）定义在节点类的 static meta 中
+ * - 节点固有属性（icon、category、defaultSize）定义在节点类的 static meta 中
  * - i18n 在使用处直接调用 t()，key 格式为 nodes.{mod}.{NodeName}
  * - 视图层统一从此注册表获取所需信息
  */
 import { markRaw, type Component } from 'vue'
 import { NodeRegistry } from '@/base/runtime/registry'
-import type { NodeStaticMeta } from '@/base/runtime/nodes'
+import type { NodeStaticMeta, NodeSize } from '@/base/runtime/nodes'
 
 /**
  * 节点元数据
@@ -24,6 +24,8 @@ export interface NodeMeta {
   icon: string
   /** 分类 */
   category: string
+  /** 默认尺寸（可选） */
+  defaultSize?: NodeSize
 }
 
 /**
@@ -124,6 +126,7 @@ class NodeViewRegistryClass {
       typeId,
       icon: staticMeta.icon ?? '◇',
       category: staticMeta.category ?? defaultCategory,
+      defaultSize: staticMeta.defaultSize,
     }
   }
 

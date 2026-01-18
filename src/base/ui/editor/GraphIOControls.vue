@@ -17,8 +17,8 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 /** 导出图到 JSON 文件 */
 function exportGraph(): void {
   const graph = graphStore.currentGraph
-  // 序列化时传入节点位置
-  const serialized = graph.serialize(graphStore.nodePositions)
+  // 序列化时传入节点位置和尺寸
+  const serialized = graph.serialize(graphStore.nodePositions, graphStore.nodeSizes)
 
   const blob = new Blob([JSON.stringify(serialized, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

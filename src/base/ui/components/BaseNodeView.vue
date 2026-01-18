@@ -7,6 +7,8 @@ import { computed, ref, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElTooltip } from 'element-plus'
 import type { NodeProps } from '@vue-flow/core'
+import { NodeResizer } from '@vue-flow/node-resizer'
+import '@vue-flow/node-resizer/dist/style.css'
 import type { BaseNode } from '@/base/runtime/nodes'
 import { NodeExecutionStatus } from '@/base/runtime/types'
 import { NodeViewRegistry } from '@/base/ui/registry'
@@ -18,6 +20,10 @@ import { useNodeInput } from '@/base/ui/composables'
 interface AnoraNodeProps extends NodeProps {
   data: {
     node: BaseNode
+    /** 是否只读模式（禁用 resize） */
+    readonly?: boolean
+    /** 节点尺寸（从外部传入） */
+    size?: { width: number; height: number }
   }
 }
 
@@ -116,6 +122,23 @@ function togglePortExpand(portId: string): void {
   }
 }
 
+// ==================== Resize 相关 ====================
+
+/** 是否只读模式 */
+const isReadonly = computed(() => props.data.readonly ?? false)
+
+/** 最小尺寸 */
+const MIN_WIDTH = 180
+const MIN_HEIGHT = 80
+
+/** 处理 resize 结束事件 */
+function onResizeEnd(event: { params: { width: number; height: number } }): void {
+  graphStore.updateNodeSize(node.value.id, {
+    width: event.params.width,
+    height: event.params.height,
+  })
+}
+
 /** 状态边框颜色（不包括选中状态，选中由 CSS 处理） */
 const statusBorderColor = computed(() => {
   if (isExecuting.value) return '#fbbf24' // amber - executing
@@ -134,6 +157,14 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 </script>
 
 <template>
+  <!-- NodeResizer 组件 -->
+  <NodeResizer
+    v-if="!isReadonly"
+    :min-width="MIN_WIDTH"
+    :min-height="MIN_HEIGHT"
+    @resize-end="onResizeEnd"
+  />
+
   <div
     class="anora-node"
     :class="{
@@ -262,9 +293,15 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 <style scoped>
 /* BaseNodeView 特有样式 - 通用样式由 node-theme.css 提供 */
 
-/* 节点最大宽度限制 */
+/* 节点容器 */
 .anora-node {
-  max-width: 320px;
+  position: relative;
+  max-width: 480px;
+  min-width: 180px;
+  min-height: 80px;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 /* 节点图标 */
@@ -334,6 +371,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   flex: 1;
   min-width: 0;
   padding: 0 8px;
+  overflow: auto;
 }
 
 .node-controls:empty {
@@ -348,6 +386,8 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   padding: 8px 0;
   min-height: 40px;
   gap: 4px;
+  flex: 1;
+  overflow: auto;
 }
 
 .ports-column {
