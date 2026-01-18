@@ -43,8 +43,11 @@ export abstract class BasePort {
   /** 当前存储的数据 */
   protected _data: RealDataType = null
 
-  /** 是否已被写入数据（用于判断是否为脏数据） */
-  protected _hasData: boolean = false
+  /** 版本号：每次 write 时递增 */
+  protected _version: number = 0
+
+  /** 上次 read 时记录的版本号 */
+  protected _lastReadVersion: number = 0
 
   constructor(parentNode: AnyNode, parentPort?: ContainerPort, keyInParent?: string | number) {
     this._id = uuidv4()
@@ -66,10 +69,17 @@ export abstract class BasePort {
   }
 
   /**
-   * 是否有数据
+   * 是否有数据（包括旧数据）
    */
   get hasData(): boolean {
-    return this._hasData
+    return this._data !== null || this._version > 0
+  }
+
+  /**
+   * 是否有新数据（write 后未被 read 过）
+   */
+  get hasNewData(): boolean {
+    return this._version > this._lastReadVersion
   }
 
   /**
@@ -80,40 +90,40 @@ export abstract class BasePort {
   write(value: RealDataType): ConversionResult {
     if (value === null) {
       this._data = null
-      this._hasData = true
+      this._version++
       return { success: true, value: null }
     }
 
     const result = this.convert(value)
     if (result.success) {
       this._data = result.value
-      this._hasData = true
+      this._version++
     }
     return result
   }
 
   /**
-   * 读取并清空数据
+   * 读取数据并标记为已消费（不清空数据）
    */
   read(): RealDataType {
-    const value = this._data
-    this.clear()
-    return value
+    this._lastReadVersion = this._version
+    return this._data
   }
 
   /**
-   * 仅读取数据（不清空）
+   * 仅读取数据（不改变版本号）
    */
   peek(): RealDataType {
     return this._data
   }
 
   /**
-   * 清空数据
+   * 清空数据并重置版本号
    */
   clear(): void {
     this._data = null
-    this._hasData = false
+    this._version = 0
+    this._lastReadVersion = 0
   }
 
   /**

@@ -260,12 +260,33 @@ export abstract class BaseNode<
   }
 
   /**
-   * 检查被连接的入 Port 是否都被填入数据
+   * 检查被连接的入 Port 是否都有新数据
    * 如果没有任何入 Port 被连接，返回 true
    * 注意：inActivateOnPort 不参与首次激活条件检查
    * @param connectedPorts Executor 传入的已连接 Port ID 集合
    */
-  protected areConnectedInPortsFilled(connectedPorts: Set<string>): boolean {
+  protected areConnectedInPortsFilledWithNewData(connectedPorts: Set<string>): boolean {
+    // 检查 inDependsOnPort
+    if (connectedPorts.has(this.inDependsOnPort.id) && !this.inDependsOnPort.hasNewData) {
+      return false
+    }
+
+    // 检查所有 inPorts
+    for (const [, port] of this.inPorts) {
+      if (connectedPorts.has(port.id) && !port.hasNewData) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  /**
+   * 检查被连接的入 Port 是否都有数据（不管新旧）
+   * 用于 activateOn 触发时的检查
+   * @param connectedPorts Executor 传入的已连接 Port ID 集合
+   */
+  protected areConnectedInPortsFilledWithAnyData(connectedPorts: Set<string>): boolean {
     // 检查 inDependsOnPort
     if (connectedPorts.has(this.inDependsOnPort.id) && !this.inDependsOnPort.hasData) {
       return false
@@ -299,12 +320,12 @@ export abstract class BaseNode<
   /**
    * 表示节点是否可以激活并运行（由 Executor 调用）
    *
-   * 基类逻辑：
-   * - 有入边连接（不含 inActivateOnPort）：所有被连接的入 Port 都有数据时 READY
-   * - 无入边连接（不含 inActivateOnPort）：只执行一次，除非 inActivateOnPort 有数据
+   * 基类逻辑（版本号机制）：
+   * - 有入边连接（不含 inActivateOnPort）：所有被连接的入 Port 都有**新数据**时 READY
+   * - 无入边连接（不含 inActivateOnPort）：只执行一次
+   * - inActivateOnPort 有新数据时：忽略"新数据"检查，只要有数据就 READY
    *
-   * 注意：当 inActivateOnPort 被写入时，Executor 会自动从上游拉取其他入 Port 的数据，
-   * 因此 areConnectedInPortsFilled 检查会通过。
+   * "新数据"定义：Port 的 version > lastReadVersion（即 write 后未被 read）
    *
    * 子类可以覆盖此方法实现特殊激活规则
    * @param connectedPorts Executor 传入的当前被连接的 Ports 的 ID 集合
@@ -313,19 +334,30 @@ export abstract class BaseNode<
     // 检查是否有任何入 Port 被连接（不含 inActivateOnPort）
     const hasNormalConnections = this.hasAnyInPortConnected(connectedPorts)
 
+    // 检查 inActivateOnPort 是否有新数据
+    const activateOnTriggered = this.inActivateOnPort.hasNewData
+
     if (hasNormalConnections) {
-      // 有连接：所有被连接的入 Port 都有数据时才 READY
-      // （当 inActivateOnPort 触发时，Executor 会自动拉取数据，所以这里会通过）
-      if (this.areConnectedInPortsFilled(connectedPorts)) {
+      if (activateOnTriggered) {
+        // activateOn 触发：忽略"新数据"检查，只要有数据（不管新旧）就 READY
+        if (this.areConnectedInPortsFilledWithAnyData(connectedPorts)) {
+          return ActivationReadyStatus.Ready
+        }
+        // 即使 activateOn 触发，如果连入 Port 数据都没有，也无法执行
+        return ActivationReadyStatus.NotReadyUntilAllPortsFilled
+      }
+
+      // 正常流程：所有被连接的入 Port 都有新数据时才 READY
+      if (this.areConnectedInPortsFilledWithNewData(connectedPorts)) {
         return ActivationReadyStatus.Ready
       }
       return ActivationReadyStatus.NotReadyUntilAllPortsFilled
     }
 
     // 无正常连接的情况：
-    // - 如果 inActivateOnPort 有数据，可以触发再次激活
+    // - 如果 inActivateOnPort 有新数据，可以触发再次激活
     // - 否则只执行一次
-    if (this.inActivateOnPort.hasData) {
+    if (activateOnTriggered) {
       return ActivationReadyStatus.Ready
     }
 
@@ -368,7 +400,7 @@ export abstract class BaseNode<
 
   /**
    * 节点激活逻辑
-   * 流程: 从入 Port 读取并清空数据 - 调用 activateCore - 把结果填到出 Port
+   * 流程: 从入 Port read 数据（标记为已消费但不清空）→ 调用 activateCore → 把结果填到出 Port
    */
   async activate(executorContext: ExecutorContext): Promise<void> {
     this.executionStatus = NodeExecutionStatus.EXECUTING

@@ -104,10 +104,27 @@ class BasePort {
   parentNode: BaseNode // 反查所属节点
   parentPort?: ContainerPort // 反查父 Port
   keyInParent?: string | number // 在父 Port 中的 key
+
+  // 版本号机制：用于追踪数据是否是"新的"
+  private _version: number = 0 // 每次 write 时递增
+  private _lastReadVersion: number = 0 // 上次 read 时记录的版本号
 }
 ```
 
 Port ID 通过 UUID 生成。子 Port 并非单独的类型，NumberPort、ArrayPort 都可以作为 ObjectPort 的子 Port。
+
+### 3.4.1 Port 数据操作
+
+| 方法           | 行为                                                    | 用途                             |
+| -------------- | ------------------------------------------------------- | -------------------------------- |
+| `write(data)`  | 写入数据，`_version++`                                  | 上游节点推送数据                 |
+| `read()`       | 返回数据，`_lastReadVersion = _version`，**不清空数据** | 节点执行时获取入参               |
+| `peek()`       | 返回数据，不改变版本号                                  | 查看数据但不消费                 |
+| `hasData()`    | 返回 `_data !== null \|\| _version > 0`                 | 检查是否有数据（包括旧数据）     |
+| `hasNewData()` | 返回 `_version > _lastReadVersion`                      | 检查是否有新数据（未被 read 过） |
+| `clear()`      | 清空数据并重置版本号                                    | 执行开始前重置状态               |
+
+**关键设计**：`read()` 不清空数据，只标记数据已被消费。这使得 `activateOn` 触发时节点可以重用上一次的数据。
 
 ### 3.5 ContainerPort 规则
 
@@ -212,16 +229,20 @@ abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = Nod
   // 表示节点是否可以激活并运行（由 Executor 调用）
   // connectedPorts 为 Executor 传入，表示当前被连接的 Ports 的 ID 列表
   // Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
-  // 基类实现：
-  //   - 有入边连接（不含 inActivateOnPort）：所有被连接的入 Port 都有数据时 READY
-  //   - 无入边连接（不含 inActivateOnPort）：只执行一次，除非 inActivateOnPort 有数据
-  //   - inActivateOnPort 用于环结构中的反馈激活，但不绕过正常的数据依赖检查
+  //
+  // 基类实现（版本号机制）：
+  //   - 有入边连接（不含 inActivateOnPort）：所有被连接的入 Port 都有**新数据**时 READY
+  //   - 无入边连接（不含 inActivateOnPort）：只执行一次
+  //   - inActivateOnPort 有新数据时：忽略"新数据"检查，只要有数据就 READY
+  //
+  // "新数据"定义：Port 的 version > lastReadVersion（即 write 后未被 read）
+  //
   // 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
   // 子类可以覆盖此方法实现特殊激活规则（如 DistributeNode 的多次输出、AggregateNode 的双模式激活）
   isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus
 
   // 节点激活逻辑，Executor 调用时传入全局 context
-  // 流程：从入 Port 读取并清空数据 → 调用 activateCore → 把结果填到出 Port
+  // 流程：从入 Port read 数据（标记为已消费但不清空）→ 调用 activateCore → 把结果填到出 Port
   // 通常不建议使用 executorContext，除非节点运行真的依赖全局数据
   async activate(executorContext: ExecutorContext): void
 
@@ -246,7 +267,40 @@ abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = Nod
 | inControlPorts   | 模式设置面板，可改变工作模式在多次启动中使用不同逻辑                 |
 | outControlPorts  | 状态显示面板，显示当前工作状态/进度                                  |
 | inDependsOnPort  | 电源插座。未接线=内置电源，有原料就加工；接线=外部供电，线没电就不动 |
-| inActivateOnPort | 遥控启动按钮。可以远程再次启动机器，但机器首次启动不需要等这个按钮   |
+| inActivateOnPort | 遥控启动按钮。可以远程再次启动机器，用上次剩下的原料再加工一次       |
+
+### 4.3.1 激活机制详解
+
+**版本号机制**：每个入 Port 维护一个版本号，`write()` 时递增，`read()` 时记录已读版本。"新数据"指 write 后未被 read 过的数据。
+
+**正常激活条件**：所有被连接的入 Port 都有**新数据**时，节点才会激活。
+
+```
+A ──→ C    // A 执行后推数据给 C，C 的 A 入口标记为"有新数据"
+B ──→ C    // B 执行后推数据给 C，C 的 B 入口标记为"有新数据"
+           // 此时 C 的两个入口都有新数据，C 激活
+           // C 执行时 read 两个入口，标记为"已消费"（数据不清空）
+```
+
+**activateOn 的作用**：当 `inActivateOnPort` 收到新数据时，节点**忽略"新数据"检查**，只要入 Port 有数据（不管新旧）就可以激活。
+
+```
+           ┌──────────────────────────────────────────────┐
+           │                                              ↓
+待办列表 ──→ 获取元素 ──→ ... ──→ Branch.outDependsOn ──→ 获取元素.inActivateOn
+           │
+索引 ──────┘
+
+// 第一次执行：待办列表和索引都推新数据，获取元素正常激活
+// activateOn 触发时：待办列表没有推新数据，但入 Port 里还有上次的数据
+// 因为 inActivateOnPort 有新数据，获取元素忽略"新数据"检查，用旧数据再次激活
+```
+
+**关键特性**：
+
+- 入 Port 数据**不会被清空**，只是标记为"已消费"
+- activateOn 让节点可以**重用上次的数据**
+- 避免了环结构中"需要上游重新执行才能拿到数据"的问题
 
 ### 4.4 继承体系
 
@@ -625,13 +679,15 @@ enum ActivationReadyStatus {
    - 支持**取消**操作，终止时当前所有未完成的节点视为执行失败
 
 3. **执行后处理**：
-   - **清空执行后节点的入 Port**（避免下一次激活时残留脏数据）
    - 统一检查这些执行后节点的准备状态（主要用于`DistributeNode`这类在激活后的多个迭代都会保持READY的节点）
    - 从执行后节点的所有出 Port 里取出数据填入其连接的另一节点的入 Port
      - 即使值为 null 或 ContainerPort 内的子 Port 为 null 也要填入
-   - **特殊处理 activateOn**：当数据被推到某节点的 `inActivateOnPort` 时，Executor 会额外从上游出 Port **拉取**该节点其他入 Port 需要的数据（因为推式传递会在节点执行后清空入 Port，而 activateOn 触发的再次激活需要这些数据）
+     - 写入会使目标入 Port 的 `_version` 递增，标记为"新数据"
    - **特殊处理直通节点**：如果目标节点是 `directThrough=true` 的 ForwardNode，立即执行并继续传播
    - 查询其他受影响节点的准备状态
+
+> **设计说明**：入 Port 数据不会被清空，而是通过版本号机制判断是否是新数据。
+> 这使得 `activateOn` 触发时，节点可以重用上次执行后保留的入 Port 数据，无需额外的"拉取"操作。
 
 4. **失败处理**：
    - 如果节点执行失败，**保留当前状态**供后续使用

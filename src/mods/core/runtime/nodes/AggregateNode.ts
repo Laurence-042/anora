@@ -69,17 +69,17 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
 
   /**
    * 覆盖激活就绪检查
-   * 两种激活条件：aggregate 控制端口有数据，或 inDependsOnPort 有数据
+   * 两种激活条件：aggregate 控制端口有新数据，或 inDependsOnPort 有新数据
    */
   override isReadyToActivate(_connectedPorts: Set<string>): ActivationReadyStatus {
     // 检查 aggregate 控制 Port
     const aggregatePort = this.inControlPorts.get(AggregateNodePorts.IN_CONTROL.AGGREGATE)
-    if (aggregatePort?.hasData) {
+    if (aggregatePort?.hasNewData) {
       return ActivationReadyStatus.Ready
     }
 
     // 检查 inDependsOnPort（输出模式）
-    if (this.inDependsOnPort.hasData) {
+    if (this.inDependsOnPort.hasNewData) {
       return ActivationReadyStatus.Ready
     }
 

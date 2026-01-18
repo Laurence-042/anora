@@ -497,12 +497,9 @@ export class BasicExecutor {
       return results
     }
 
-    // 对成功执行的节点：清空入 Port，然后传播出 Port 数据
+    // 对成功执行的节点：传播出 Port 数据
     for (const result of results) {
       if (result.success) {
-        // 清空执行后节点的入 Port（避免下一次激活时残留脏数据）
-        this.clearNodeInputPorts(result.node)
-
         // 传播数据到下游，并处理直通节点
         await this.propagateDataWithDirectThrough(result.node, graph, context)
 
@@ -525,25 +522,12 @@ export class BasicExecutor {
   }
 
   /**
-   * 清空节点的入 Port 数据
-   */
-  private clearNodeInputPorts(node: BaseNode): void {
-    for (const port of node.getInputPorts()) {
-      port.clear()
-    }
-  }
-
-  /**
    * 传播节点的输出数据到连接的下游端口，并处理直通节点
    *
    * 直通机制：
    * - 推完数据后检查目标入 Port 是否属于直通 Forward 节点
    * - 如果是，立即执行该直通节点并继续传播
    * - 直到没有任何直通 Forward 的入 Port 被推数据
-   *
-   * activateOn 特殊处理：
-   * - 当数据被推到 inActivateOnPort 时，需要额外拉取该节点其他入 Port 的数据
-   * - 这是因为推式数据传递会在节点执行后清空入 Port，而 activateOn 触发的再次激活需要数据
    */
   private async propagateDataWithDirectThrough(
     node: BaseNode,
@@ -554,9 +538,6 @@ export class BasicExecutor {
 
     // 收集所有被写入数据的目标节点
     const affectedNodes = new Set<BaseNode>()
-
-    // 收集需要拉取数据的节点（inActivateOnPort 被写入的节点）
-    const nodesNeedingDataPull = new Set<BaseNode>()
 
     // 收集数据传递记录（用于调试/演示）
     const transfers: EdgeDataTransfer[] = []
@@ -586,19 +567,8 @@ export class BasicExecutor {
         const targetNode = graph.getNodeByPort(targetPort)
         if (targetNode) {
           affectedNodes.add(targetNode)
-
-          // 检查是否写入的是 inActivateOnPort
-          if (targetPort.id === targetNode.inActivateOnPort.id) {
-            nodesNeedingDataPull.add(targetNode)
-          }
         }
       }
-    }
-
-    // 对于 inActivateOnPort 被写入的节点，拉取其他入 Port 的数据
-    for (const targetNode of nodesNeedingDataPull) {
-      const pullTransfers = this.pullDataForActivateOn(targetNode, graph)
-      transfers.push(...pullTransfers)
     }
 
     // 发送数据传播事件
@@ -610,50 +580,6 @@ export class BasicExecutor {
     for (const targetNode of affectedNodes) {
       await this.executeDirectThroughIfReady(targetNode, graph, context)
     }
-  }
-
-  /**
-   * 为 inActivateOnPort 被触发的节点拉取其他入 Port 的数据
-   * 从上游节点的 outPort peek 数据并写入到当前节点的入 Port
-   */
-  private pullDataForActivateOn(node: BaseNode, graph: AnoraGraph): EdgeDataTransfer[] {
-    const transfers: EdgeDataTransfer[] = []
-
-    // 获取所有入 Port（不包括 inActivateOnPort，它已经有数据了）
-    const inputPorts = [
-      node.inDependsOnPort,
-      ...node.inControlPorts.values(),
-      ...node.inPorts.values(),
-    ]
-
-    for (const inPort of inputPorts) {
-      // 如果入 Port 已经有数据，跳过
-      if (inPort.hasData) {
-        continue
-      }
-
-      // 获取连接到此入 Port 的上游出 Port
-      const upstreamPorts = graph.getConnectedPorts(inPort)
-
-      for (const upstreamPort of upstreamPorts) {
-        // 从上游出 Port peek 数据（不清空）
-        if (upstreamPort.hasData) {
-          const data = upstreamPort.peek()
-          inPort.write(data)
-
-          transfers.push({
-            fromPortId: upstreamPort.id,
-            toPortId: inPort.id,
-            data,
-          })
-
-          // 只取第一个有数据的上游（避免多对一的覆盖问题）
-          break
-        }
-      }
-    }
-
-    return transfers
   }
 
   /**
@@ -670,9 +596,9 @@ export class BasicExecutor {
       return
     }
 
-    // 检查是否有数据可传播
+    // 检查是否有新数据可传播
     const inPort = node.getInPort('value')
-    if (!inPort?.hasData) {
+    if (!inPort?.hasNewData) {
       return
     }
 
@@ -681,9 +607,6 @@ export class BasicExecutor {
       this.emit({ type: ExecutorEventType.NodeStart, node })
       await node.activate(context)
       this.emit({ type: ExecutorEventType.NodeComplete, node, success: true })
-
-      // 清空入 Port
-      this.clearNodeInputPorts(node)
 
       // 递归传播数据（可能触发更多直通节点）
       await this.propagateDataWithDirectThrough(node, graph, context)
