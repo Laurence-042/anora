@@ -38,8 +38,12 @@ function toggleMode(): void {
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入直通模式控件 -->
   <BaseNodeView v-bind="props as any">
-    <template #controls>
-      <div class="direct-through-control" @click="toggleMode">
+    <template #controls="{ readonly }">
+      <div
+        class="direct-through-control"
+        :class="{ disabled: readonly }"
+        @click="!readonly && toggleMode()"
+      >
         <ElIcon class="mode-icon" :class="{ active: directThrough }">
           <Promotion v-if="directThrough" />
           <Sort v-else />
@@ -65,7 +69,12 @@ function toggleMode(): void {
   transition: background 0.2s;
 }
 
-.direct-through-control:hover {
+.direct-through-control.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.direct-through-control:hover:not(.disabled) {
   background: rgba(255, 255, 255, 0.05);
 }
 

@@ -44,13 +44,14 @@ const parsedPreview = computed(() => {
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
-    <template #controls>
+    <template #controls="{ readonly }">
       <ElBadge :value="parsedPreview" class="type-badge" type="primary">
         <ElInput
           v-model="editValue"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 8 }"
           placeholder="输入参数值"
+          :disabled="readonly"
           :class="['value-textarea', inputClass]"
           @keydown="onKeydown"
         />

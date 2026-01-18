@@ -56,7 +56,7 @@ const currentTypeColor = computed(() => {
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
-    <template #controls>
+    <template #controls="{ readonly }">
       <div class="notify-controls">
         <!-- 标题输入 -->
         <div class="control-row">
@@ -65,6 +65,7 @@ const currentTypeColor = computed(() => {
             v-model="title"
             size="small"
             placeholder="通知标题"
+            :disabled="readonly"
             :class="inputClass"
             @keydown="onKeydown"
           />
@@ -73,7 +74,7 @@ const currentTypeColor = computed(() => {
         <!-- 类型选择 -->
         <div class="control-row">
           <label class="control-label">类型</label>
-          <ElSelect v-model="notifyType" size="small" class="type-select">
+          <ElSelect v-model="notifyType" size="small" :disabled="readonly" class="type-select">
             <ElOption
               v-for="opt in typeOptions"
               :key="opt.value"
@@ -97,6 +98,7 @@ const currentTypeColor = computed(() => {
             :min="0"
             :max="30000"
             :step="500"
+            :disabled="readonly"
             controls-position="right"
             class="duration-input"
           />

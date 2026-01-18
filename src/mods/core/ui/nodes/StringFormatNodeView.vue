@@ -34,12 +34,13 @@ const { value: currentTemplate } = useContextField(node, {
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
-    <template #controls>
+    <template #controls="{ readonly }">
       <ElInput
         v-model="currentTemplate"
         type="textarea"
         placeholder="模板字符串，使用 {key} 插入参数"
         :rows="3"
+        :disabled="readonly"
         :class="['template-input', inputClass]"
         @keydown="onKeydown"
       />

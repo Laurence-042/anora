@@ -82,7 +82,7 @@ function syncParams(): void {
 
 <template>
   <BaseNodeView v-bind="props as any">
-    <template #controls>
+    <template #controls="{ readonly }">
       <div class="config-section">
         <!-- Method 输入 -->
         <div class="field-row">
@@ -91,6 +91,7 @@ function syncParams(): void {
             v-model="method"
             placeholder="后端方法名"
             size="small"
+            :disabled="readonly"
             :class="inputClass"
             @keydown="onKeydown"
           />
@@ -100,7 +101,14 @@ function syncParams(): void {
         <div class="params-section">
           <div class="params-header">
             <label class="field-label">Params (入Port)</label>
-            <ElButton type="primary" size="small" :icon="Plus" circle @click="addParam" />
+            <ElButton
+              type="primary"
+              size="small"
+              :icon="Plus"
+              circle
+              :disabled="readonly"
+              @click="addParam"
+            />
           </div>
 
           <div v-if="localParams.length === 0" class="no-params">无参数</div>
@@ -110,6 +118,7 @@ function syncParams(): void {
               :model-value="param.name"
               placeholder="参数名"
               size="small"
+              :disabled="readonly"
               :class="inputClass"
               @keydown="onKeydown"
               @update:model-value="updateParamName(index, $event as string)"
@@ -119,6 +128,7 @@ function syncParams(): void {
               size="small"
               :icon="Delete"
               circle
+              :disabled="readonly"
               @click="removeParam(index)"
             />
           </div>

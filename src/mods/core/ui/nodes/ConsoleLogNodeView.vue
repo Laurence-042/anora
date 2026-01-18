@@ -34,11 +34,12 @@ const { value: currentPrefix } = useContextField(node, {
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
-    <template #controls>
+    <template #controls="{ readonly }">
       <ElInput
         v-model="currentPrefix"
         placeholder="输出前缀"
         size="small"
+        :disabled="readonly"
         :class="['prefix-input', inputClass]"
         @keydown="onKeydown"
       />

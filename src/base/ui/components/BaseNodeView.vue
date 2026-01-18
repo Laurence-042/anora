@@ -192,7 +192,9 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           @keyup.enter="finishEditLabel"
           @keyup.escape="cancelEditLabel"
         />
-        <span v-else class="node-label" @dblclick="startEditLabel">{{ nodeDisplayName }}</span>
+        <span v-else class="node-label" @dblclick="!isReadonly && startEditLabel()">{{
+          nodeDisplayName
+        }}</span>
         <!-- 执行状态指示器（固定宽度占位） -->
         <span class="status-indicator-slot">
           <span v-if="isExecuting" class="status-indicator executing">⟳</span>
@@ -250,7 +252,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 
       <!-- 中间：控制区域（供子组件覆盖使用的插槽） -->
       <div class="node-controls">
-        <slot name="controls" :node="node"></slot>
+        <slot name="controls" :node="node" :readonly="isReadonly"></slot>
       </div>
 
       <!-- 右侧：输出 Ports -->

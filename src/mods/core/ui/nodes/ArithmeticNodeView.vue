@@ -44,11 +44,12 @@ const operationOptions = [
 <template>
   <!-- 复用 BaseNodeView，通过 slot 插入特有控件 -->
   <BaseNodeView v-bind="props as any">
-    <template #controls>
+    <template #controls="{ readonly }">
       <ElSelect
         v-model="currentOperation"
         placeholder="选择运算"
         size="small"
+        :disabled="readonly"
         :class="['operation-select', inputClass]"
         @keydown="onKeydown"
       >
