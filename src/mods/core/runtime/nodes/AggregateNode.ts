@@ -31,7 +31,7 @@ interface AggregateControl {
  *
  * 两种激活模式：
  * 1. inControlPort `aggregate` 被写入：将 inPort 数据加进缓存数组（null 也缓存）
- * 2. inExecPort 被写入：输出缓存数组，然后清空缓存
+ * 2. inDependsOnPort 被写入：输出缓存数组，然后清空缓存
  */
 @AnoraRegister('core.AggregateNode')
 export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, AggregateControl> {
@@ -69,7 +69,7 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
 
   /**
    * 覆盖激活就绪检查
-   * 两种激活条件：aggregate 控制端口有数据，或 inExecPort 有数据
+   * 两种激活条件：aggregate 控制端口有数据，或 inDependsOnPort 有数据
    */
   override isReadyToActivate(_connectedPorts: Set<string>): ActivationReadyStatus {
     // 检查 aggregate 控制 Port
@@ -78,8 +78,8 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
       return ActivationReadyStatus.Ready
     }
 
-    // 检查 inExecPort（输出模式）
-    if (this.inExecPort.hasData) {
+    // 检查 inDependsOnPort（输出模式）
+    if (this.inDependsOnPort.hasData) {
       return ActivationReadyStatus.Ready
     }
 
@@ -92,9 +92,9 @@ export class AggregateNode extends WebNode<AggregateInput, AggregateOutput, Aggr
     inData: AggregateInput,
     controlData: AggregateControl,
   ): Promise<AggregateOutput> {
-    // 检查是否是 inExecPort 触发（输出模式）
-    // 注意：inExecPort 的数据已在 activate() 中被 read()，所以这里检查 aggregate 控制端口
-    // 如果 aggregate 没有数据，说明是 inExecPort 触发的
+    // 检查是否是 inDependsOnPort 触发（输出模式）
+    // 注意：inDependsOnPort 的数据已在 activate() 中被 read()，所以这里检查 aggregate 控制端口
+    // 如果 aggregate 没有数据，说明是 inDependsOnPort 触发的
     if (controlData[AggregateNodePorts.IN_CONTROL.AGGREGATE] === undefined) {
       // 输出当前收集的数组并清空
       const result = [...this.collector]

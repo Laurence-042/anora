@@ -84,9 +84,13 @@ export abstract class BaseNode<
   /** 节点标签/名称 */
   label: string
 
-  /** 执行 Port：用于不需要传递数据但需要顺序执行的情况，数据类型是 null */
-  readonly inExecPort: BasePort
-  readonly outExecPort: BasePort
+  /** 依赖 Port：用于不需要传递数据但需要顺序执行的情况，数据类型是 null，连接后节点必须等待此 Port 被写入才能激活 */
+  readonly inDependsOnPort: BasePort
+  readonly outDependsOnPort: BasePort
+
+  /** 激活 Port：用于可选的激活触发，不参与首次激活条件判断，主要用于环结构中的反馈激活 */
+  readonly inActivateOnPort: BasePort
+  readonly outActivateOnPort: BasePort
 
   /** 控制 Port：用于特定情况下的额外流程控制 */
   readonly inControlPorts: Map<string, BasePort> = new Map()
@@ -115,9 +119,13 @@ export abstract class BaseNode<
     this.id = id ?? uuidv4()
     this.label = label ?? this.constructor.name
 
-    // 创建执行 Port
-    this.inExecPort = new NullPort(this)
-    this.outExecPort = new NullPort(this)
+    // 创建依赖 Port
+    this.inDependsOnPort = new NullPort(this)
+    this.outDependsOnPort = new NullPort(this)
+
+    // 创建激活 Port
+    this.inActivateOnPort = new NullPort(this)
+    this.outActivateOnPort = new NullPort(this)
   }
 
   /**
@@ -254,11 +262,12 @@ export abstract class BaseNode<
   /**
    * 检查被连接的入 Port 是否都被填入数据
    * 如果没有任何入 Port 被连接，返回 true
+   * 注意：inActivateOnPort 不参与首次激活条件检查
    * @param connectedPorts Executor 传入的已连接 Port ID 集合
    */
   protected areConnectedInPortsFilled(connectedPorts: Set<string>): boolean {
-    // 检查 inExecPort
-    if (connectedPorts.has(this.inExecPort.id) && !this.inExecPort.hasData) {
+    // 检查 inDependsOnPort
+    if (connectedPorts.has(this.inDependsOnPort.id) && !this.inDependsOnPort.hasData) {
       return false
     }
 
@@ -273,10 +282,10 @@ export abstract class BaseNode<
   }
 
   /**
-   * 检查是否有任何入 Port 被连接（包括 inExecPort 和 inPorts）
+   * 检查是否有任何入 Port 被连接（包括 inDependsOnPort 和 inPorts，不包括 inActivateOnPort）
    */
   protected hasAnyInPortConnected(connectedPorts: Set<string>): boolean {
-    if (connectedPorts.has(this.inExecPort.id)) {
+    if (connectedPorts.has(this.inDependsOnPort.id)) {
       return true
     }
     for (const [, port] of this.inPorts) {
@@ -339,8 +348,10 @@ export abstract class BaseNode<
     for (const port of this.outControlPorts.values()) {
       port.clear()
     }
-    this.inExecPort.clear()
-    this.outExecPort.clear()
+    this.inDependsOnPort.clear()
+    this.outDependsOnPort.clear()
+    this.inActivateOnPort.clear()
+    this.outActivateOnPort.clear()
   }
 
   /**
@@ -359,8 +370,9 @@ export abstract class BaseNode<
         inData[name] = port.read()
       }
 
-      // 读取 inExecPort（清空数据）
-      this.inExecPort.read()
+      // 读取 inDependsOnPort 和 inActivateOnPort（清空数据）
+      this.inDependsOnPort.read()
+      this.inActivateOnPort.read()
 
       // 读取 inControlPorts
       const controlData: Record<string, unknown> = {}
@@ -386,8 +398,9 @@ export abstract class BaseNode<
         }
       }
 
-      // 激活 outExecPort
-      this.outExecPort.write(null)
+      // 激活 outDependsOnPort 和 outActivateOnPort
+      this.outDependsOnPort.write(null)
+      this.outActivateOnPort.write(null)
 
       this.executionStatus = NodeExecutionStatus.SUCCESS
     } catch (error) {
@@ -414,7 +427,8 @@ export abstract class BaseNode<
    * 清空所有入 Port
    */
   clearInPorts(): void {
-    this.inExecPort.clear()
+    this.inDependsOnPort.clear()
+    this.inActivateOnPort.clear()
     for (const [, port] of this.inPorts) {
       port.clear()
     }
@@ -425,8 +439,10 @@ export abstract class BaseNode<
    */
   getAllPorts(): BasePort[] {
     return [
-      this.inExecPort,
-      this.outExecPort,
+      this.inDependsOnPort,
+      this.outDependsOnPort,
+      this.inActivateOnPort,
+      this.outActivateOnPort,
       ...this.inControlPorts.values(),
       ...this.outControlPorts.values(),
       ...this.inPorts.values(),
@@ -449,17 +465,27 @@ export abstract class BaseNode<
   }
 
   /**
-   * 获取所有入 Port（包括 inEx和 inControlPorts）
+   * 获取所有入 Port（包括 inDependsOnPort、inActivateOnPort 和 inControlPorts）
    */
   getInputPorts(): BasePort[] {
-    return [this.inExecPort, ...this.inControlPorts.values(), ...this.inPorts.values()]
+    return [
+      this.inDependsOnPort,
+      this.inActivateOnPort,
+      ...this.inControlPorts.values(),
+      ...this.inPorts.values(),
+    ]
   }
 
   /**
-   * 获取所有出 Port（包括 outExecPort 和 outControlPorts）
+   * 获取所有出 Port（包括 outDependsOnPort、outActivateOnPort 和 outControlPorts）
    */
   getOutputPorts(): BasePort[] {
-    return [this.outExecPort, ...this.outControlPorts.values(), ...this.outPorts.values()]
+    return [
+      this.outDependsOnPort,
+      this.outActivateOnPort,
+      ...this.outControlPorts.values(),
+      ...this.outPorts.values(),
+    ]
   }
 
   /**
@@ -492,8 +518,10 @@ export abstract class BaseNode<
       label: this.label,
       context: this.context,
       position: { x: 0, y: 0 }, // 位置由 UI 层管理
-      inExecPort: this.inExecPort.serialize(),
-      outExecPort: this.outExecPort.serialize(),
+      inDependsOnPort: this.inDependsOnPort.serialize(),
+      outDependsOnPort: this.outDependsOnPort.serialize(),
+      inActivateOnPort: this.inActivateOnPort.serialize(),
+      outActivateOnPort: this.outActivateOnPort.serialize(),
       inControlPorts: serializePorts(this.inControlPorts) as Record<string, never>,
       outControlPorts: serializePorts(this.outControlPorts) as Record<string, never>,
       inPorts: serializePorts(this.inPorts) as Record<string, never>,
@@ -518,12 +546,18 @@ export abstract class BaseNode<
       }
     }
 
-    // 恢复 exec ports
-    if (serialized.inExecPort?.id) {
-      this.inExecPort.restoreId(serialized.inExecPort.id)
+    // 恢复 dependsOn 和 activateOn ports
+    if (serialized.inDependsOnPort?.id) {
+      this.inDependsOnPort.restoreId(serialized.inDependsOnPort.id)
     }
-    if (serialized.outExecPort?.id) {
-      this.outExecPort.restoreId(serialized.outExecPort.id)
+    if (serialized.outDependsOnPort?.id) {
+      this.outDependsOnPort.restoreId(serialized.outDependsOnPort.id)
+    }
+    if (serialized.inActivateOnPort?.id) {
+      this.inActivateOnPort.restoreId(serialized.inActivateOnPort.id)
+    }
+    if (serialized.outActivateOnPort?.id) {
+      this.outActivateOnPort.restoreId(serialized.outActivateOnPort.id)
     }
 
     // 恢复各类 ports

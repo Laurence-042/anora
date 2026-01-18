@@ -148,8 +148,12 @@ export interface SerializedNode {
   position?: { x: number; y: number }
   /** 节点尺寸（可选，不设置则使用默认或自动尺寸） */
   size?: { width: number; height: number }
-  inExecPort: SerializedPort
-  outExecPort: SerializedPort
+  /** 依赖 Port：连接后节点必须等待此 Port 被写入才能激活 */
+  inDependsOnPort: SerializedPort
+  outDependsOnPort: SerializedPort
+  /** 激活 Port：用于可选的激活触发，不参与首次激活条件判断 */
+  inActivateOnPort: SerializedPort
+  outActivateOnPort: SerializedPort
   inControlPorts: Record<string, SerializedPort>
   outControlPorts: Record<string, SerializedPort>
   inPorts: Record<string, SerializedPort>

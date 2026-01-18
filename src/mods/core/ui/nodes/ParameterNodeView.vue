@@ -49,7 +49,7 @@ const parsedPreview = computed(() => {
         <ElInput
           v-model="editValue"
           type="textarea"
-          :rows="2"
+          :rows="1"
           placeholder="输入参数值"
           :disabled="readonly"
           :class="['value-textarea', inputClass]"
@@ -79,7 +79,7 @@ const parsedPreview = computed(() => {
 .value-textarea :deep(.el-textarea__inner) {
   height: 100%;
   width: 100%;
-  min-height: 32px;
+  min-height: 0rem !important;
   resize: none;
 }
 

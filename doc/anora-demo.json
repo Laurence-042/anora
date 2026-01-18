@@ -11,8 +11,8 @@
           "value": "3"
         },
         "position": {
-          "x": -20,
-          "y": 100
+          "x": 22,
+          "y": 12
         },
         "inExecPort": {
           "id": "e456a363-0d94-406e-a98a-7e1d17e12751",
@@ -40,11 +40,11 @@
         "typeId": "core.ForwardNode",
         "label": "today_todo_count",
         "context": {
-          "directThrough": false
+          "directThrough": true
         },
         "position": {
-          "x": 340,
-          "y": 100
+          "x": 482,
+          "y": 46
         },
         "inExecPort": {
           "id": "ca0647ac-e2a1-474a-a396-3ce067829459",
@@ -81,8 +81,8 @@
           "value": "1"
         },
         "position": {
-          "x": 280,
-          "y": 260
+          "x": 482,
+          "y": 274
         },
         "inExecPort": {
           "id": "77406f8c-567f-4f94-8b15-77e09646d664",
@@ -113,8 +113,8 @@
           "operation": "-"
         },
         "position": {
-          "x": 640,
-          "y": 100
+          "x": 942,
+          "y": 83
         },
         "inExecPort": {
           "id": "f8b33a65-f769-4b16-968f-67df2850cb4c",
@@ -156,8 +156,8 @@
           "directThrough": true
         },
         "position": {
-          "x": 980,
-          "y": 100
+          "x": 1402,
+          "y": 129
         },
         "inExecPort": {
           "id": "86175c2a-51b3-457c-876e-b99daf741ac2",
@@ -191,13 +191,13 @@
         "typeId": "core.NotifyNode",
         "label": "Notify",
         "context": {
-          "title": "tomorrow_todo_count",
+          "title": "明天还有事要做，今天早点睡吧~",
           "type": "info",
           "duration": 3000
         },
         "position": {
-          "x": 1280,
-          "y": 100
+          "x": 2782,
+          "y": 225
         },
         "inExecPort": {
           "id": "c4d7400e-891c-4e6d-b069-654168f533ea",
@@ -214,6 +214,156 @@
         "inPorts": {
           "message": {
             "id": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3",
+            "dataType": "string",
+            "data": null
+          }
+        },
+        "outPorts": {}
+      },
+      {
+        "id": "5d7dec8c-aeaa-4970-b568-d390a5821c40",
+        "typeId": "core.CompareNode",
+        "label": "Compare",
+        "context": {
+          "operation": ">"
+        },
+        "position": {
+          "x": 1862,
+          "y": 166
+        },
+        "inExecPort": {
+          "id": "c2179ca2-1d8c-4024-aaa9-b5ded21c8484",
+          "dataType": "null",
+          "data": null
+        },
+        "outExecPort": {
+          "id": "88f53ffd-e785-4dd7-ab55-1105f22b9256",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {
+          "left": {
+            "id": "e8fa4ecc-8067-414f-92ac-96b40f91b751",
+            "dataType": "null",
+            "data": null
+          },
+          "right": {
+            "id": "e7723a1f-bdb5-44e3-9f4a-0fc01b3e1e28",
+            "dataType": "null",
+            "data": null
+          }
+        },
+        "outPorts": {
+          "result": {
+            "id": "ce50cf89-73d9-4b44-bcd8-480136c8f07d",
+            "dataType": "boolean",
+            "data": true
+          }
+        }
+      },
+      {
+        "id": "56c619f4-60b3-4437-a235-e8e9f88164cc",
+        "typeId": "core.BranchNode",
+        "label": "Branch",
+        "context": null,
+        "position": {
+          "x": 2322,
+          "y": 206
+        },
+        "inExecPort": {
+          "id": "840b469a-6ca0-4fa6-99de-a36c0b66f83a",
+          "dataType": "null",
+          "data": null
+        },
+        "outExecPort": {
+          "id": "ba122be9-a490-479a-946b-aa13bbcd118d",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {
+          "onTrue": {
+            "id": "f92c1b8a-9c0d-4a61-a6e6-94c0590bf064",
+            "dataType": "null",
+            "data": null
+          },
+          "onFalse": {
+            "id": "f03f9cb3-4f6c-4f19-8e9c-6fff6081f7f1",
+            "dataType": "null",
+            "data": null
+          }
+        },
+        "inPorts": {
+          "condition": {
+            "id": "234a3ce4-f586-4a76-b596-b6d9aae3beff",
+            "dataType": "boolean",
+            "data": null
+          }
+        },
+        "outPorts": {}
+      },
+      {
+        "id": "2fbe97c4-ef5d-4449-a150-261cfc5b4125",
+        "typeId": "core.ParameterNode",
+        "label": "Parameter",
+        "context": {
+          "value": "0"
+        },
+        "position": {
+          "x": 1402,
+          "y": 357
+        },
+        "inExecPort": {
+          "id": "5458cba0-7f4b-474f-ab92-c03c6c959d07",
+          "dataType": "null",
+          "data": null
+        },
+        "outExecPort": {
+          "id": "6ac2f032-bbde-403a-af2b-7e31e0c217a3",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {},
+        "outPorts": {
+          "value": {
+            "id": "7218937a-4aee-4f21-a9c1-572b8bc28eb7",
+            "dataType": "null",
+            "data": 0
+          }
+        }
+      },
+      {
+        "id": "96ce94ef-4a7a-4f10-9c7b-500b4296f9e1",
+        "typeId": "core.NotifyNode",
+        "label": "Notify",
+        "context": {
+          "title": "预定的事务都完成了，有没有忘记的？",
+          "type": "info",
+          "duration": 3000
+        },
+        "position": {
+          "x": 2782,
+          "y": 453
+        },
+        "inExecPort": {
+          "id": "cf83ded0-f0a0-416d-a3df-ca73b4c56fc1",
+          "dataType": "null",
+          "data": null
+        },
+        "outExecPort": {
+          "id": "ac172573-6145-4467-a7a3-d5b6822ff87c",
+          "dataType": "null",
+          "data": null
+        },
+        "inControlPorts": {},
+        "outControlPorts": {},
+        "inPorts": {
+          "message": {
+            "id": "34cfb5da-9f0c-4da8-9979-5e6d81c54c90",
             "dataType": "string",
             "data": null
           }
@@ -240,40 +390,63 @@
       },
       {
         "fromPortId": "a6bb8df3-84fd-4066-a989-35e8f0f669ad",
+        "toPortId": "e8fa4ecc-8067-414f-92ac-96b40f91b751"
+      },
+      {
+        "fromPortId": "7218937a-4aee-4f21-a9c1-572b8bc28eb7",
+        "toPortId": "e7723a1f-bdb5-44e3-9f4a-0fc01b3e1e28"
+      },
+      {
+        "fromPortId": "ce50cf89-73d9-4b44-bcd8-480136c8f07d",
+        "toPortId": "234a3ce4-f586-4a76-b596-b6d9aae3beff"
+      },
+      {
+        "fromPortId": "f92c1b8a-9c0d-4a61-a6e6-94c0590bf064",
         "toPortId": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3"
+      },
+      {
+        "fromPortId": "f03f9cb3-4f6c-4f19-8e9c-6fff6081f7f1",
+        "toPortId": "34cfb5da-9f0c-4da8-9979-5e6d81c54c90"
       }
     ]
   },
   "events": [
     {
-      "timestamp": 981,
+      "timestamp": 1632,
       "event": {
         "type": "start"
       }
     },
     {
-      "timestamp": 981,
+      "timestamp": 1632,
       "event": {
         "type": "iteration",
         "iteration": 1
       }
     },
     {
-      "timestamp": 982,
+      "timestamp": 1632,
       "event": {
         "type": "node-start",
         "nodeId": "f6f05e02-594b-4c9b-a8d6-a9cfe5df8c4a"
       }
     },
     {
-      "timestamp": 982,
+      "timestamp": 1632,
       "event": {
         "type": "node-start",
         "nodeId": "d4ba066f-d485-467d-b920-3f682a9dd073"
       }
     },
     {
-      "timestamp": 987,
+      "timestamp": 1632,
+      "event": {
+        "type": "node-start",
+        "nodeId": "2fbe97c4-ef5d-4449-a150-261cfc5b4125"
+      }
+    },
+    {
+      "timestamp": 1635,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -286,50 +459,22 @@
       }
     },
     {
-      "timestamp": 989,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "65b6b788-0013-4143-b415-cc5e887c4f9c",
-            "toPortId": "4c4566bd-2e28-4061-8bfb-306aa10825ed",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 1991,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "f6f05e02-594b-4c9b-a8d6-a9cfe5df8c4a",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 1991,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "d4ba066f-d485-467d-b920-3f682a9dd073",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 1993,
-      "event": {
-        "type": "iteration",
-        "iteration": 2
-      }
-    },
-    {
-      "timestamp": 1994,
+      "timestamp": 1635,
       "event": {
         "type": "node-start",
         "nodeId": "86c99ffb-45ba-4327-942f-16c9231960ce"
       }
     },
     {
-      "timestamp": 1996,
+      "timestamp": 1637,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "86c99ffb-45ba-4327-942f-16c9231960ce",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 1637,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -342,29 +487,71 @@
       }
     },
     {
-      "timestamp": 3003,
+      "timestamp": 1648,
       "event": {
         "type": "node-complete",
-        "nodeId": "86c99ffb-45ba-4327-942f-16c9231960ce",
+        "nodeId": "f6f05e02-594b-4c9b-a8d6-a9cfe5df8c4a",
         "success": true
       }
     },
     {
-      "timestamp": 3005,
+      "timestamp": 1648,
       "event": {
-        "type": "iteration",
-        "iteration": 3
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "65b6b788-0013-4143-b415-cc5e887c4f9c",
+            "toPortId": "4c4566bd-2e28-4061-8bfb-306aa10825ed",
+            "data": 1
+          }
+        ]
       }
     },
     {
-      "timestamp": 3005,
+      "timestamp": 1657,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "d4ba066f-d485-467d-b920-3f682a9dd073",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 1658,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "7218937a-4aee-4f21-a9c1-572b8bc28eb7",
+            "toPortId": "e7723a1f-bdb5-44e3-9f4a-0fc01b3e1e28",
+            "data": 0
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 1668,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "2fbe97c4-ef5d-4449-a150-261cfc5b4125",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 2671,
+      "event": {
+        "type": "iteration",
+        "iteration": 2
+      }
+    },
+    {
+      "timestamp": 2671,
       "event": {
         "type": "node-start",
         "nodeId": "2f8f32dc-3c97-4bb1-b725-9ce844053d4f"
       }
     },
     {
-      "timestamp": 3009,
+      "timestamp": 2677,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -377,14 +564,14 @@
       }
     },
     {
-      "timestamp": 3010,
+      "timestamp": 2677,
       "event": {
         "type": "node-start",
         "nodeId": "7aca03a1-bac5-46a4-bc49-c0e6b3737f41"
       }
     },
     {
-      "timestamp": 3011,
+      "timestamp": 2679,
       "event": {
         "type": "node-complete",
         "nodeId": "7aca03a1-bac5-46a4-bc49-c0e6b3737f41",
@@ -392,20 +579,20 @@
       }
     },
     {
-      "timestamp": 3011,
+      "timestamp": 2679,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
             "fromPortId": "a6bb8df3-84fd-4066-a989-35e8f0f669ad",
-            "toPortId": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3",
+            "toPortId": "e8fa4ecc-8067-414f-92ac-96b40f91b751",
             "data": 2
           }
         ]
       }
     },
     {
-      "timestamp": 4016,
+      "timestamp": 2689,
       "event": {
         "type": "node-complete",
         "nodeId": "2f8f32dc-3c97-4bb1-b725-9ce844053d4f",
@@ -413,21 +600,91 @@
       }
     },
     {
-      "timestamp": 4019,
+      "timestamp": 3697,
+      "event": {
+        "type": "iteration",
+        "iteration": 3
+      }
+    },
+    {
+      "timestamp": 3697,
+      "event": {
+        "type": "node-start",
+        "nodeId": "5d7dec8c-aeaa-4970-b568-d390a5821c40"
+      }
+    },
+    {
+      "timestamp": 3702,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "ce50cf89-73d9-4b44-bcd8-480136c8f07d",
+            "toPortId": "234a3ce4-f586-4a76-b596-b6d9aae3beff",
+            "data": true
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 3704,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "5d7dec8c-aeaa-4970-b568-d390a5821c40",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 4705,
       "event": {
         "type": "iteration",
         "iteration": 4
       }
     },
     {
-      "timestamp": 4019,
+      "timestamp": 4705,
+      "event": {
+        "type": "node-start",
+        "nodeId": "56c619f4-60b3-4437-a235-e8e9f88164cc"
+      }
+    },
+    {
+      "timestamp": 4709,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "f92c1b8a-9c0d-4a61-a6e6-94c0590bf064",
+            "toPortId": "4d37c312-be08-4e83-a23f-4c3bcbc0d8c3",
+            "data": null
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 4710,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "56c619f4-60b3-4437-a235-e8e9f88164cc",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 5712,
+      "event": {
+        "type": "iteration",
+        "iteration": 5
+      }
+    },
+    {
+      "timestamp": 5712,
       "event": {
         "type": "node-start",
         "nodeId": "3bd7b47b-6b21-4154-abe7-14d8cbb356d7"
       }
     },
     {
-      "timestamp": 5037,
+      "timestamp": 5717,
       "event": {
         "type": "node-complete",
         "nodeId": "3bd7b47b-6b21-4154-abe7-14d8cbb356d7",
@@ -435,20 +692,13 @@
       }
     },
     {
-      "timestamp": 5040,
-      "event": {
-        "type": "iteration",
-        "iteration": 5
-      }
-    },
-    {
-      "timestamp": 5040,
+      "timestamp": 6719,
       "event": {
         "type": "complete",
         "result": {
-          "status": "completed",
+          "finishReason": "completed",
           "iterations": 5,
-          "duration": 4059
+          "duration": 5088
         }
       }
     }
@@ -456,8 +706,8 @@
   "metadata": {
     "title": "Untitled Recording",
     "description": "",
-    "createdAt": "2025-12-14T06:40:59.654Z",
+    "createdAt": "2026-01-11T07:08:51.079Z",
     "iterationDelay": 0,
-    "duration": 5040
+    "duration": 6719
   }
 }

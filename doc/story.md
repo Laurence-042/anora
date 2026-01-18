@@ -1,426 +1,378 @@
 [TOC]
 
-# 背景
+# ANORA 项目说明书（整理版）
 
-这是一个名为ANORA（Anora’s Not Only Recording API）的图形化编程项目的前端，这个项目设计上应该是一个兼容不同后端的通用图形化编程前端，且其节点系统具备高度可扩展性。同时，ANORA会提供一个默认的node后端，提供基于playwright的API调用录制与回放，用于演示其使用场景。
+> ANORA = Anora's Not Only Recording API
 
-当前核心任务是完善 ANORA 前端节点系统设计，暂时不需要主动涉及后端录制功能；
+---
 
-当前技术栈为 TypeScript + Vue + Vue-Flow 。
+## 1. 项目概述
 
-# 架构
+### 1.1 定位
 
-其执行逻辑和数据逻辑分离，执行由专门的Executor控制
+- **通用图形化编程前端**，兼容不同后端
+- **高度可扩展的节点系统**
+- 默认提供基于 Playwright 的 API 录制回放后端（演示用）
 
-- Executor：执行器，决定哪些时候运行哪些节点
+### 1.2 技术栈
 
-其实体从底层到顶层（非严格顺序）为
+TypeScript + Vue + Vue-Flow
 
-- Port：相当于入参出参
-- Node：相当于函数
-- Graph：维护不同Node的不同Port之间的连接关系
+### 1.3 当前目标
+
+完善前端节点系统设计，暂不涉及后端录制功能
+
+---
+
+## 2. 核心架构
+
+### 2.1 整体结构
 
 ```
-Graph
- └─ Nodes
-      └─ Ports
-Executor
+Graph (边管理)
+ └─ Nodes (函数抽象)
+      └─ Ports (入参/出参)
+
+Executor (执行控制)
  ├─ Inspect Graph
  └─ Manage Context
 ```
 
-整体项目结构可以参考如下形式，但并非绝对。以保证语义清晰且可扩展为优先，同时保证核心内容和Mod以相同方式提供以在底层就保证可扩展性，而非照搬如下可能不合适的结构
+**执行逻辑与数据逻辑分离**：
 
-- src/
-  - base/
-    - runtime/ - ←- 可独立运行、无- UI- 耦合
-      - nodes/
-        - BaseNode.ts
-        - BaseWebNode.ts
-        - BaseBackendNode.ts
-        - SubGraphNode.ts
-      - ports/
-        - BasePort.ts
-      - executor/
-        - BasicExecutor.ts
-        - BasicContext.ts
-      - registry/
-        - BaseRegistry.ts
-        - NodeRegistry.ts - ←- 子类自动注册、插件加载入口
-        - PortRegistry.ts
-        - ExecutorRegistry.ts
-      - serialization/
-        - DefaultSerializer.ts
-    - ui/ - ←- Node/Port- 的视图层
-      - components/
-        - BaseNode.vue
-        - BasePort.vue
-      - composables/
-        - ...
-      - editor/
-        - GraphView.vue
-  - mods/ - ←- 内容扩展
-    - core/ - ←- 核心内容同样作为mod提供，保持一致性
-      - runtime/
-        - nodes/
-          - web-nodes/
-            - ForwardNode.ts
-          - backend-nodes/
-            - WryNode.ts
-        - ports/
-          - StringPort.ts
-        - executor/
-          - LoggingExecutor.ts
-      - ui/
-        - nodes/
-          - web-nodes/
-            - ForwardNode.vue
-          - backend-nodes/
-            - WryNode.vue
-        - ports/
-          - StringPort.vue
-    - \<other-mod-name\>/
-      - runtime/
-        - nodes/
-          - web-nodes/
-            - \<node-name\>.ts
-          - backend-nodes/
-            - \<node-name\>.ts
-        - ports/
-          - \<port-name\>.ts
-        - executor/
-          - \<executror-name\>.ts
-      - ui/
-        - nodes/
-          - web-nodes/
-            - \<node-name\>.vue
-          - backend-nodes/
-            - \<node-name\>.vue
-        - ports/
-          - \<port-name\>.vue
+- **Executor**：执行器，决定什么时候运行哪些节点
+- **Port**：相当于入参出参
+- **Node**：相当于函数
+- **Graph**：维护不同 Node 的不同 Port 之间的连接关系
 
-## 可定制的Executor
+### 2.2 设计原则
 
-ANORA作为一个纯前端项目，它不仅提供展示还会提供计算框架，后端只需要实现后端节点对应的函数即可
+- 执行逻辑与数据逻辑分离
+- 核心内容与 Mod 以相同方式提供，保证底层可扩展性
+- 语义清晰优先，而非照搬固定结构
 
-Executor运算逻辑抽象如下，其中有些细节可能在Port、Node章节提及，这里只讲最普适、最核心的部分
+---
 
-- 每个节点相当于一个函数调用
-  - 有多个入参（入port）和单个出参（出port）
-  - port如果是复杂对象，可以通过点击port旁的开关展开，显示代表其属性的子port
-  - 连接出入port表示传参
+## 3. Port 系统
 
-- 主流程
-  1. 初始化，查询所有节点的可运行状态
+### 3.1 基本概念
 
-  2. 执行已准备好（Activation-Ready）的节点
+- Port 是节点接收/发出数据的**主要途径**
+- **强类型**，但内置自动类型转换
+- 支持嵌套（ContainerPort 可展开显示子 Port）
+- 每种类型都有自己的 Port 类型，可分别重写解析输入数据的方法
 
-     - 检查当前用户是否要求停止
-     - 节点的执行函数`activate`必定是异步的，执行器在执行时会在then中更新执行状态、发现新准备的好节点
-     - 使用类似`await Promise.allSettled`同时启动当前迭代中的所有准备好的节点并等待其都执行完成，而非单独await每一个执行。同一个迭代中节点的执行顺序并不确定
-       - 说使用`await Promise.allSettled`只是一个说明一个节点执行失败不能影响其他的示例，实际编程时应使用bluebird之类的提供的支持取消的promise类似概念，以支持用户在一个节点卡太久时想终止的情况
-       - 当在这个时候终止时，当前所有未完成的节点视为执行失败
-     - 将执行后节点的入Port清空（以此避免下一次激活时残留脏数据），统一检查这些执行后节点的准备状态，从执行后节点的所有出Port里取出数据填入其连接的另一节点的入Port（即使它的值为null或者ContainerPort内的子Port为null），查询其他受影响节点的准备状态
+### 3.2 数据类型
 
-       - 如果节点执行失败，保留当前的状态供后续使用
-         - 供用户在逻辑图上检查各个Port的值
-  3. 重复2直到没有节点可以执行
+数据类型对标 [OpenAPI 3.0](https://swagger.io/docs/specification/v3_0/data-models/data-types/)，但有适应性修改：
 
-- 用户可以指定从哪个节点启动（相当于Executor直接从其入边相连的前置节点重新把值写入它的入Port，如果之前没有执行过、用户也没也设置过前置节点的出Port值，那么节点启动后自然会因为入参不对报错，不用额外处理），以此避免普通程序每次都得完整调试的不便
+| 类型      | 说明                                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| `string`  | 字符串，不支持二进制（需 base64 编码）。复杂内容应封装在节点内部                               |
+| `number`  | 浮点数                                                                                         |
+| `integer` | 整数                                                                                           |
+| `boolean` | 布尔值                                                                                         |
+| `array`   | 数组，元素类型可不同。写入后每个元素成为子 Port。默认状态子 Port 为空数组                      |
+| `object`  | 对象，key 必须为 string，value 类型可不同。写入后每个键值成为子 Port。默认状态子 Port 为空 Map |
+| `null`    | 表示可接受/输出**任意类型**数据。任何 Port 也都可以接受 null 作为输入                          |
 
-- 需要注意的是，这个框架不要求逻辑图无环，它可以使用环结构来做类似周期性触发器之类的东西来长时间运行
+### 3.3 类型转换矩阵
 
-  - 这也是ANORA执行一个迭代中使用异步，但迭代间使用同步的重要原因
-  - 这也使ANORA不使用最大迭代次数来避免死循环的原因——这种周期触发器本质上和传统编程语言里的 while(true) do 同样是必要的死循环，用户在遭遇意外死循环时可以自行终止
+行为待写入数据类型，列为 Port 指定类型：
 
-- 逻辑图可以同时存在一对多和多对一
+| 写入 ↓ / Port 类型 → | string         | number            | integer         | boolean                      | array         | object   | null     |
+| -------------------- | -------------- | ----------------- | --------------- | ---------------------------- | ------------- | -------- | -------- |
+| **string**           | 直接赋值       | Number.parseFloat | Number.parseInt | str.toLowerCase() === "true" | str.split("") | ❌不兼容 | 直接赋值 |
+| **number**           | toString       | 直接赋值          | Math.floor      | !!num                        | ❌不兼容      | ❌不兼容 | 直接赋值 |
+| **integer**          | toString       | 直接赋值          | 直接赋值        | !!num                        | ❌不兼容      | ❌不兼容 | 直接赋值 |
+| **boolean**          | toString       | 0/1               | 0/1             | 直接赋值                     | ❌不兼容      | ❌不兼容 | 直接赋值 |
+| **array**            | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                     | 直接赋值      | ❌不兼容 | 直接赋值 |
+| **object**           | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                     | ❌不兼容      | 直接赋值 | 直接赋值 |
+| **null**             | null           | null              | null            | null                         | null          | null     | null     |
 
-  - 一对多的情况下
-    - 一个出Port的值可以推到所有与其相连的入Port
-  - 多对一的情况下
-    - 如果同一迭代中执行完成的一批节点出Port同时连接了下一个节点的父入Port和入Port的子入Port，先给父入Port赋值再给子入Port赋值
-    - 如果同一迭代中执行完成的一批节点出Port同时连接了下一个节点的同一个入Port，覆盖顺序是不确定的，如果发生了这种情况（写入Port时发现入Port当前有非null的值）报个告警表示“这种情况会导致不可确定的覆盖顺序，进而导致逻辑图难以维护，不建议这么做”
+**转换规则**：
 
-ANORA支持继承Executor以修改/扩展运行逻辑，所以实现时需要合理分割函数功能便于重写
+- `parseFloat`/`parseInt` 返回 `NaN` 视为**转换失败**
+- 运行时任何节点的入/出 Port 转换失败，都视为该节点**执行出错**
+- Graph 建立边时会根据 Port 类型校验，但不能保证节点运行时不会写入不匹配数据
 
-默认Executor使用context维护的全局状态中只包含如下必要信息，且只通过只读方法来为节点提供信息
-
-- 后端类型
-
-context和Executor并非强耦合，可以单独扩展。比如预期以后会实现的API录制回放场景中，只需要扩展context来保存cookie、persist-header之类的信息，而不必动executor。而在API分析场景中，就可以扩展executor来记录执行的节点的入参和出参，以此在执行完回放后自动生成OpenAPI 3.0接口定义文档，或者将逻辑图翻译成python代码，又或者翻译成其他低码项目的逻辑定义格式，以此实现无痛迁移
+### 3.4 Port 基类结构
 
 ```typescript
-enum ActivationReadyStatus {
-  NOT_READY, // 需要Executor下一轮迭代再次询问是否准备好
-  NOT_READY_UNTIL_ANY_PORTS_FILLED, // 需要Executor识别到其至少一个入Port被新写入数据后再次询问
-  NOT_READY_UNTIL_ALL_PORTS_FILLED, // 需要Executor识别到其至少一个入Port被新写入数据，且此时其所有有入边的入Port都已经填写数据后再次询问
-  READY, // 已经准备好运行，Executor下一轮迭代中可以执行它
-}
-
-interface ExecutorBasicContext {
-  ipcTypeId: string
-}
-
-type ExecutorContext = ExecutorBasicContext & {
-  [key: string]: any
+class BasePort {
+  id: string // UUID
+  parentNode: BaseNode // 反查所属节点
+  parentPort?: ContainerPort // 反查父 Port
+  keyInParent?: string | number // 在父 Port 中的 key
 }
 ```
 
-Executor、Port的的注册机制请参考Node的`@AnoraRegister`
+Port ID 通过 UUID 生成。子 Port 并非单独的类型，NumberPort、ArrayPort 都可以作为 ObjectPort 的子 Port。
 
-## 自适应的Port
+### 3.5 ContainerPort 规则
 
-Port是一个节点接收数据、发出数据最主要的途径
+`ArrayPort` 和 `ObjectPort` 共用基类 `ContainerPort`，需要在 ContainerPort 层实现：
 
-Port是强类型的，但它们内置数据转换
+- 使用 `key: number | string` 获取 value
+- 获取 key 列表
+- 视图层可使用这些方法迭代渲染子 Port
 
-比如，入Port在被写入字符串数据时会尝试将字符串解析为数字，这让字符串类型的出Port支持直接连上数字类型的入Port
+**子 Port 连接**：ContainerPort 展开后，子 Port 可独立连接
 
-其支持的基础数据类型对标[OpenAPI 3.0](https://swagger.io/docs/specification/v3_0/data-models/data-types/)，但同样有些修改以适应实际工程。
+**为父 Port 赋值时的规则**：
 
-- [`string`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#strings)
-  - 这个并没有对file的支持，同样没有二进制支持，二进制的传递需要base64编码解码，毕竟经常搞二进制的场景不适合使用ANORA这种以教育和简化编程为目的设计的前端，复杂内容都需要封装在节点内部
+| 情况                       | 处理方式                         |
+| -------------------------- | -------------------------------- |
+| 相同 key，类型一样         | 直接赋值                         |
+| 相同 key，类型不同但可转换 | 转换后赋值                       |
+| 相同 key，类型不兼容       | **报错**                         |
+| key 不存在                 | 新增自动推断类型的子 Port 并赋值 |
+| 新值中无此 key，有连接     | 将值设为 null                    |
+| 新值中无此 key，无连接     | 删除该 Port                      |
 
-- [`number`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#numbers)
-- [`integer`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#numbers)
-- [`boolean`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#boolean)
-- [`array`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#arrays)
-  - 当一个port被写入array数据后，array内每个元素都会成为这个port的子port。默认状态（新初始化而非从序列化的快照中加载时）子port属性为空数组
-  - array内部元素类型可以不同
-- [`object`](https://swagger.io/docs/specification/v3_0/data-models/data-types/#objects)
-  - 当一个port被写入object数据后，object内每个键值都会成为这个port的子port。默认状态（新初始化而非从序列化的快照中加载时）子port属性为空Map
-  - object的key必须为string，value类型可以不同
-  - 比如写入 `[1, "hello", true]`时其会有NumberPort、StringPort、BooleanPort三个子Port
-- `null`（如果port把null作为预期类型，那么实际表示可以接受/输出任何类型数据。任何Port也都可以接受入null作为输入）
+**设为 null 时**：只保留有连接或子孙有连接的 Port
 
-每种类型都有自己的Port类型，以此分别重写解析输入数据的方法，可维护地提供不同的解析逻辑
-
-Port结构可以自行设计，其ID通过UUID生成。但考虑到根据Port查Node、父Port的需求，可以考虑将其所属的Node、父Port在初始化时作为属性传入，Port基类参考结构如下
+### 3.6 序列化格式
 
 ```typescript
-class BasePort{
-    // UUID
-    id: string
-    
-    // 反查所属节点
-    parentNode: BaseNode
-    
-    // 反查所属父Port
-    parentPort?: ContainerPort
-    
-    // 反查所属父Port中自己的key
-    keyInParent?: string | number
+enum DataType {
+  STRING = 'string',
+  NUMBER = 'number',
+  INTEGER = 'integer',
+  BOOLEAN = 'boolean',
+  ARRAY = 'array',
+  OBJECT = 'object',
+  NULL = 'null',
+}
+
+type RealDataType = string | number | boolean | object | null
+
+interface SerializedPort {
+  dataType: DataType
+  data: RealDataType
 }
 ```
 
-array和object的Port需要使用相同的基类ContainerPort，使用key:number|string获取value、获取key列表之类的方法需要在ContainerPort一层实现。通过这种方式，在视图层就可以使用这些方法迭代渲染子Port。ContainerPort 展开后，子 port 可以独立连接。但需要注意需要分别实现ArrayPort和ObjectPort，这两个能接受的数据是互斥的
+---
 
-Port、子Port本质上只是Port间的组合，子Port并非单独的类型（不论是NumberPort还是ArratPort，都可以作为ObjectPort的子Port）。
+## 4. Node 系统
 
-为父port赋值会覆盖子port的值
+### 4.1 基本概念
 
-- 相同key的子port
-  - 类型一样直接赋值
-  - 类型不同但能转换就转换类型后赋值
-  - 否则报错
+节点本质上是**函数的抽象**：
 
-- key对应的port不存在会增加port，
-- 某个port对应的key在赋的值中不存在
-  - port存在连接：将值设为null
-  - port不存在连接：删除port
+- 有多个入参（入 Port）和多个出参（出 Port）
+- Port 如果是复杂对象，可以点击展开显示子 Port
+- 连接出入 Port 表示传参
 
-被设为null时，只保留存在连接或子孙存在连接的Port
-
-Port数据转换矩阵如下，行为待写入数据类型，列为port指定类型。
-
-|         | string         | number            | integer         | boolean                       | array         | object   | null     |
-| ------- | -------------- | ----------------- | --------------- | ----------------------------- | ------------- | -------- | -------- |
-| string  | 直接赋值       | Number.parseFloat | Number.parseInt | str.toLowerCase() === "true"; | str.split("") | 不兼容   | 直接赋值 |
-| number  | toString       | 直接赋值          | Math.floor      | !!num                         | 不兼容        | 不兼容   | 直接赋值 |
-| integer | toString       | 直接赋值          | 直接赋值        | !!num                         | 不兼容        | 不兼容   | 直接赋值 |
-| boolean | toString       | 0/1               | 0/1             | 直接赋值                      | 不兼容        | 不兼容   | 直接赋值 |
-| array   | JSON.stringify | 不兼容            | 不兼容          | 不兼容                        | 直接赋值      | 不兼容   | 直接赋值 |
-| object  | JSON.stringify | 不兼容            | 不兼容          | 不兼容                        | 不兼容        | 直接赋值 | 直接赋值 |
-| null    | null           | null              | null            | null                          | null          | null     | null     |
-
-需要注意，虽然Graph中建立边时会根据Port类型做校验来避免Port间数据传递问题，但不能保证节点运行时不会把不匹配的数据往出Port里写，也不能保证ContainerPort的子节点能正确赋值。
-
-parseFloat/parseInt得到NaN视为转换失败
-
-运行时不管哪个节点的入/出Port转换失败了，都就视为这个节点执行出错。
-
-可供参考的序列化格式如下
+### 4.2 基类结构
 
 ```typescript
-enum DataType{
-    STRING="string",
-    NUMBER="number",
-    INTEGER="integer",
-    BOOLEAN="boolean",
-    ARRAY="array",
-    OBJECT="object",
-    NULL="null"
-}
+// 节点输入/输出/控制数据类型
+type NodeInput = { [key: string]: unknown }
+type NodeOutput = { [key: string]: unknown }
+type NodeControl = { [key: string]: unknown }
 
-type RealDataType = string|number|boolean|object|null
-
-type SerializedPort{
-    dataType: DataType
-	data: RealDataType
-}
-```
-
-## 可扩展的Node
-
-节点本质上是函数的抽象。节点最基础的数据结构为
-
-```typescript
-class BaseNode {
-  // UUID
-  id: string
+// 泛型基类，通过类型参数约束 activateCore 的输入输出
+abstract class BaseNode<TInput = NodeInput, TOutput = NodeOutput, TControl = NodeControl> {
+  // 标识
+  id: string // UUID
   label: string
 
-  // 执行Port，用于不需要传递数据但需要顺序执行的情况，数据类型是null。必选，因为不依赖输入的节点只有ParameterNode一种，而只要依赖输入就可能有控制执行顺序的需求
-  inExecPort: AnoraPort
-  outExecPort: AnoraPort
+  // 依赖 Port：用于不需要传递数据但需要顺序执行的情况，数据类型是 null
+  // 连接后，节点必须等待此 Port 被写入才能激活（首次执行的硬性前置条件）
+  inDependsOnPort: BasePort
+  outDependsOnPort: BasePort
 
-  // 控制Port，用于在特定情况下进行额外流程控制，大部分节点这俩都是空的。
-  // 和inExecPort/inPorts不同，它们即便连接了入边且未被填写，在绝大多数情况下（基类实现）也不会导致节点不可执行。一些特例节点会在描述节点的同时介绍其激活模式
-  inControlPorts: { [portName: string]: AnoraPort }
-  outControlPorts: { [portName: string]: AnoraPort }
+  // 激活 Port：用于可选的激活触发，数据类型是 null
+  // 连接后，当此 Port 被写入时可以激活节点，但不参与首次激活的条件判断
+  // 主要用于环结构中的反馈激活，避免死锁
+  inActivateOnPort: BasePort
+  outActivateOnPort: BasePort
 
-  // 入/出Port，相当于入/出参，节点初始化时也可以自行为其分配初始值来辅助用户进行object类型的连线
-  inPorts: { [portName: string]: AnoraPort }
-  outPorts: { [portName: string]: AnoraPort }
-  // 上下文，便于节点实现在多次工作中的差异行为，也可以用于节点运行的静态配置（比如regex匹配器使用什么regex之类的）。考虑到维持整体精简和灵活性，动态数据和静态数据并未分离，需要实现特定节点时自己避免去写静态数据。子类中如果要用一般会重写它的类型为特定类型，保证开发中的类型安全
+  // 控制 Port：用于特定情况下的额外流程控制，大部分节点这俩都是空的
+  // 与 inDependsOnPort/inPorts 不同，即便连接了入边且未被填写，
+  // 在绝大多数情况下（基类实现）也不会导致节点不可执行
+  inControlPorts: Map<string, BasePort>
+  outControlPorts: Map<string, BasePort>
+
+  // 数据 Port：相当于入/出参
+  // 节点初始化时可自行分配初始值来辅助用户进行 object 类型的连线
+  inPorts: Map<string, BasePort>
+  outPorts: Map<string, BasePort>
+
+  // 上下文：便于节点在多次工作中实现差异行为，也可用于静态配置
+  // 动态数据和静态数据并未分离，需实现特定节点时自己避免写静态数据
+  // 子类中如果要用一般会重写它的类型为特定类型，保证开发中的类型安全
   context: any
 
-  // 显示context中的配置问题、Port数据类型无法转换之类的节点特有的警告信息
+  // 显示 context 配置问题、Port 数据类型无法转换等节点特有的警告信息
   getConfigurationWarnings(): string[]
 
-  // 表示节点是否可以激活并运行。Executor会在activate节点后询问其是否还可以运行，这种机制可以实现“一次激活，多次输出”的效果。在绝大多数情况下（基类实现）只有所有“被连接的”inExecPort和inPorts都被填入数据才会READY（如果没有任何inExecPort和inPorts被连接也算READY），其他时候都是NOT_READY_UNTIL_ALL_PORTS_FILLED。一些特例节点会在描述节点的同时介绍其激活模式
-  isReadyToActivate(): ActivationReadyStatus
+  // 表示节点是否可以激活并运行（由 Executor 调用）
+  // connectedPorts 为 Executor 传入，表示当前被连接的 Ports 的 ID 列表
+  // Executor 会在 activate 节点后询问其是否还可以运行，可实现"一次激活，多次输出"
+  // 基类实现：
+  //   - 所有"被连接的" inDependsOnPort 和 inPorts 都被填入数据才会 READY
+  //   - inActivateOnPort 不参与首次激活条件，但被写入时可触发再次激活
+  //   - 如果没有任何 inDependsOnPort 和 inPorts 被连接也算 READY
+  // 其他时候都是 NOT_READY_UNTIL_ALL_PORTS_FILLED
+  // 子类可以覆盖此方法实现特殊激活规则（如 DistributeNode 的多次输出、AggregateNode 的双模式激活）
+  isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus
 
-  // 节点激活逻辑，Executor调用它时会将全局context传入。其流程为：从入Port中读取并清空数据，将读到的数据作为参数调用activateCore得到处理后的数据，把处理后生成的数据填到出Port里。节点应且只应操作考虑到可维护性，通常不建议使用executorContext，除非节点运行真的依赖某种全局数据，且无法通过节点的局部缓存解决
+  // 节点激活逻辑，Executor 调用时传入全局 context
+  // 流程：从入 Port 读取并清空数据 → 调用 activateCore → 把结果填到出 Port
+  // 通常不建议使用 executorContext，除非节点运行真的依赖全局数据
   async activate(executorContext: ExecutorContext): void
 
-  // 节点激活核心逻辑，可以理解成节点实际上包装的函数。子类通常会重写它的类型，保证开发中的类型安全
-  async activateCore(executorContext: ExecutorContext, ...args: any[]): { [outPortName: string]: any }
+  // 节点激活核心逻辑，可理解为节点实际包装的函数
+  // 通过泛型参数获得类型安全，子类定义具体的输入输出类型
+  abstract activateCore(
+    executorContext: ExecutorContext,
+    inData: TInput,
+    controlData: TControl,
+  ): Promise<TOutput>
 }
 ```
 
-节点就像是一个自动加工机
+### 4.3 节点比喻
 
-- inPorts就是原料入口，默认情况下它看到原料足够制造成品了就会开始工作，然后把成品放到成品出口inPorts
-- inControlPorts就是加工机的模式设置面板，可以改变其工作模式来在多次启动中使用不同的逻辑
-- outControlPorts就是加工机的状态显示面板，可以通过它来显示当前工作状态/进度
-- inExecPort就是它的电源，如果没接线就说明它在用内置电源工作，有原料就加工；如果接了线就说明它不是用自己的内部电源工作了，这时候线没电它就不会动
+节点就像一个**自动加工机**：
 
-节点继承关系如下
+| 概念             | 比喻                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| inPorts          | 原料入口，默认看到原料足够就开始工作，把成品放到 outPorts            |
+| outPorts         | 成品出口                                                             |
+| inControlPorts   | 模式设置面板，可改变工作模式在多次启动中使用不同逻辑                 |
+| outControlPorts  | 状态显示面板，显示当前工作状态/进度                                  |
+| inDependsOnPort  | 电源插座。未接线=内置电源，有原料就加工；接线=外部供电，线没电就不动 |
+| inActivateOnPort | 遥控启动按钮。可以远程再次启动机器，但机器首次启动不需要等这个按钮   |
 
-- `BaseNode`：基类
-  - `WebNode`：可以直接在浏览器环境中运行的节点，其子类大多是预置的通用节点，以下是其中一些比较重要的
-    - 中继`ForwardNode`：接受所有数据类型并原样输出，可以使用context指定是否应该在填写入Port的时候立刻执行并填写其后面的入Port（即设置“走默认的迭代”还是“直通”），默认非直通。这会是唯一支持直通的节点类型，Executor会为此做专门适配，以此避免用户怕延迟问题而不敢用它整理连线。通常用于整理图结构、作为MergeGate保证后续节点在同一个迭代中执行、缓存数据值、延迟迭代以控制节点执行时序等等（简单的功能，灵活的应用）
-      - 直通：通常一个迭代的流程是：当前节点执行、将执行结果填到自己的出Port里、将出Port的数据推到与之相连的下一个节点的入Port。Executor在推完数据后，还会检查下目标入Port是不是直通Forward的，如果是，Executor会立刻执行这个直通Forward，然后再将其出Port的数据继续往后推，直到没有任何直通Forward的入Port被推数据。两个直通模式的Forward不允许组成环，这个在Graph中需要做检查
-    - 参数`ParameterNode`：没有入Port，只有类型为null的出Port。可以使用string的context设置出Port的值，当可以解析为json时将json解析后的值写进出Port，否则作为字符串。如果在特殊情况下需要传递一个json-string，可以使用双引号包裹来强制其作为string写进出Port。因为没有任何inPort，所以当inExecPort没有被连接时在首个迭代就可以ready
-    - 算术运算：可以使用context指定各种js支持的运算符（包含布尔）
-    - 集合运算：可以使用context指定各种集合运算，比如并集、差集、交集
-    - 排序：可以使用context指定默认key，会被入port的key覆盖（使用一阶数组作为key则按序取值比较），直接用lodash之类的排序。在ANORA的使用场景里不需要也不应该支持太复杂的排序
-    - 取值：接受一个任意数据和一个key，支持数组中取特定位置的值，也支持在对象中取key对应的value
-    - 分支：输入一个bool，按需激活true和false两个输出。通常用于逻辑分支
-    - 分配：接受一个数组，然后在接下来的数次迭代中依次输出数组里的每个元素，并在它的outControlPort index输出索引，相当于for-each。当输出最后一个元素时，会同步激活它的outControlPort finish，来表示迭代完成（而outExecPort每输出一个元素都会激活一次）。需要重写isReadyToActivate（但可以调super来复用相同逻辑），激活条件是`还有元素待输出||默认条件`。通常用于循环
-      - 这是个十分特殊的节点，它在一个迭代中激活后，即便它的in端没有任何Port被写入，它也会在下一个迭代激活并输出数组中的一个元素（比如第x个迭代用长度为y的数组arr激活了它，那么它在第x+i（i<y）个迭代中总是会激活并输出arr[i]）
-      - 如果在还未完成输出的时候通过默认条件激活（即又往inPort输入了一个数组让它分配），那么它会丢弃这次inPort中输入的数组（比如第x个迭代用长度为y的数组arr激活了它，那么它在第x+y-1个迭代中即使inPort被输入了一个数组让它分配，它也只会丢掉输入继续专心输出arr[y-1]，然后在第x+y个迭代及之后如果没有新的输入，那么它就不会READY）
-    - 聚集：inPort接受任意数据。有一个inControlPort aggregate，激活时将输入的数据加进缓存数组。inExecPort被激活后会将缓存数组输出，然后清空缓存。需要重写isReadyToActivate，激活条件是`aggregate被写入||inExecPort被写入`（两种激活的表现不一样，前者是累积数据，后者是将累积的数据作为数组输出），此时如果inPort输入的数据为null，就正常将null缓存进数组。往往和分配器共同使用，来实现filter、map、reduce之类的操作
-      - 这也是个十分特殊的节点，它有两种激活模式，而且两种激活模式下表现不同
-      - 它的两种激活模式都不是由inPorts的数据触发的
-    - 比较`CompareNode`：两个有顺序的输入port和三个输出port，输出分别是gt、eq、lt。本质上是布尔的算术运算+分支的语法糖，通常用于逻辑分支
-    - 文件读取：一个fileUploader，可以使用context决定文件内容是作为特定编码的字符串读取后输出（不设置的话需要能自动识别）还是作为二进制流读取并以base64编码后输出
-  - `BackendNode`：需要调用后端功能的节点，Executor在执行它的时候，它从`executorContext`中获取当前IPC类型，然后使用对应的逻辑使用IPC与后端通信。默认提供的后端节点类型如下
-    
-    - API：用于调用Rest API
-    - WRY：用于与godot-wry等基于tauri-wry的后端通讯
-    
-      - ### From JavaScript to Godot
-    
-        You can send messages from JavaScript to Godot using the [`ipc.postMessage()`](https://godot-wry.doceazedo.com/reference/javascript.html#ipc-postmessage) function in JavaScript.
-    
-        First, let's load some HTML with a button to send our message. Make sure to connect to the [`ipc_message`](https://godot-wry.doceazedo.com/reference/webview.html#ipc-message) so we can retrieve the response later:
-    
-        
-    
-        ```javascript
-        func _ready():
-        	$WebView.connect("ipc_message", self, "_on_ipc_message")
-        
-        	$WebView.load_html("""
-        		<button onclick="sendToGodot()">Send data to Godot</button>
-        		<script>
-        			function sendToGodot() {
-        				ipc.postMessage(JSON.stringify({
-        					action: "update_score",
-        					score: 100,
-        					player: "Player1"
-        				}));
-        			}
-        		</script>
-        	""")
-        
-        func _on_ipc_message(message):
-        	var data = JSON.parse_string(message)
-        	if data.action == "update_score":
-        		print("Updating score for %s to %d" % [data.player, data.score])
-        		# TODO: handle the data in your game...
-        ```
-    
-        TIP
-    
-        Notice that the message is sent as a JSON string. While any string would be valid, JSON makes it easier to identify message types and send complex data.
-    
-      - ### From Godot to JavaScript
-    
-        Similarly, you can also send messages from Godot to your web content using the method [`post_message()`](https://godot-wry.doceazedo.com/reference/webview.html#post-message) in GDScript.
-    
-        In this example, let's send a message when the player's health changes, so we can create a HUD with some simple HTML, CSS and JavaScript to display a health bar:
-    
-        
-    
-        ```javascript
-        func update_player_health():
-        	var message = {
-        		"action": "update_health",
-        		"health": 20
-        	}
-        	$WebView.post_message(JSON.stringify(message))
-        
-        func _ready():
-        	$WebView.load_html("""
-        		<progress id="healthBar" value="42" max="100"></progress>
-        		<script>
-        			document.addEventListener("message", (event) => {
-        				const data = JSON.parse(event.detail);
-        				if (data.action == "update_health") {
-        					const healthBar = document.getElementById("healthBar");
-        					healthBar.value = data.health;
-        				}
-        			});
-        		</script>
-        	""")
-        ```
-  - `SubGraphNode`：一个由逻辑图抽象得到的封装子图节点。它内部可以创建继承自中继节点的节点提供输入输出代理，这些子图输入输出节点会在封装后得到的子图节点上表现为Port。目前子图输入输出节点只需要直接继承中继节点即可，后续可能会扩展一些独有功能。当执行器执行子图节点时，它会实例化一个和自己一个类型的执行器来执行子图节点内部的子图。当内部执行器执行完成后，输出代理节点的出Port值就会被填到SubGraphNode的出Port。虽然执行器实例不共享（因为要做执行状态隔离），但执行器context在子图内外是共享的。实际上，在实现时，最外面的图就应该是一个没有输入输出代理节点的SubGraphNode，以此保证全局逻辑统一
+### 4.4 继承体系
 
-节点类型间通过如下形式维护类型间继承关系，以此支持注册
+```
+BaseNode
+├── WebNode (可直接在浏览器环境中运行，子类大多是预置的通用节点)
+│   ├── ForwardNode (中继)
+│   ├── ParameterNode (参数)
+│   ├── ArithmeticNode (算术运算，context 指定运算符，包含布尔)
+│   ├── SetOperationNode (集合运算：并集、差集、交集)
+│   ├── SortNode (排序，context 指定默认 key，使用 lodash)
+│   ├── GetValueNode (取值，支持数组位置和对象 key)
+│   ├── BranchNode (分支，输入 bool，按需激活 true/false 两个输出)
+│   ├── DistributeNode (分配/for-each)
+│   ├── AggregateNode (聚集)
+│   ├── CompareNode (比较，两个输入三个输出 gt/eq/lt)
+│   └── FileReadNode (文件读取，context 决定编码或 base64)
+├── BackendNode (需调用后端功能，从 executorContext 获取 IPC 类型)
+│   ├── APINode (REST API 调用)
+│   └── WRYNode (godot-wry 通讯)
+└── SubGraphNode (封装子图)
+```
+
+### 4.5 特殊节点详解
+
+#### 4.5.1 ForwardNode (中继)
+
+接受所有数据类型并**原样输出**，可使用 `directThrough` 属性指定"直通"模式：
+
+| 模式   | 行为                                                |
+| ------ | --------------------------------------------------- |
+| 非直通 | 走正常迭代流程                                      |
+| 直通   | 填写入 Port 时立刻执行并填写后面的入 Port，不等迭代 |
+
+**直通机制详解**：
+
+通常一个迭代的流程是：当前节点执行 → 将执行结果填到出 Port → 将出 Port 数据推到下一个节点的入 Port
+
+Executor 在推完数据后，还会检查目标节点是不是开启了直通模式的 ForwardNode：
+
+- 如果是，Executor 会**立刻执行**这个直通 Forward
+- 然后再将其出 Port 的数据继续往后推
+- 直到没有任何直通 Forward 的入 Port 被推数据
+
+**用途**：整理图结构、作为 MergeGate 保证后续节点在同一迭代中执行、缓存数据值、延迟迭代以控制执行时序
+
+**限制**：两个直通模式的 Forward **不允许组成环**（Graph 中需要检查）
+
+> **⚠️ 设计说明**：直通模式是 Executor 针对 ForwardNode 的**特殊处理**，而非通用机制。
+> 这是有意为之的设计决策——如果将直通作为通用机制提供给所有节点类型，会导致：
+>
+> 1. **时序管理灾难**：任意节点都能在迭代中途触发执行，执行顺序将变得不可预测
+> 2. **调试困难**：难以追踪数据流和执行顺序
+> 3. **语义混乱**：节点的"执行"概念被稀释，违背"迭代"作为执行单元的设计
+>
+> ForwardNode 的直通之所以安全，是因为它**只做数据传递，不产生副作用**。
+
+#### 4.5.2 ParameterNode (参数)
+
+- **没有入 Port**，只有类型为 null 的出 Port
+- 使用 string 的 context 设置出 Port 的值：
+  - 可解析为 JSON 时：解析后的值写进出 Port
+  - 否则：作为字符串
+  - 特殊情况需传递 json-string：使用双引号包裹强制作为 string
+- 因为没有任何 inPort，当 inDependsOnPort 没有被连接时**首个迭代就可以 READY**
+
+#### 4.5.3 DistributeNode (分配)
+
+接受一个数组，然后在接下来的**数次迭代**中依次输出每个元素，相当于 **for-each**：
+
+- outPort `item`：输出当前元素
+- outPort `index`：输出当前索引
+- outControlPort `done`：输出最后一个元素时同步激活，表示迭代完成
+- outDependsOnPort：每输出一个元素都会激活一次
+
+**激活条件**：`还有元素待输出 || 默认条件`（需要重写 checkActivationReady）
+
+**特殊行为**：
+
+- 在一个迭代中激活后，即便 in 端没有任何 Port 被写入，下一个迭代也会激活并输出数组中的元素
+- 例：第 x 个迭代用长度为 y 的数组 arr 激活，则第 x+i（i<y）个迭代中总是会激活并输出 arr[i]
+
+**输出期间收到新数组**：丢弃新输入，继续当前输出
+
+- 例：第 x 个迭代用长度为 y 的数组 arr 激活，第 x+y-1 个迭代即使 inPort 被输入新数组，也只会丢掉输入继续输出 arr[y-1]
+
+#### 4.5.4 AggregateNode (聚集)
+
+inPort 接受任意数据，有**两种激活模式**（需要重写 isReadyToActivate）：
+
+| 激活条件                         | 行为                                      |
+| -------------------------------- | ----------------------------------------- |
+| inControlPort `aggregate` 被写入 | 将 inPort 数据加进缓存数组（null 也缓存） |
+| inDependsOnPort 被写入           | 输出缓存数组，然后清空缓存                |
+
+**特点**：两种激活模式都不是由 inPorts 的数据触发的
+
+**用途**：往往和分配器共同使用，实现 filter、map、reduce 之类的操作
+
+#### 4.5.5 SubGraphNode (封装子图)
+
+由逻辑图抽象得到的封装子图节点：
+
+- 内部可创建继承自中继节点的**输入输出代理节点**
+- 这些代理节点会在封装后得到的子图节点上表现为 Port
+- 目前子图输入输出节点只需直接继承中继节点，后续可能扩展独有功能
+
+**执行机制**：
+
+- 执行器执行子图节点时，会**实例化一个同类型的执行器**来执行内部子图
+- 内部执行器执行完成后，输出代理节点的出 Port 值被填到 SubGraphNode 的出 Port
+- 执行器实例**不共享**（执行状态隔离），但 executorContext 在子图内外是**共享的**
+
+**设计统一性**：实现时，最外面的图就应该是一个没有输入输出代理节点的 SubGraphNode
+
+### 4.6 注册机制
 
 ```typescript
 class BaseNode {
-  static subclasses: (typeof Base)[] = []
+  static subclasses: (typeof BaseNode)[] = []
 
-  static registerSubclass(subclass: typeof Base) {
-    // 注册到父类的 subclass 列表
+  static registerSubclass(subclass: typeof BaseNode) {
     this.subclasses.push(subclass)
   }
 
-  static getSubClasses(): (typeof Base)[] {
+  static getSubClasses(): (typeof BaseNode)[] {
     return this.subclasses.flatMap((sub) => [sub, ...sub.getAllDescendants()])
   }
 }
@@ -433,122 +385,649 @@ enum DefType {
 
 function AnoraRegister(typeString: string) {
   return function <T extends typeof BaseNode>(constructor: T) {
-    // 注册用于在序列化、反序列化过程中保持类型对应关系的标识
+    // 1. 注册用于序列化/反序列化过程中保持类型对应关系的标识
     switch (matchDefType(constructor)) {
-      case NODE:
+      case DefType.NODE:
         NodeRegistry.register(typeString, constructor)
         break
-      case PORT:
+      case DefType.PORT:
         PortRegistry.register(typeString, constructor)
         break
-      case EXECUTOR:
+      case DefType.EXECUTOR:
         ExecutorRegistry.register(typeString, constructor)
         break
       default:
-        throw new Error(XXX)
-    }
-    if (isNode(constructor)) {
+        throw new Error('Unknown definition type')
     }
 
-    // 注册子类
+    // 2. 注册子类关系
     const parent = Object.getPrototypeOf(constructor)
     parent.registerSubclass(constructor)
   }
 }
 
+// 使用示例
 @AnoraRegister('BaseWebNode')
 class BaseWebNode extends BaseNode {}
-
-@AnoraRegister('BaseBackendNode')
-class BaseBackendNode extends BaseNode {}
 
 @AnoraRegister('ForwardNode')
 class ForwardNode extends BaseWebNode {}
 ```
 
-然后由NodeRegistry使用类似下面的思路加载Core和所有其他Mod的Node类，以完成注册
+**模块加载**：NodeRegistry 使用如下方式加载 Core 和所有其他 Mod 的 Node 类完成注册：
 
 ```typescript
 import.meta.glob('./nodes/**/*.ts', { eager: true })
 ```
 
-## 可序列化的Graph
+### 4.7 Port 名称常量
 
-`AnoraGraph`只需要维持port之间的连接关系，并支持序列化和反序列化以提供保存和加载功能（Node和Port本身也需要支持序列化和反序列化，避免将所有序列化反序列化堆在Graph层）
+为避免硬编码字符串带来的维护问题，每个节点类型的 Port 名称应使用常量定义：
 
-需要注意，本质上`AnoraGraph`是`SubGraphNode`的一个成员，本质上呈现给用户看到的图是顶层`SubGraphNode`，而非一个`AnoraGraph`
+```typescript
+// 通用 Port 名称
+const CommonPorts = {
+  VALUE: 'value',
+  RESULT: 'result',
+  LEFT: 'left',
+  RIGHT: 'right',
+} as const
 
-边没有专门设计单独的数据类型，它由Graph维护的连接关系体现。为了实现方便/可扩展性也可以考虑添加，但需要同时考虑执行/内存效率。
+// 节点特定 Port 名称（支持继承）
+const ForwardNodePorts = {
+  IN: { VALUE: CommonPorts.VALUE },
+  OUT: { VALUE: CommonPorts.VALUE },
+} as const
 
-其预期会频繁执行以下操作（通常由Executor或者前端展开折叠Port触发查询），需要提供对应的方法，并保证方法性能尽可能在O(1)
+const DistributeNodePorts = {
+  IN: { ARRAY: 'array' },
+  OUT: { ITEM: 'item', INDEX: 'index' },
+  OUT_CONTROL: { DONE: 'done' },
+} as const
 
-- Port所属的Node
-- 与出/入Port连接的另一端的的Port列表
-- 与出/入Port及其子Port连接的另一端的Port列表
-- 节点出、入Port另一端的节点列表
+// 节点输入输出类型定义
+interface ForwardInput {
+  [ForwardNodePorts.IN.VALUE]: unknown
+}
 
-参考函数列表如下
+interface ForwardOutput {
+  [ForwardNodePorts.OUT.VALUE]: unknown
+}
+
+// 使用示例：泛型节点类
+class ForwardNode extends WebNode<ForwardInput, ForwardOutput> {
+  constructor() {
+    super()
+    this.addInPort(ForwardNodePorts.IN.VALUE, DataType.STRING)
+    this.addOutPort(ForwardNodePorts.OUT.VALUE, DataType.STRING)
+  }
+
+  async activateCore(ctx, inData: ForwardInput): Promise<ForwardOutput> {
+    // inData[ForwardNodePorts.IN.VALUE] 类型安全
+    return {
+      [ForwardNodePorts.OUT.VALUE]: inData[ForwardNodePorts.IN.VALUE],
+    }
+  }
+}
+
+// 更复杂的示例：算术节点
+interface ArithmeticInput {
+  [ArithmeticNodePorts.IN.LEFT]: number
+  [ArithmeticNodePorts.IN.RIGHT]: number
+}
+
+interface ArithmeticOutput {
+  [ArithmeticNodePorts.OUT.RESULT]: number
+}
+
+class ArithmeticNode extends WebNode<ArithmeticInput, ArithmeticOutput> {
+  async activateCore(ctx, inData: ArithmeticInput): Promise<ArithmeticOutput> {
+    // inData.left 和 inData.right 已经是 number 类型，无需手动转换
+    const left = inData[ArithmeticNodePorts.IN.LEFT]
+    const right = inData[ArithmeticNodePorts.IN.RIGHT]
+    return { [ArithmeticNodePorts.OUT.RESULT]: left + right }
+  }
+}
+```
+
+**设计原则**：
+
+- 使用 `as const` 确保类型安全
+- 通用名称（如 `value`, `result`）定义在 `CommonPorts` 中复用
+- 节点特定的 Port 名称按 `IN`/`OUT`/`IN_CONTROL`/`OUT_CONTROL` 分组
+- 子类可继承父类的 Port 名称常量
+- **使用泛型参数约束 `activateCore` 的输入输出类型**，避免冗余的类型检查和转换
+
+---
+
+## 5. Graph 系统
+
+### 5.1 职责
+
+`AnoraGraph` 只需要：
+
+- 维持 Port 之间的**连接关系**
+- 支持**序列化和反序列化**以提供保存和加载功能
+
+Node 和 Port 本身也需要支持序列化/反序列化，避免将所有序列化逻辑堆在 Graph 层。
+
+### 5.2 与 SubGraphNode 的关系
+
+- `AnoraGraph` 是 `SubGraphNode` 的一个**成员**
+- 用户看到的顶层图本质上是一个没有输入输出代理节点的 `SubGraphNode`，而非 `AnoraGraph`
+
+### 5.3 边的设计
+
+边没有专门设计单独的数据类型，由 Graph 维护的连接关系体现。
+
+为了实现方便/可扩展性也可以考虑添加，但需同时考虑执行/内存效率。
+
+### 5.4 核心接口
+
+以下操作会频繁执行（通常由 Executor 或前端展开折叠 Port 触发），需要保证性能尽可能在 **O(1)**：
 
 ```typescript
 class AnoraGraph {
   // O(1) 查询
-  getNodeByPort(port: BasePort): BaseNode
-  getConnectedPorts(port: BasePort): BasePort[]
-  getConnectedPortsIncludingChildren(port: BasePort): BasePort[]
-  getUpstreamNodes(node: BaseNode): BaseNode[]
-  getDownstreamNodes(node: BaseNode): BaseNode[]
-  
+  getNodeByPort(port: BasePort): BaseNode // Port 所属的 Node
+  getConnectedPorts(port: BasePort): BasePort[] // 与出/入 Port 连接的另一端的 Port 列表
+  getConnectedPortsIncludingChildren(port: BasePort): BasePort[] // 包含子 Port
+  getUpstreamNodes(node: BaseNode): BaseNode[] // 节点入 Port 另一端的节点列表
+  getDownstreamNodes(node: BaseNode): BaseNode[] // 节点出 Port 另一端的节点列表
+
   // 边操作
   addEdge(from: BasePort, to: BasePort): void
   removeEdge(from: BasePort, to: BasePort): void
-  
+
   // 验证
   canConnect(from: BasePort, to: BasePort): boolean
 }
 ```
 
-Graph在创建边时会进行检查，检查项包括但不限于
+### 5.5 连接验证规则
 
-- 不允许在先前`Port数据转换矩阵`中标注不兼容的port间建立边
-- 两个直通模式的ForwardNode不允许直接组成环
+Graph 在创建边时会进行检查，检查项包括但不限于：
 
-虽然说是“可序列化的Graph”，但实际上序列化架构是"`DefaultSerializer`以`SubGraphNode`为单位控制整体序列化反序列化并提供`schema`版本号，各个类只控制必要的需要自己决定的序列化"，此处以“可序列化的Graph”为题单纯是强调逻辑图需要能导入导出，既不是说Graph是控制者，也不是说只需要序列化Graph而非包含它的`SubGraphNode`
+1. **不允许**在类型转换矩阵中标注"不兼容"的 Port 间建立边
+2. 两个直通模式的 ForwardNode **不允许直接组成环**
 
-序列化版本间迁移策略在开发阶段暂不考虑
+### 5.6 序列化架构
 
-# UI功能
+虽然说是"可序列化的 Graph"，但实际序列化架构是：
 
-- **撤销/重做**机制
-- **节点/边的选择与批量操作**：Vue-Flow应该内置了相关功能
+- `DefaultSerializer` 以 `SubGraphNode` 为单位控制整体序列化/反序列化，并提供 schema 版本号
+- 各个类只控制必要的、需要自己决定的序列化
+
+此处强调"可序列化的 Graph"单纯是因为逻辑图需要能导入导出，既不是说 Graph 是控制者，也不是说只需要序列化 Graph 而非包含它的 SubGraphNode。
+
+**版本迁移策略**：开发阶段暂不考虑
+
+---
+
+## 6. Executor 系统
+
+### 6.1 定位
+
+ANORA 作为一个**纯前端项目**,它不仅提供展示还会提供计算框架，后端只需要实现后端节点对应的函数即可。
+
+### 6.2 状态管理
+
+#### 6.2.1 执行器状态（ExecutorState）
+
+使用 `ExecutorStateMachine` 管理执行器生命周期：
+
+```typescript
+enum ExecutorState {
+  Idle, // 空闲，可以开始新的执行
+  Running, // 连续运行中
+  Paused, // 暂停中
+  Stepping, // 单步执行中
+}
+```
+
+#### 6.2.2 完成原因（FinishReason）
+
+执行结束时的原因分类：
+
+```typescript
+enum FinishReason {
+  Completed, // 正常完成（无更多节点可执行）
+  Cancelled, // 用户取消
+  Error, // 执行出错
+}
+```
+
+#### 6.2.3 节点激活状态（ActivationReadyStatus）
+
+```typescript
+enum ActivationReadyStatus {
+  NOT_READY, // 需要 Executor 下一轮迭代再次询问
+  NOT_READY_UNTIL_ANY_PORTS_FILLED, // 至少一个入 Port 被新写入数据后再询问
+  NOT_READY_UNTIL_ALL_PORTS_FILLED, // 至少一个入 Port 被写入，且所有有入边的入 Port 都被填写后再询问
+  READY, // 已准备好，Executor 下一轮迭代中可执行
+}
+```
+
+### 6.3 主流程
+
+#### 1. 初始化
+
+查询所有节点的可运行状态
+
+#### 2. 执行已准备好（Activation-Ready）的节点
+
+1. **检查停止请求**：检查当前用户是否要求停止或暂停
+
+2. **并行执行**：
+   - 节点的执行函数 `activate` 必定是**异步的**
+   - 使用类似 `await Promise.allSettled` 同时启动当前迭代中所有准备好的节点并等待完成
+   - 同一个迭代中节点的执行顺序**并不确定**
+   - 支持**取消**操作，终止时当前所有未完成的节点视为执行失败
+
+3. **执行后处理**：
+   - **清空执行后节点的入 Port**（避免下一次激活时残留脏数据）
+   - 统一检查这些执行后节点的准备状态（主要用于`DistributeNode`这类在激活后的多个迭代都会保持READY的节点）
+   - 从执行后节点的所有出 Port 里取出数据填入其连接的另一节点的入 Port
+     - 即使值为 null 或 ContainerPort 内的子 Port 为 null 也要填入
+   - **特殊处理直通节点**：如果目标节点是 `directThrough=true` 的 ForwardNode，立即执行并继续传播
+   - 查询其他受影响节点的准备状态
+
+4. **失败处理**：
+   - 如果节点执行失败，**保留当前状态**供后续使用
+   - 供用户在逻辑图上检查各个 Port 的值
+
+#### 3. 重复步骤 2 直到没有节点可以执行
+
+### 6.4 执行模式
+
+执行器支持多种运行模式：
+
+```typescript
+enum ExecutionMode {
+  Continuous, // 连续执行直到完成
+  StepByStep, // 单步执行（每次迭代后暂停）
+}
+```
+
+### 6.5 事件系统
+
+执行器通过事件系统通知外部组件执行状态变化：
+
+```typescript
+enum ExecutorEventType {
+  Start, // 执行开始
+  Iteration, // 新迭代开始
+  NodeStart, // 节点开始执行
+  NodeComplete, // 节点执行完成
+  DataPropagate, // 数据传播（边上的数据传输）
+  Complete, // 执行完成
+  Cancelled, // 执行被取消
+  Error, // 执行出错
+}
+```
+
+事件订阅：
+
+```typescript
+executor.on((event: ExecutorEvent) => {
+  // 处理事件
+})
+```
+
+### 6.6 特性
+
+#### 指定起始节点
+
+用户可以指定从哪个节点启动：
+
+- 相当于 Executor 直接从其入边相连的前置节点重新把值写入它的入 Port
+- 如果之前没有执行过、用户也没设置过前置节点的出 Port 值，节点启动后会因为入参不对报错（不用额外处理）
+- 目的：避免普通程序每次都得完整调试的不便
+
+#### 支持环
+
+这个框架**不要求逻辑图无环**，可以使用环结构做类似周期性触发器的东西来长时间运行：
+
+- 这是 ANORA 执行一个迭代中使用异步、但**迭代间使用同步**的重要原因
+- 这也是 ANORA **不使用最大迭代次数来避免死循环**的原因
+- 这种周期触发器本质上和传统编程语言里的 `while(true)` 同样是必要的死循环
+- 用户在遭遇意外死循环时可以自行终止
+
+#### 一对多和多对一
+
+逻辑图可以同时存在一对多和多对一：
+
+| 情况   | 处理方式                                                                                                                                                                                            |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 一对多 | 一个出 Port 的值可以推到所有与其相连的入 Port                                                                                                                                                       |
+| 多对一 | 同一迭代中执行完成的一批节点出 Port 同时连接下一节点的父入 Port 和子入 Port 时，**先给父入 Port 赋值再给子入 Port**，可以用非直通中继节点来保证父子入 Port 相连的出 Port 对应的节点在同一迭代中执行 |
+| 多对一 | 同一迭代中执行完成的一批节点出 Port 同时连接同一个入 Port 时，覆盖顺序**不确定**，报告警                                                                                                            |
+
+多对一覆盖警告："这种情况会导致不可确定的覆盖顺序，进而导致逻辑图难以维护，不建议这么做"
+
+### 6.7 可扩展性
+
+ANORA 支持**继承 Executor** 以修改/扩展运行逻辑：
+
+- `BasicExecutor`：基础执行器，提供标准的迭代执行逻辑
+- `ReplayExecutor`：回放执行器，用于演示模式，按时间轴重放录制的事件
+
+扩展示例：
+
+- 实现时需要合理分割函数功能便于重写
+- 可重写 `executeOneIteration()` 改变单次迭代行为
+- 可重写事件发射逻辑添加自定义监控
+
+### 6.8 Context
+
+```typescript
+type ExecutorContext = {
+  ipcTypeId: string // 后端类型
+  iterationDelay?: number // 迭代间延迟（毫秒，用于调试）
+  [key: string]: unknown // 其他的可能由节点访问的属性
+}
+```
+
+默认 Executor 使用 context 维护的全局状态只包含必要信息，且只通过**只读方法**为节点提供信息。
+
+**Context 与 Executor 解耦**，可单独扩展：
+
+| 扩展场景     | 扩展方式                                                                          |
+| ------------ | --------------------------------------------------------------------------------- |
+| API 录制回放 | 扩展 Context 保存 cookie、persist-header 等信息，不必动 Executor                  |
+| API 分析     | 扩展 Executor 记录执行节点的入参和出参，生成 OpenAPI 3.0 文档或翻译成 Python 代码 |
+
+---
+
+## 7. Demo/Replay 系统
+
+### 7.1 设计思路
+
+Demo 系统用于录制和回放图的执行过程，主要用于**演示和教学**场景。
+
+核心设计：
+
+- 录制 Executor 发出的事件序列（带时间戳）
+- 回放时使用 `ReplayExecutor` 重放这些事件
+- 前端组件订阅事件，录制和回放使用**相同的 UI 更新逻辑**
+
+### 7.2 录制格式
+
+```typescript
+interface DemoRecording {
+  version: '2.0.0'
+  metadata: {
+    createdAt: string
+    duration: number
+    totalEvents: number
+  }
+  initialGraph: SerializedGraph // 初始图状态
+  events: TimestampedEvent[] // 带时间戳的事件序列
+}
+
+interface TimestampedEvent {
+  timestamp: number // 相对时间（ms）
+  event: SerializedExecutorEvent // 序列化的执行器事件
+}
+```
+
+### 7.3 回放功能
+
+`ReplayExecutor` 提供以下能力：
+
+- **时间轴播放**：按录制时的时间间隔重放事件
+- **播放速度控制**：支持 0.5x ~ 4x 速度
+- **时间跳转**：`seekToTime(timeMs)` 跳转到指定时间点
+- **关键帧聚合**：`getKeyframes(intervalMs)` 按时间间隔聚合事件
+- **状态重建**：`getStateAtIndex(index)` 获取指定时刻的 UI 状态
+
+### 7.4 UI 特性
+
+回放视图（`ReplayView.vue`）提供：
+
+- 进度条显示（支持拖动）
+- 关键帧标记（13ms 间隔）
+- 播放/暂停/单步/重启控制
+- 速度选择（0.5x / 1x / 1.5x / 2x / 4x）
+- 平滑进度动画（requestAnimationFrame）
+- **无顶部工具栏**（适合嵌入外部系统）
+
+### 7.5 IPC 控制
+
+回放模式支持通过 IPC 消息进行外部控制，详见 [IPC 控制文档](./replay-ipc-guide.md)。
+
+---
+
+## 8. 项目结构
+
+以保证语义清晰且可扩展为优先，同时保证核心内容和 Mod 以相同方式提供：
+
+```
+src/
+├── base/
+│   ├── runtime/                    # ← 可独立运行、无 UI 耦合
+│   │   ├── nodes/
+│   │   │   ├── BaseNode.ts
+│   │   │   ├── NodeTypes.ts        # WebNode & BackendNode
+│   │   │   └── SubGraphNode.ts
+│   │   ├── ports/
+│   │   │   ├── BasePort.ts
+│   │   │   └── NullPort.ts
+│   │   ├── executor/
+│   │   │   ├── BasicExecutor.ts
+│   │   │   └── BasicContext.ts
+│   │   ├── demo/                   # ← 录制与回放
+│   │   │   ├── DemoRecorder.ts
+│   │   │   ├── DemoPlayer.ts       # ReplayExecutor
+│   │   │   └── types.ts            # DemoRecording format
+│   │   ├── graph/
+│   │   │   └── AnoraGraph.ts
+│   │   └── registry/
+│   │       ├── BaseRegistry.ts
+│   │       ├── AnoraRegister.ts    # @AnoraRegister decorator
+│   │       ├── NodeRegistry.ts
+│   │       ├── PortRegistry.ts
+│   │       └── ExecutorRegistry.ts
+│   └── ui/                         # ← Node/Port 的视图层
+│       ├── components/
+│       │   ├── BaseNodeView.vue
+│       │   ├── BasePortView.vue
+│       │   └── EdgeView.vue
+│       ├── composables/
+│       │   ├── useGraph.ts
+│       │   ├── useExecutor.ts
+│       │   ├── useIPC.ts           # Base IPC controller
+│       │   ├── useReplayIPC.ts     # Replay-specific IPC
+│       │   └── useDemo.ts
+│       ├── editor/
+│       │   ├── GraphEditor.vue
+│       │   ├── NodePalette.vue
+│       │   ├── ExecutorControls.vue
+│       │   ├── RecordingControls.vue
+│       │   └── Breadcrumb.vue
+│       └── registry/
+│           └── NodeViewRegistry.ts
+├── mods/                           # ← 内容扩展
+│   ├── core/                       # ← 核心节点作为 mod
+│   │   ├── runtime/
+│   │   │   ├── nodes/
+│   │   │   │   ├── ForwardNode.ts
+│   │   │   │   ├── BranchNode.ts
+│   │   │   │   ├── CompareNode.ts
+│   │   │   │   ├── ArithmeticNode.ts
+│   │   │   │   ├── AggregateNode.ts
+│   │   │   │   ├── DistributeNode.ts
+│   │   │   │   ├── ConsoleLogNode.ts
+│   │   │   │   └── ...
+│   │   │   └── ports/
+│   │   │       ├── StringPort.ts
+│   │   │       ├── NumberPort.ts
+│   │   │       ├── BooleanPort.ts
+│   │   │       ├── IntegerPort.ts
+│   │   │       ├── ArrayPort.ts
+│   │   │       └── ObjectPort.ts
+│   │   ├── ui/
+│   │   │   └── nodes/              # Custom node views (if any)
+│   │   └── locales/
+│   │       ├── en.ts
+│   │       └── zh-CN.ts
+│   └── godot-wry/                  # ← Godot 后端集成
+│       ├── runtime/
+│       │   └── nodes/
+│       │       └── GodotNode.ts    # BackendNode example
+│       └── locales/
+│           ├── en.ts
+│           └── zh-CN.ts
+├── stores/
+│   └── graph.ts                    # Pinia store for graph/executor state
+├── views/
+│   ├── EditorView.vue              # Main editor
+│   ├── DemoView.vue                # Recording mode
+│   └── ReplayView.vue              # Playback mode (no toolbar)
+└── router/
+    └── index.ts
+```
+
+**关键设计：**
+
+- `base/runtime/` 完全无 UI 依赖，可在 Node.js 环境运行
+- `base/ui/` 提供 Vue 组件和 composables
+- Mod 通过 `@AnoraRegister` 装饰器自动注册节点
+- Mod 使用 Vite glob import 自动发现，无需手动导入
+
+---
+
+## 9. UI 功能
+
+### 9.1 基础交互
+
+- **撤销/重做**机制（基于 Vue-Flow）
+- **节点/边的选择与批量操作**：Vue-Flow 内置功能
 - **复制粘贴**功能
-- **快捷键定义**：暂时先不支持Vue-Flow内置之外的快捷键
-- **自动布局算法**的选择：elk
+- **快捷键定义**：使用 Vue-Flow 内置快捷键
+- **自动布局算法**：使用 ELK
 
-# 细节实现
+### 9.2 视觉设计
 
-- 与vue-flow解耦，使用AnoraNode初始化VueFlowNode。
+- 图总是**从左向右**，需要合适的自动排版功能
+- 连线使用**贝塞尔曲线**
+- ContainerPort 可**展开/收起**，显示表示其内部元素的 Port
+- 连线样式：
+  - 两端 Port 都**可见**：实线 + 小圆形周期性从出 Port 沿实线运动到入 Port
+  - 任一 Port 被**折叠不可见**：虚线 + 线段从出 Port 到入 Port 移动
 
-- 同样出于解耦考虑，节点大小和位置都独立于AnoraNode存储
+### 9.3 SubGraph 交互
 
-- 图总是从左向右，需要合适的自动排版功能
+- **双击**可以展开，将内部图显示给用户
+- 界面上方使用 **Breadcrumb** 显示当前的子图栈
 
-- 连线使用贝塞尔曲线
+### 9.4 调试功能
 
-- ContainerPort可展开收起，以显示表示其内部元素的port
+- 运行时给当前激活的节点外框使用**高光描线**
+- 可设置两个迭代之间的**延迟**（用于演示/调试）
+- 运行后输出值会**留在出 Port 上**，便于用户主动激活后面某个节点从中间继续运行
 
-- 当两个连接的Port都未被折叠导致不可见时，连线是虚线且线段从出port到入port移动，否则是直线且有小圆形周期性从出port沿实线运动到入port（供 UI 实现参考，优先保证逻辑正确性。）
+### 9.5 IPC 接口
 
-- SubGraphNodes双击可以展开，将内部图显示给用户，界面上方使用Breadcrumb 显示当前的子图栈
+ANORA 支持从外部使用 IPC 控制 Executor 执行、状态快照、加载快照等功能。
 
-- 需要在运行时给当前激活的节点外框使用高光描线，并可以设置两个迭代之间的延迟（用于演示/调试）
+**架构设计：**
 
-- 运行后输出值会留在出Port上，以便用户主动激活其后面的某个节点来从中间继续运行（通常是用于调试）
+- `useIPC()` - 基础 IPC 控制器（window.postMessage + godot-wry 桥接）
+- `useReplayIPC()` - 回放模式专用 IPC 扩展
 
-- 需要提供从外部使用IPC控制Executor执行、状态快照、加载快照之类的功能（当前使用`window.addEventListener("message"...)`来实现）
+**通信方式：**
 
-  - ```typescript
-    interface IPCMessage {
-      type: 'execute' | 'pause' | 'resume' | 'stop' | 'snapshot' | 'loadSnapshot' | 'getState'
-      data?: any
-    }
-    ```
+```typescript
+// 接收消息
+window.addEventListener('message', (event) => {
+  const msg = event.data
+  console.log(`Received: ${msg.type}`, msg.data)
+})
+
+// 发送消息
+window.postMessage({ type: 'response', data: { ... } }, '*')
+```
+
+**详细文档：** 见 [IPC 控制文档](./replay-ipc-guide.md)
+
+---
+
+## 10. 与 Vue-Flow 解耦
+
+- 使用 AnoraNode 初始化 VueFlowNode
+- 节点大小和位置都**独立于 AnoraNode 存储**
+
+---
+
+## 11. BackendNode 示例：WRY
+
+用于与 godot-wry 等基于 tauri-wry 的后端通讯。
+
+### 11.1 JavaScript → Godot
+
+使用 `ipc.postMessage()` 发送消息：
+
+```javascript
+// 前端发送
+function sendToGodot() {
+  ipc.postMessage(
+    JSON.stringify({
+      action: 'update_score',
+      score: 100,
+      player: 'Player1',
+    }),
+  )
+}
+```
+
+```gdscript
+# Godot 接收
+func _ready():
+    $WebView.connect("ipc_message", self, "_on_ipc_message")
+    $WebView.load_html("""
+        <button onclick="sendToGodot()">Send data to Godot</button>
+        <script>
+            function sendToGodot() {
+                ipc.postMessage(JSON.stringify({
+                    action: "update_score",
+                    score: 100,
+                    player: "Player1"
+                }));
+            }
+        </script>
+    """)
+
+func _on_ipc_message(message):
+    var data = JSON.parse_string(message)
+    if data.action == "update_score":
+        print("Updating score for %s to %d" % [data.player, data.score])
+        # TODO: handle the data in your game...
+```
+
+> **TIP**: 消息作为 JSON 字符串发送。虽然任何字符串都有效，但 JSON 更便于识别消息类型和发送复杂数据。
+
+### 11.2 Godot → JavaScript
+
+使用 `post_message()` 发送消息：
+
+```gdscript
+# Godot 发送
+func update_player_health():
+    var message = {"action": "update_health", "health": 20}
+    $WebView.post_message(JSON.stringify(message))
+
+func _ready():
+    $WebView.load_html("""
+        <progress id="healthBar" value="42" max="100"></progress>
+        <script>
+            document.addEventListener("message", (event) => {
+                const data = JSON.parse(event.detail);
+                if (data.action == "update_health") {
+                    const healthBar = document.getElementById("healthBar");
+                    healthBar.value = data.health;
+                }
+            });
+        </script>
+    """)
+```

@@ -49,7 +49,14 @@ export class YourNode extends WebNode<YourInput, YourOutput> {
 
 - **Primitive Ports**: `StringPort`, `NumberPort`, `BooleanPort`, `IntegerPort` (`src/mods/core/runtime/ports/`)
 - **Container Ports**: `ArrayPort`, `ObjectPort` - hold nested ports
-- **NullPort**: For exec ports or any-type data flow
+- **NullPort**: For dependsOn/activateOn ports or any-type data flow
+
+### Node Flow Control Ports
+
+Nodes have two types of flow control ports:
+
+- **DependsOn Ports** (`inDependsOnPort`/`outDependsOnPort`): Hard dependency - node must wait for this port to be written before activation
+- **ActivateOn Ports** (`inActivateOnPort`/`outActivateOnPort`): Soft activation - can trigger node re-activation without blocking initial execution. Used for feedback loops in cyclic graphs.
 
 ### Custom Node Views
 

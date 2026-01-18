@@ -4,7 +4,7 @@ import type { RealDataType, ConversionResult } from '../types'
 
 /**
  * NullPort - 空类型 Port（可接受任意类型）
- * 这是基础类型，保留在 base 中，用于 ExecPort 等基础功能
+ * 这是基础类型，保留在 base 中，用于 DependsOnPort、ActivateOnPort 等基础功能
  */
 export class NullPort extends BasePort {
   get dataType(): DataType {

@@ -223,8 +223,21 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
     <div class="node-body">
       <!-- 左侧：输入 Ports -->
       <div class="ports-column ports-left">
-        <!-- 执行入 Port -->
-        <BasePortView :port="node.inExecPort" name="exec" :is-input="true" :is-exec="true" />
+        <!-- 依赖入 Port -->
+        <BasePortView
+          :port="node.inDependsOnPort"
+          name="dependsOn"
+          :is-input="true"
+          :is-exec="true"
+        />
+
+        <!-- 激活入 Port -->
+        <BasePortView
+          :port="node.inActivateOnPort"
+          name="activateOn"
+          :is-input="true"
+          :is-exec="true"
+        />
 
         <!-- 控制入 Ports -->
         <BasePortView
@@ -257,8 +270,21 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 
       <!-- 右侧：输出 Ports -->
       <div class="ports-column ports-right">
-        <!-- 执行出 Port -->
-        <BasePortView :port="node.outExecPort" name="exec" :is-input="false" :is-exec="true" />
+        <!-- 依赖出 Port -->
+        <BasePortView
+          :port="node.outDependsOnPort"
+          name="dependsOn"
+          :is-input="false"
+          :is-exec="true"
+        />
+
+        <!-- 激活出 Port -->
+        <BasePortView
+          :port="node.outActivateOnPort"
+          name="activateOn"
+          :is-input="false"
+          :is-exec="true"
+        />
 
         <!-- 控制出 Ports -->
         <BasePortView
@@ -300,7 +326,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
 }
@@ -372,7 +398,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   flex: 1;
   min-width: 0;
   padding: 1em 1em;
-  overflow: auto;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   align-items: stretch; /* 子元素宽度拉伸填充 */
@@ -391,7 +417,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   min-height: 40px;
   gap: 4px;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ports-column {
