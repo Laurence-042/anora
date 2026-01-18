@@ -295,15 +295,14 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 <style scoped>
 /* BaseNodeView 特有样式 - 通用样式由 node-theme.css 提供 */
 
-/* 节点容器 */
+/* 节点容器 - 填充父容器（vue-flow__node），由 NodeResizer 控制大小 */
 .anora-node {
   position: relative;
-  max-width: 480px;
-  min-width: 180px;
-  min-height: 80px;
-  overflow: hidden;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 节点图标 */
@@ -389,7 +388,6 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   min-height: 40px;
   gap: 4px;
   flex: 1;
-  overflow: auto;
 }
 
 .ports-column {
