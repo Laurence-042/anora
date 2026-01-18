@@ -49,7 +49,7 @@ const parsedPreview = computed(() => {
         <ElInput
           v-model="editValue"
           type="textarea"
-          :autosize="{ minRows: 1, maxRows: 8 }"
+          :rows="2"
           placeholder="输入参数值"
           :disabled="readonly"
           :class="['value-textarea', inputClass]"
@@ -61,13 +61,26 @@ const parsedPreview = computed(() => {
 </template>
 
 <style scoped>
-/* ParameterNode 特有样式 */
-.value-textarea {
-  min-width: 100px;
+/* ParameterNode 特有样式 - 填充整个 controls 区域 */
+.type-badge {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%; /* 覆盖 el-badge 默认的 fit-content */
 }
 
-.type-badge {
-  margin-top: 4px;
+.value-textarea {
+  flex: 1;
+  width: 100%;
+}
+
+/* 让 textarea 填充整个容器 */
+.value-textarea :deep(.el-textarea__inner) {
+  height: 100%;
+  width: 100%;
+  min-height: 32px;
+  resize: none;
 }
 
 /* Badge 样式覆盖 */

@@ -49,10 +49,18 @@ const { value: currentTemplate } = useContextField(node, {
 </template>
 
 <style scoped>
-/* StringFormatNode 特有样式 */
+/* StringFormatNode 特有样式 - 填充整个 controls 区域 */
 .template-input {
-  width: 100%;
+  flex: 1;
+  min-width: 100px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
+}
+
+/* 让 textarea 填充整个容器 */
+.template-input :deep(.el-textarea__inner) {
+  height: 100% !important;
+  min-height: 60px;
+  resize: none;
 }
 </style>

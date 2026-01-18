@@ -367,12 +367,15 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   color: var(--node-warning, #fbbf24);
 }
 
-/* 控制区域 - 位于中间列 */
+/* 控制区域 - 位于中间列，填充可用空间 */
 .node-controls {
   flex: 1;
   min-width: 0;
-  padding: 0 8px;
+  padding: 1em 1em;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* 子元素宽度拉伸填充 */
 }
 
 .node-controls:empty {
@@ -380,14 +383,15 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
   padding: 0;
 }
 
-/* 节点主体 - 三栏布局 */
+/* 节点主体 - 三栏布局，填充剩余空间 */
 .node-body {
   display: flex;
-  align-items: flex-start; /* 顶部对齐 */
+  align-items: stretch; /* 子元素拉伸填充高度 */
   padding: 8px 0;
   min-height: 40px;
   gap: 4px;
   flex: 1;
+  overflow: hidden;
 }
 
 .ports-column {
