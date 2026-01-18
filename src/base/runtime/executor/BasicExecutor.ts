@@ -551,7 +551,7 @@ export class BasicExecutor {
       const connectedPorts = graph.getConnectedPorts(outPort)
 
       for (const targetPort of connectedPorts) {
-        // 使用 peek() 获取数据（不清空出 Port）
+        // 使用 peek() 获取数据
         const data = outPort.peek()
 
         targetPort.write(data)
@@ -569,6 +569,9 @@ export class BasicExecutor {
           affectedNodes.add(targetNode)
         }
       }
+
+      // 传播完成后清空 outPort，防止下次迭代时重复传播（如 Branch 节点的两个分支）
+      outPort.clear()
     }
 
     // 发送数据传播事件

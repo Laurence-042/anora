@@ -11,7 +11,7 @@
           "value": "[\"买牛奶\", \"写代码\", \"做运动\"]"
         },
         "position": {
-          "x": 380,
+          "x": 220,
           "y": 280
         },
         "inDependsOnPort": {
@@ -45,8 +45,8 @@
           }
         },
         "size": {
-          "width": 442,
-          "height": 147
+          "width": 557,
+          "height": 127
         }
       },
       {
@@ -57,7 +57,7 @@
           "value": "0"
         },
         "position": {
-          "x": 420,
+          "x": 340,
           "y": 40
         },
         "inDependsOnPort": {
@@ -128,7 +128,7 @@
           "value": {
             "id": "port-current-index-in",
             "dataType": "null",
-            "data": null
+            "data": 3
           }
         },
         "outPorts": {
@@ -145,8 +145,8 @@
         "label": "列表长度",
         "context": null,
         "position": {
-          "x": 942,
-          "y": 398
+          "x": 900,
+          "y": 420
         },
         "inDependsOnPort": {
           "id": "c451d901-137d-4899-a6c9-b5442c94f73c",
@@ -174,8 +174,31 @@
           "array": {
             "id": "port-array-length-array",
             "dataType": "array",
-            "data": null,
-            "children": []
+            "data": [
+              "买牛奶",
+              "写代码",
+              "做运动"
+            ],
+            "children": [
+              {
+                "id": "2eeed796-653d-4919-ad29-3070dcba6f8a",
+                "dataType": "string",
+                "data": "买牛奶",
+                "keyInParent": 0
+              },
+              {
+                "id": "1a3e5342-7401-4ac8-b861-d89758f5b72a",
+                "dataType": "string",
+                "data": "写代码",
+                "keyInParent": 1
+              },
+              {
+                "id": "2bb69496-8277-4494-847f-8ece4d54ed02",
+                "dataType": "string",
+                "data": "做运动",
+                "keyInParent": 2
+              }
+            ]
           }
         },
         "outPorts": {
@@ -198,7 +221,7 @@
           "operation": "<"
         },
         "position": {
-          "x": 1280,
+          "x": 1340,
           "y": 400
         },
         "inDependsOnPort": {
@@ -227,12 +250,12 @@
           "left": {
             "id": "port-compare-index-left",
             "dataType": "null",
-            "data": null
+            "data": 3
           },
           "right": {
             "id": "port-compare-index-right",
             "dataType": "null",
-            "data": null
+            "data": 3
           }
         },
         "outPorts": {
@@ -249,7 +272,7 @@
         "label": "继续循环?",
         "context": null,
         "position": {
-          "x": 1740,
+          "x": 1840,
           "y": 400
         },
         "inDependsOnPort": {
@@ -289,7 +312,7 @@
           "condition": {
             "id": "port-branch-continue-condition",
             "dataType": "boolean",
-            "data": null
+            "data": false
           }
         },
         "outPorts": {}
@@ -300,8 +323,8 @@
         "label": "获取元素",
         "context": null,
         "position": {
-          "x": 2860,
-          "y": -160
+          "x": 2280,
+          "y": 60
         },
         "inDependsOnPort": {
           "id": "c5e0ca05-660e-401b-a778-201cac2b193e",
@@ -329,13 +352,36 @@
           "array": {
             "id": "port-array-access-array",
             "dataType": "array",
-            "data": null,
-            "children": []
+            "data": [
+              "买牛奶",
+              "写代码",
+              "做运动"
+            ],
+            "children": [
+              {
+                "id": "b7704a33-e8e6-4586-a04c-cb2edc626793",
+                "dataType": "string",
+                "data": "买牛奶",
+                "keyInParent": 0
+              },
+              {
+                "id": "bec91bcb-588e-41e3-bafb-494d1bc4a7ee",
+                "dataType": "string",
+                "data": "写代码",
+                "keyInParent": 1
+              },
+              {
+                "id": "91c496f2-221c-4ece-bb2b-ab367baa592f",
+                "dataType": "string",
+                "data": "做运动",
+                "keyInParent": 2
+              }
+            ]
           },
           "index": {
             "id": "port-array-access-index",
             "dataType": "integer",
-            "data": null
+            "data": 3
           }
         },
         "outPorts": {
@@ -354,8 +400,8 @@
           "directThrough": true
         },
         "position": {
-          "x": 3140,
-          "y": -160
+          "x": 2680,
+          "y": 60
         },
         "inDependsOnPort": {
           "id": "202d3155-ce9d-450b-beb3-541b912716ba",
@@ -383,7 +429,7 @@
           "value": {
             "id": "port-current-todo-in",
             "dataType": "null",
-            "data": null
+            "data": "做运动"
           }
         },
         "outPorts": {
@@ -404,8 +450,8 @@
           "duration": 2000
         },
         "position": {
-          "x": 3540,
-          "y": -160
+          "x": 3080,
+          "y": 60
         },
         "inDependsOnPort": {
           "id": "7bcbfe2c-a8c4-4929-aa54-ff181451b438",
@@ -433,7 +479,7 @@
           "message": {
             "id": "port-notify-todo-message",
             "dataType": "string",
-            "data": null
+            "data": "做运动"
           }
         },
         "outPorts": {}
@@ -446,7 +492,7 @@
           "value": "1"
         },
         "position": {
-          "x": 400,
+          "x": 340,
           "y": -220
         },
         "inDependsOnPort": {
@@ -521,12 +567,12 @@
           "left": {
             "id": "port-add-index-left",
             "dataType": "number",
-            "data": null
+            "data": 1
           },
           "right": {
             "id": "port-add-index-right",
             "dataType": "number",
-            "data": null
+            "data": 3
           }
         },
         "outPorts": {
@@ -551,7 +597,7 @@
           "duration": 3000
         },
         "position": {
-          "x": 2200,
+          "x": 2260,
           "y": 420
         },
         "inDependsOnPort": {
@@ -636,10 +682,6 @@
         "toPortId": "port-add-index-right"
       },
       {
-        "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-        "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32"
-      },
-      {
         "fromPortId": "port-branch-continue-true",
         "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d"
       },
@@ -648,46 +690,56 @@
         "toPortId": "port-array-access-array"
       },
       {
-        "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-        "toPortId": "b434123a-3f7b-42bf-9e42-a6a198062a68"
+        "fromPortId": "port-branch-continue-true",
+        "toPortId": "d541baad-80a1-4288-829f-6f1016dfe6b6"
       },
       {
-        "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-        "toPortId": "5a3ee5f5-6de5-415b-a47d-1e110c469e6f"
+        "fromPortId": "e52d1752-3bd9-4004-bd9b-6c9369dccaba",
+        "toPortId": "6993a9dd-a6e7-44f2-a4ec-3de5dfd3321a"
+      },
+      {
+        "fromPortId": "port-branch-continue-true",
+        "toPortId": "0943c394-e052-4f67-abd2-804b66e7cc33"
       }
     ]
   },
   "events": [
     {
-      "timestamp": 3539,
+      "timestamp": 1318,
+      "event": {
+        "type": "start"
+      }
+    },
+    {
+      "timestamp": 1319,
       "event": {
         "type": "iteration",
         "iteration": 1
       }
     },
     {
-      "timestamp": 3539,
+      "timestamp": 1320,
       "event": {
         "type": "node-start",
         "nodeId": "node-todo-list"
       }
     },
     {
-      "timestamp": 3540,
+      "timestamp": 1320,
       "event": {
         "type": "node-start",
         "nodeId": "node-index-init"
       }
     },
     {
-      "timestamp": 3540,
+      "timestamp": 1320,
       "event": {
         "type": "node-start",
         "nodeId": "node-increment-one"
       }
     },
     {
-      "timestamp": 3543,
+      "timestamp": 1341,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -713,7 +765,7 @@
       }
     },
     {
-      "timestamp": 3544,
+      "timestamp": 1358,
       "event": {
         "type": "node-complete",
         "nodeId": "node-todo-list",
@@ -721,7 +773,7 @@
       }
     },
     {
-      "timestamp": 3544,
+      "timestamp": 1359,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -734,7 +786,7 @@
       }
     },
     {
-      "timestamp": 3545,
+      "timestamp": 1377,
       "event": {
         "type": "node-complete",
         "nodeId": "node-index-init",
@@ -742,7 +794,7 @@
       }
     },
     {
-      "timestamp": 3545,
+      "timestamp": 1377,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -755,7 +807,7 @@
       }
     },
     {
-      "timestamp": 3545,
+      "timestamp": 1394,
       "event": {
         "type": "node-complete",
         "nodeId": "node-increment-one",
@@ -763,31 +815,36 @@
       }
     },
     {
-      "timestamp": 4548,
+      "timestamp": 2401,
       "event": {
         "type": "iteration",
         "iteration": 2
       }
     },
     {
-      "timestamp": 4548,
+      "timestamp": 2402,
       "event": {
         "type": "node-start",
         "nodeId": "node-current-index"
       }
     },
     {
-      "timestamp": 4549,
+      "timestamp": 2402,
       "event": {
         "type": "node-start",
         "nodeId": "node-array-length"
       }
     },
     {
-      "timestamp": 4550,
+      "timestamp": 2420,
       "event": {
         "type": "data-propagate",
         "transfers": [
+          {
+            "fromPortId": "e52d1752-3bd9-4004-bd9b-6c9369dccaba",
+            "toPortId": "6993a9dd-a6e7-44f2-a4ec-3de5dfd3321a",
+            "data": null
+          },
           {
             "fromPortId": "port-current-index-out",
             "toPortId": "port-compare-index-left",
@@ -807,7 +864,7 @@
       }
     },
     {
-      "timestamp": 4550,
+      "timestamp": 2437,
       "event": {
         "type": "node-complete",
         "nodeId": "node-current-index",
@@ -815,7 +872,7 @@
       }
     },
     {
-      "timestamp": 4550,
+      "timestamp": 2438,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -828,7 +885,7 @@
       }
     },
     {
-      "timestamp": 4551,
+      "timestamp": 2456,
       "event": {
         "type": "node-complete",
         "nodeId": "node-array-length",
@@ -836,35 +893,28 @@
       }
     },
     {
-      "timestamp": 5564,
+      "timestamp": 3458,
       "event": {
         "type": "iteration",
         "iteration": 3
       }
     },
     {
-      "timestamp": 5564,
+      "timestamp": 3461,
       "event": {
         "type": "node-start",
         "nodeId": "node-compare-index"
       }
     },
     {
-      "timestamp": 5564,
+      "timestamp": 3461,
       "event": {
         "type": "node-start",
         "nodeId": "node-array-access"
       }
     },
     {
-      "timestamp": 5564,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-add-index"
-      }
-    },
-    {
-      "timestamp": 5565,
+      "timestamp": 3479,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -877,7 +927,7 @@
       }
     },
     {
-      "timestamp": 5565,
+      "timestamp": 3496,
       "event": {
         "type": "node-complete",
         "nodeId": "node-compare-index",
@@ -885,7 +935,7 @@
       }
     },
     {
-      "timestamp": 5566,
+      "timestamp": 3496,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -898,14 +948,14 @@
       }
     },
     {
-      "timestamp": 5566,
+      "timestamp": 3496,
       "event": {
         "type": "node-start",
         "nodeId": "node-current-todo"
       }
     },
     {
-      "timestamp": 5566,
+      "timestamp": 3513,
       "event": {
         "type": "node-complete",
         "nodeId": "node-current-todo",
@@ -913,7 +963,7 @@
       }
     },
     {
-      "timestamp": 5566,
+      "timestamp": 3513,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -926,7 +976,7 @@
       }
     },
     {
-      "timestamp": 5566,
+      "timestamp": 3531,
       "event": {
         "type": "node-complete",
         "nodeId": "node-array-access",
@@ -934,115 +984,51 @@
       }
     },
     {
-      "timestamp": 5566,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-add-index-result",
-            "toPortId": "port-current-index-in",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 5567,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-add-index",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 6569,
+      "timestamp": 4544,
       "event": {
         "type": "iteration",
         "iteration": 4
       }
     },
     {
-      "timestamp": 6569,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-current-index"
-      }
-    },
-    {
-      "timestamp": 6569,
+      "timestamp": 4544,
       "event": {
         "type": "node-start",
         "nodeId": "node-branch-continue"
       }
     },
     {
-      "timestamp": 6569,
+      "timestamp": 4545,
       "event": {
         "type": "node-start",
         "nodeId": "node-notify-todo"
       }
     },
     {
-      "timestamp": 6573,
+      "timestamp": 4563,
       "event": {
         "type": "data-propagate",
         "transfers": [
-          {
-            "fromPortId": "port-current-index-out",
-            "toPortId": "port-compare-index-left",
-            "data": 1
-          },
-          {
-            "fromPortId": "port-current-index-out",
-            "toPortId": "port-array-access-index",
-            "data": 1
-          },
-          {
-            "fromPortId": "port-current-index-out",
-            "toPortId": "port-add-index-right",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 6574,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-current-index",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 6574,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "b434123a-3f7b-42bf-9e42-a6a198062a68",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "5a3ee5f5-6de5-415b-a47d-1e110c469e6f",
-            "data": null
-          },
           {
             "fromPortId": "port-branch-continue-true",
             "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d",
             "data": null
+          },
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "d541baad-80a1-4288-829f-6f1016dfe6b6",
+            "data": null
+          },
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "0943c394-e052-4f67-abd2-804b66e7cc33",
+            "data": null
           }
         ]
       }
     },
     {
-      "timestamp": 6574,
+      "timestamp": 4581,
       "event": {
         "type": "node-complete",
         "nodeId": "node-branch-continue",
@@ -1050,7 +1036,7 @@
       }
     },
     {
-      "timestamp": 6575,
+      "timestamp": 4599,
       "event": {
         "type": "node-complete",
         "nodeId": "node-notify-todo",
@@ -1058,152 +1044,48 @@
       }
     },
     {
-      "timestamp": 7581,
+      "timestamp": 5604,
       "event": {
         "type": "iteration",
         "iteration": 5
       }
     },
     {
-      "timestamp": 7581,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-todo-list"
-      }
-    },
-    {
-      "timestamp": 7581,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-increment-one"
-      }
-    },
-    {
-      "timestamp": 7583,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-length-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          },
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-access-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 7583,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-todo-list",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 7584,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-increment-one-value",
-            "toPortId": "port-add-index-left",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 7584,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-increment-one",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 8589,
-      "event": {
-        "type": "iteration",
-        "iteration": 6
-      }
-    },
-    {
-      "timestamp": 8590,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-array-length"
-      }
-    },
-    {
-      "timestamp": 8590,
+      "timestamp": 5605,
       "event": {
         "type": "node-start",
         "nodeId": "node-array-access"
       }
     },
     {
-      "timestamp": 8590,
+      "timestamp": 5605,
       "event": {
         "type": "node-start",
         "nodeId": "node-add-index"
       }
     },
     {
-      "timestamp": 8591,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-array-length-length",
-            "toPortId": "port-compare-index-right",
-            "data": 3
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 8591,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-array-length",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 8591,
+      "timestamp": 5624,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
             "fromPortId": "port-array-access-value",
             "toPortId": "port-current-todo-in",
-            "data": "写代码"
+            "data": "买牛奶"
           }
         ]
       }
     },
     {
-      "timestamp": 8591,
+      "timestamp": 5624,
       "event": {
         "type": "node-start",
         "nodeId": "node-current-todo"
       }
     },
     {
-      "timestamp": 8592,
+      "timestamp": 5643,
       "event": {
         "type": "node-complete",
         "nodeId": "node-current-todo",
@@ -1211,20 +1093,20 @@
       }
     },
     {
-      "timestamp": 8592,
+      "timestamp": 5644,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
             "fromPortId": "port-current-todo-out",
             "toPortId": "port-notify-todo-message",
-            "data": "写代码"
+            "data": "买牛奶"
           }
         ]
       }
     },
     {
-      "timestamp": 8592,
+      "timestamp": 5662,
       "event": {
         "type": "node-complete",
         "nodeId": "node-array-access",
@@ -1232,20 +1114,20 @@
       }
     },
     {
-      "timestamp": 8592,
+      "timestamp": 5663,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
             "fromPortId": "port-add-index-result",
             "toPortId": "port-current-index-in",
-            "data": 2
+            "data": 1
           }
         ]
       }
     },
     {
-      "timestamp": 8593,
+      "timestamp": 5680,
       "event": {
         "type": "node-complete",
         "nodeId": "node-add-index",
@@ -1253,58 +1135,56 @@
       }
     },
     {
-      "timestamp": 9599,
+      "timestamp": 6693,
       "event": {
         "type": "iteration",
-        "iteration": 7
+        "iteration": 6
       }
     },
     {
-      "timestamp": 9599,
+      "timestamp": 6693,
       "event": {
         "type": "node-start",
         "nodeId": "node-current-index"
       }
     },
     {
-      "timestamp": 9599,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-compare-index"
-      }
-    },
-    {
-      "timestamp": 9599,
+      "timestamp": 6694,
       "event": {
         "type": "node-start",
         "nodeId": "node-notify-todo"
       }
     },
     {
-      "timestamp": 9602,
+      "timestamp": 6719,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
+            "fromPortId": "e52d1752-3bd9-4004-bd9b-6c9369dccaba",
+            "toPortId": "6993a9dd-a6e7-44f2-a4ec-3de5dfd3321a",
+            "data": null
+          },
+          {
             "fromPortId": "port-current-index-out",
             "toPortId": "port-compare-index-left",
-            "data": 2
+            "data": 1
           },
           {
             "fromPortId": "port-current-index-out",
             "toPortId": "port-array-access-index",
-            "data": 2
+            "data": 1
           },
           {
             "fromPortId": "port-current-index-out",
             "toPortId": "port-add-index-right",
-            "data": 2
+            "data": 1
           }
         ]
       }
     },
     {
-      "timestamp": 9602,
+      "timestamp": 6737,
       "event": {
         "type": "node-complete",
         "nodeId": "node-current-index",
@@ -1312,7 +1192,29 @@
       }
     },
     {
-      "timestamp": 9602,
+      "timestamp": 6755,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-notify-todo",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 7761,
+      "event": {
+        "type": "iteration",
+        "iteration": 7
+      }
+    },
+    {
+      "timestamp": 7762,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-compare-index"
+      }
+    },
+    {
+      "timestamp": 7779,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -1325,7 +1227,7 @@
       }
     },
     {
-      "timestamp": 9603,
+      "timestamp": 7794,
       "event": {
         "type": "node-complete",
         "nodeId": "node-compare-index",
@@ -1333,57 +1235,44 @@
       }
     },
     {
-      "timestamp": 9603,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-notify-todo",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 10610,
+      "timestamp": 8807,
       "event": {
         "type": "iteration",
         "iteration": 8
       }
     },
     {
-      "timestamp": 10610,
+      "timestamp": 8807,
       "event": {
         "type": "node-start",
         "nodeId": "node-branch-continue"
       }
     },
     {
-      "timestamp": 10611,
+      "timestamp": 8824,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "b434123a-3f7b-42bf-9e42-a6a198062a68",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "5a3ee5f5-6de5-415b-a47d-1e110c469e6f",
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d",
             "data": null
           },
           {
             "fromPortId": "port-branch-continue-true",
-            "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d",
+            "toPortId": "d541baad-80a1-4288-829f-6f1016dfe6b6",
+            "data": null
+          },
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "0943c394-e052-4f67-abd2-804b66e7cc33",
             "data": null
           }
         ]
       }
     },
     {
-      "timestamp": 10611,
+      "timestamp": 8841,
       "event": {
         "type": "node-complete",
         "nodeId": "node-branch-continue",
@@ -1391,132 +1280,264 @@
       }
     },
     {
-      "timestamp": 11616,
+      "timestamp": 9844,
       "event": {
         "type": "iteration",
         "iteration": 9
       }
     },
     {
-      "timestamp": 11616,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-todo-list"
-      }
-    },
-    {
-      "timestamp": 11616,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-increment-one"
-      }
-    },
-    {
-      "timestamp": 11617,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-length-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          },
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-access-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 11617,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-todo-list",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 11617,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-increment-one-value",
-            "toPortId": "port-add-index-left",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 11617,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-increment-one",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 12629,
-      "event": {
-        "type": "iteration",
-        "iteration": 10
-      }
-    },
-    {
-      "timestamp": 12629,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-array-length"
-      }
-    },
-    {
-      "timestamp": 12629,
+      "timestamp": 9846,
       "event": {
         "type": "node-start",
         "nodeId": "node-array-access"
       }
     },
     {
-      "timestamp": 12629,
+      "timestamp": 9846,
       "event": {
         "type": "node-start",
         "nodeId": "node-add-index"
       }
     },
     {
-      "timestamp": 12630,
+      "timestamp": 9867,
       "event": {
         "type": "data-propagate",
         "transfers": [
           {
-            "fromPortId": "port-array-length-length",
-            "toPortId": "port-compare-index-right",
-            "data": 3
+            "fromPortId": "port-array-access-value",
+            "toPortId": "port-current-todo-in",
+            "data": "写代码"
           }
         ]
       }
     },
     {
-      "timestamp": 12630,
+      "timestamp": 9868,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-current-todo"
+      }
+    },
+    {
+      "timestamp": 9885,
       "event": {
         "type": "node-complete",
-        "nodeId": "node-array-length",
+        "nodeId": "node-current-todo",
         "success": true
       }
     },
     {
-      "timestamp": 12631,
+      "timestamp": 9886,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-current-todo-out",
+            "toPortId": "port-notify-todo-message",
+            "data": "写代码"
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 9903,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-array-access",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 9903,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-add-index-result",
+            "toPortId": "port-current-index-in",
+            "data": 2
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 9919,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-add-index",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 10927,
+      "event": {
+        "type": "iteration",
+        "iteration": 10
+      }
+    },
+    {
+      "timestamp": 10928,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-current-index"
+      }
+    },
+    {
+      "timestamp": 10928,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-notify-todo"
+      }
+    },
+    {
+      "timestamp": 10947,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "e52d1752-3bd9-4004-bd9b-6c9369dccaba",
+            "toPortId": "6993a9dd-a6e7-44f2-a4ec-3de5dfd3321a",
+            "data": null
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-compare-index-left",
+            "data": 2
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-array-access-index",
+            "data": 2
+          },
+          {
+            "fromPortId": "port-current-index-out",
+            "toPortId": "port-add-index-right",
+            "data": 2
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 10963,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-current-index",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 10979,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-notify-todo",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 11990,
+      "event": {
+        "type": "iteration",
+        "iteration": 11
+      }
+    },
+    {
+      "timestamp": 11991,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-compare-index"
+      }
+    },
+    {
+      "timestamp": 12007,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-compare-index-result",
+            "toPortId": "port-branch-continue-condition",
+            "data": true
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 12023,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-compare-index",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 13028,
+      "event": {
+        "type": "iteration",
+        "iteration": 12
+      }
+    },
+    {
+      "timestamp": 13029,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-branch-continue"
+      }
+    },
+    {
+      "timestamp": 13045,
+      "event": {
+        "type": "data-propagate",
+        "transfers": [
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d",
+            "data": null
+          },
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "d541baad-80a1-4288-829f-6f1016dfe6b6",
+            "data": null
+          },
+          {
+            "fromPortId": "port-branch-continue-true",
+            "toPortId": "0943c394-e052-4f67-abd2-804b66e7cc33",
+            "data": null
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 13061,
+      "event": {
+        "type": "node-complete",
+        "nodeId": "node-branch-continue",
+        "success": true
+      }
+    },
+    {
+      "timestamp": 14073,
+      "event": {
+        "type": "iteration",
+        "iteration": 13
+      }
+    },
+    {
+      "timestamp": 14074,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-array-access"
+      }
+    },
+    {
+      "timestamp": 14074,
+      "event": {
+        "type": "node-start",
+        "nodeId": "node-add-index"
+      }
+    },
+    {
+      "timestamp": 14092,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -1529,14 +1550,14 @@
       }
     },
     {
-      "timestamp": 12631,
+      "timestamp": 14092,
       "event": {
         "type": "node-start",
         "nodeId": "node-current-todo"
       }
     },
     {
-      "timestamp": 12631,
+      "timestamp": 14111,
       "event": {
         "type": "node-complete",
         "nodeId": "node-current-todo",
@@ -1544,7 +1565,7 @@
       }
     },
     {
-      "timestamp": 12631,
+      "timestamp": 14112,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -1557,7 +1578,7 @@
       }
     },
     {
-      "timestamp": 12632,
+      "timestamp": 14130,
       "event": {
         "type": "node-complete",
         "nodeId": "node-array-access",
@@ -1565,7 +1586,7 @@
       }
     },
     {
-      "timestamp": 12632,
+      "timestamp": 14131,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -1578,7 +1599,7 @@
       }
     },
     {
-      "timestamp": 12633,
+      "timestamp": 14148,
       "event": {
         "type": "node-complete",
         "nodeId": "node-add-index",
@@ -1586,31 +1607,36 @@
       }
     },
     {
-      "timestamp": 13640,
+      "timestamp": 15150,
       "event": {
         "type": "iteration",
-        "iteration": 11
+        "iteration": 14
       }
     },
     {
-      "timestamp": 13640,
+      "timestamp": 15150,
       "event": {
         "type": "node-start",
         "nodeId": "node-current-index"
       }
     },
     {
-      "timestamp": 13640,
+      "timestamp": 15151,
       "event": {
         "type": "node-start",
         "nodeId": "node-notify-todo"
       }
     },
     {
-      "timestamp": 13643,
+      "timestamp": 15170,
       "event": {
         "type": "data-propagate",
         "transfers": [
+          {
+            "fromPortId": "e52d1752-3bd9-4004-bd9b-6c9369dccaba",
+            "toPortId": "6993a9dd-a6e7-44f2-a4ec-3de5dfd3321a",
+            "data": null
+          },
           {
             "fromPortId": "port-current-index-out",
             "toPortId": "port-compare-index-left",
@@ -1630,7 +1656,7 @@
       }
     },
     {
-      "timestamp": 13643,
+      "timestamp": 15188,
       "event": {
         "type": "node-complete",
         "nodeId": "node-current-index",
@@ -1638,7 +1664,7 @@
       }
     },
     {
-      "timestamp": 13644,
+      "timestamp": 15205,
       "event": {
         "type": "node-complete",
         "nodeId": "node-notify-todo",
@@ -1646,364 +1672,21 @@
       }
     },
     {
-      "timestamp": 14649,
-      "event": {
-        "type": "iteration",
-        "iteration": 12
-      }
-    },
-    {
-      "timestamp": 14649,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-compare-index"
-      }
-    },
-    {
-      "timestamp": 14650,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-compare-index-result",
-            "toPortId": "port-branch-continue-condition",
-            "data": false
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 14650,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-compare-index",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 15651,
-      "event": {
-        "type": "iteration",
-        "iteration": 13
-      }
-    },
-    {
-      "timestamp": 15651,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-branch-continue"
-      }
-    },
-    {
-      "timestamp": 15652,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "b434123a-3f7b-42bf-9e42-a6a198062a68",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "5a3ee5f5-6de5-415b-a47d-1e110c469e6f",
-            "data": null
-          },
-          {
-            "fromPortId": "port-branch-continue-true",
-            "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d",
-            "data": null
-          },
-          {
-            "fromPortId": "port-branch-continue-false",
-            "toPortId": "port-loop-complete-message",
-            "data": null
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 15653,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-branch-continue",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 16654,
-      "event": {
-        "type": "iteration",
-        "iteration": 14
-      }
-    },
-    {
-      "timestamp": 16654,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-todo-list"
-      }
-    },
-    {
-      "timestamp": 16654,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-increment-one"
-      }
-    },
-    {
-      "timestamp": 16655,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-loop-complete"
-      }
-    },
-    {
-      "timestamp": 16657,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-length-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          },
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-access-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 16657,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-todo-list",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 16657,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-increment-one-value",
-            "toPortId": "port-add-index-left",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 16657,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-increment-one",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 16658,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-loop-complete",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 17665,
+      "timestamp": 16207,
       "event": {
         "type": "iteration",
         "iteration": 15
       }
     },
     {
-      "timestamp": 17666,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-array-length"
-      }
-    },
-    {
-      "timestamp": 17666,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-array-access"
-      }
-    },
-    {
-      "timestamp": 17666,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-add-index"
-      }
-    },
-    {
-      "timestamp": 17667,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-array-length-length",
-            "toPortId": "port-compare-index-right",
-            "data": 3
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 17667,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-array-length",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 17668,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-array-access-value",
-            "toPortId": "port-current-todo-in"
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 17668,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-current-todo"
-      }
-    },
-    {
-      "timestamp": 17668,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-current-todo",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 17668,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-current-todo-out",
-            "toPortId": "port-notify-todo-message"
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 17669,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-array-access",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 17669,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-add-index-result",
-            "toPortId": "port-current-index-in",
-            "data": 4
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 17669,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-add-index",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 18673,
-      "event": {
-        "type": "iteration",
-        "iteration": 16
-      }
-    },
-    {
-      "timestamp": 18673,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-current-index"
-      }
-    },
-    {
-      "timestamp": 18674,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-current-index-out",
-            "toPortId": "port-compare-index-left",
-            "data": 4
-          },
-          {
-            "fromPortId": "port-current-index-out",
-            "toPortId": "port-array-access-index",
-            "data": 4
-          },
-          {
-            "fromPortId": "port-current-index-out",
-            "toPortId": "port-add-index-right",
-            "data": 4
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 18674,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-current-index",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 19682,
-      "event": {
-        "type": "iteration",
-        "iteration": 17
-      }
-    },
-    {
-      "timestamp": 19683,
+      "timestamp": 16208,
       "event": {
         "type": "node-start",
         "nodeId": "node-compare-index"
       }
     },
     {
-      "timestamp": 19683,
+      "timestamp": 16226,
       "event": {
         "type": "data-propagate",
         "transfers": [
@@ -2016,7 +1699,7 @@
       }
     },
     {
-      "timestamp": 19684,
+      "timestamp": 16242,
       "event": {
         "type": "node-complete",
         "nodeId": "node-compare-index",
@@ -2024,44 +1707,24 @@
       }
     },
     {
-      "timestamp": 20697,
+      "timestamp": 17244,
       "event": {
         "type": "iteration",
-        "iteration": 18
+        "iteration": 16
       }
     },
     {
-      "timestamp": 20697,
+      "timestamp": 17244,
       "event": {
         "type": "node-start",
         "nodeId": "node-branch-continue"
       }
     },
     {
-      "timestamp": 20698,
+      "timestamp": 17261,
       "event": {
         "type": "data-propagate",
         "transfers": [
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "4a29197c-a548-49d4-bea9-2dca7e3afb32",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "b434123a-3f7b-42bf-9e42-a6a198062a68",
-            "data": null
-          },
-          {
-            "fromPortId": "a56c863a-6206-4baf-bf76-e7556c860781",
-            "toPortId": "5a3ee5f5-6de5-415b-a47d-1e110c469e6f",
-            "data": null
-          },
-          {
-            "fromPortId": "port-branch-continue-true",
-            "toPortId": "78938c99-5d84-4933-86f1-d98cac2a939d",
-            "data": null
-          },
           {
             "fromPortId": "port-branch-continue-false",
             "toPortId": "port-loop-complete-message",
@@ -2071,7 +1734,7 @@
       }
     },
     {
-      "timestamp": 20698,
+      "timestamp": 17276,
       "event": {
         "type": "node-complete",
         "nodeId": "node-branch-continue",
@@ -2079,102 +1742,44 @@
       }
     },
     {
-      "timestamp": 21699,
+      "timestamp": 18277,
       "event": {
         "type": "iteration",
-        "iteration": 19
+        "iteration": 17
       }
     },
     {
-      "timestamp": 21700,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-todo-list"
-      }
-    },
-    {
-      "timestamp": 21700,
-      "event": {
-        "type": "node-start",
-        "nodeId": "node-increment-one"
-      }
-    },
-    {
-      "timestamp": 21700,
+      "timestamp": 18278,
       "event": {
         "type": "node-start",
         "nodeId": "node-loop-complete"
       }
     },
     {
-      "timestamp": 21702,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-length-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          },
-          {
-            "fromPortId": "port-todo-list-value",
-            "toPortId": "port-array-access-array",
-            "data": [
-              "买牛奶",
-              "写代码",
-              "做运动"
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 21702,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-todo-list",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 21702,
-      "event": {
-        "type": "data-propagate",
-        "transfers": [
-          {
-            "fromPortId": "port-increment-one-value",
-            "toPortId": "port-add-index-left",
-            "data": 1
-          }
-        ]
-      }
-    },
-    {
-      "timestamp": 21702,
-      "event": {
-        "type": "node-complete",
-        "nodeId": "node-increment-one",
-        "success": true
-      }
-    },
-    {
-      "timestamp": 21703,
+      "timestamp": 18296,
       "event": {
         "type": "node-complete",
         "nodeId": "node-loop-complete",
         "success": true
+      }
+    },
+    {
+      "timestamp": 19554,
+      "event": {
+        "type": "complete",
+        "result": {
+          "finishReason": "completed",
+          "iterations": 17,
+          "duration": 18236
+        }
       }
     }
   ],
   "metadata": {
     "title": "Untitled Recording",
     "description": "",
-    "createdAt": "2026-01-18T10:10:29.435Z",
+    "createdAt": "2026-01-18T11:45:13.523Z",
     "iterationDelay": 0,
-    "duration": 21703
+    "duration": 19554
   }
 }
