@@ -173,24 +173,31 @@ export class DemoRecorder {
    */
   private serializeEvent(event: ExecutorEvent): SerializedExecutorEvent {
     switch (event.type) {
+      case ExecutorEventType.StateChange:
+        return {
+          type: ExecutorEventType.StateChange,
+          oldState: event.oldState,
+          newState: event.newState,
+        }
+
       case ExecutorEventType.Start:
-        return { type: 'start' }
+        return { type: ExecutorEventType.Start }
 
       case ExecutorEventType.Iteration:
         return {
-          type: 'iteration',
+          type: ExecutorEventType.Iteration,
           iteration: event.iteration,
         }
 
       case ExecutorEventType.NodeStart:
         return {
-          type: 'node-start',
+          type: ExecutorEventType.NodeStart,
           nodeId: event.node.id,
         }
 
       case ExecutorEventType.NodeComplete:
         return {
-          type: 'node-complete',
+          type: ExecutorEventType.NodeComplete,
           nodeId: event.node.id,
           success: event.success,
           error: event.error?.message,
@@ -198,7 +205,7 @@ export class DemoRecorder {
 
       case ExecutorEventType.DataPropagate:
         return {
-          type: 'data-propagate',
+          type: ExecutorEventType.DataPropagate,
           transfers: event.transfers.map((t) => ({
             fromPortId: t.fromPortId,
             toPortId: t.toPortId,
@@ -208,7 +215,7 @@ export class DemoRecorder {
 
       case ExecutorEventType.Complete:
         return {
-          type: 'complete',
+          type: ExecutorEventType.Complete,
           result: {
             finishReason: event.result.finishReason,
             iterations: event.result.iterations,
@@ -218,11 +225,11 @@ export class DemoRecorder {
         }
 
       case ExecutorEventType.Cancelled:
-        return { type: 'cancelled' }
+        return { type: ExecutorEventType.Cancelled }
 
       case ExecutorEventType.Error:
         return {
-          type: 'error',
+          type: ExecutorEventType.Error,
           error: event.error.message,
         }
     }

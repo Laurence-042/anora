@@ -6,6 +6,7 @@
  */
 
 import type { SerializedGraph } from '../types'
+import { ExecutorEventType } from '../executor'
 
 /**
  * 带时间戳的执行器事件
@@ -20,14 +21,16 @@ export interface TimestampedEvent {
 /**
  * 序列化的执行器事件
  * 将 BaseNode 引用替换为 nodeId，便于存储和传输
+ * 使用 ExecutorEventType 枚举值确保类型安全
  */
 export type SerializedExecutorEvent =
-  | { type: 'start' }
-  | { type: 'iteration'; iteration: number }
-  | { type: 'node-start'; nodeId: string }
-  | { type: 'node-complete'; nodeId: string; success: boolean; error?: string }
+  | { type: ExecutorEventType.StateChange; oldState: string; newState: string }
+  | { type: ExecutorEventType.Start }
+  | { type: ExecutorEventType.Iteration; iteration: number }
+  | { type: ExecutorEventType.NodeStart; nodeId: string }
+  | { type: ExecutorEventType.NodeComplete; nodeId: string; success: boolean; error?: string }
   | {
-      type: 'data-propagate'
+      type: ExecutorEventType.DataPropagate
       transfers: Array<{
         fromPortId: string
         toPortId: string
@@ -35,7 +38,7 @@ export type SerializedExecutorEvent =
       }>
     }
   | {
-      type: 'complete'
+      type: ExecutorEventType.Complete
       result: {
         finishReason: string
         error?: string
@@ -43,8 +46,8 @@ export type SerializedExecutorEvent =
         duration: number
       }
     }
-  | { type: 'cancelled' }
-  | { type: 'error'; error: string }
+  | { type: ExecutorEventType.Cancelled }
+  | { type: ExecutorEventType.Error; error: string }
 
 /**
  * Demo 录制文件格式

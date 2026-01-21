@@ -149,22 +149,28 @@ export class ReplayExecutor extends BasicExecutor {
    * 反序列化事件
    * 将录制的序列化事件转换为 ExecutorEvent
    */
-  private deserializeEvent(serialized: SerializedExecutorEvent): ExecutorEvent | null {
-    if (!this._graph) return null
+  private deserializeEvent(serialized: SerializedExecutorEvent): ExecutorEvent {
+    if (!this._graph) throw new Error('Graph not loaded')
 
     switch (serialized.type) {
-      case 'start':
+      case ExecutorEventType.StateChange:
+        return {
+          type: ExecutorEventType.StateChange,
+          oldState: serialized.oldState as ExecutorState,
+          newState: serialized.newState as ExecutorState,
+        }
+      case ExecutorEventType.Start:
         return { type: ExecutorEventType.Start }
-      case 'iteration':
+      case ExecutorEventType.Iteration:
         return { type: ExecutorEventType.Iteration, iteration: serialized.iteration }
-      case 'node-start': {
+      case ExecutorEventType.NodeStart: {
         const node = this._graph.getNode(serialized.nodeId)
-        if (!node) return null
+        if (!node) throw new Error(`Node not found: ${serialized.nodeId}`)
         return { type: ExecutorEventType.NodeStart, node }
       }
-      case 'node-complete': {
+      case ExecutorEventType.NodeComplete: {
         const node = this._graph.getNode(serialized.nodeId)
-        if (!node) return null
+        if (!node) throw new Error(`Node not found: ${serialized.nodeId}`)
         return {
           type: ExecutorEventType.NodeComplete,
           node,
@@ -172,7 +178,7 @@ export class ReplayExecutor extends BasicExecutor {
           error: serialized.error ? new Error(serialized.error) : undefined,
         }
       }
-      case 'data-propagate':
+      case ExecutorEventType.DataPropagate:
         return {
           type: ExecutorEventType.DataPropagate,
           transfers: serialized.transfers.map((t) => ({
@@ -181,7 +187,7 @@ export class ReplayExecutor extends BasicExecutor {
             data: t.data,
           })),
         }
-      case 'complete':
+      case ExecutorEventType.Complete:
         return {
           type: ExecutorEventType.Complete,
           result: {
@@ -191,9 +197,9 @@ export class ReplayExecutor extends BasicExecutor {
             duration: serialized.result.duration,
           },
         }
-      case 'cancelled':
+      case ExecutorEventType.Cancelled:
         return { type: ExecutorEventType.Cancelled }
-      case 'error':
+      case ExecutorEventType.Error:
         return { type: ExecutorEventType.Error, error: new Error(serialized.error) }
     }
   }
@@ -250,36 +256,36 @@ export class ReplayExecutor extends BasicExecutor {
       const event = this.recording.events[i]!.event
 
       switch (event.type) {
-        case 'start':
+        case ExecutorEventType.Start:
           // Clear everything on start
           executingNodeIds.clear()
           edgeDataTransfers.clear()
           nodeStatus.clear()
           break
-        case 'iteration':
+        case ExecutorEventType.Iteration:
           // 只清除正在执行的节点，保留边数据传输和节点完成状态
           // 边数据传输会在下一次 data-propagate 时被覆盖
           executingNodeIds.clear()
           break
-        case 'node-start':
+        case ExecutorEventType.NodeStart:
           executingNodeIds.add(event.nodeId)
           break
-        case 'node-complete':
+        case ExecutorEventType.NodeComplete:
           executingNodeIds.delete(event.nodeId)
           nodeStatus.set(event.nodeId, {
             success: event.success,
             error: event.error,
           })
           break
-        case 'data-propagate':
+        case ExecutorEventType.DataPropagate:
           for (const transfer of event.transfers) {
             const edgeId = `${transfer.fromPortId}->${transfer.toPortId}`
             edgeDataTransfers.set(edgeId, transfer)
           }
           break
-        case 'complete':
-        case 'cancelled':
-        case 'error':
+        case ExecutorEventType.Complete:
+        case ExecutorEventType.Cancelled:
+        case ExecutorEventType.Error:
           executingNodeIds.clear()
           edgeDataTransfers.clear()
           break
