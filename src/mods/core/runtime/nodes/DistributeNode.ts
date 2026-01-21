@@ -37,9 +37,6 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
   /** 当前索引 */
   private currentIndex: number = 0
 
-  /** 是否已完成所有元素分发 */
-  private isCompleted: boolean = false
-
   constructor(id?: string, label?: string) {
     super(id, label ?? 'Distribute')
 
@@ -60,25 +57,22 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
   reset(): void {
     this.currentArray = []
     this.currentIndex = 0
-    this.isCompleted = false
   }
 
   /**
    * 覆盖激活就绪检查
-   * 需要处理多次激活的情况
+   * 需要处理多次激活的情况：
+   * - 正在分发中：继续分发，返回 Ready
+   * - 已完成或未开始：使用基类逻辑检查是否有新数组输入
    */
   override isReadyToActivate(connectedPorts: Set<string>): ActivationReadyStatus {
-    // 如果正在分发中，继续分发
+    // 如果正在分发中（有未完成的元素），继续分发
     if (this.currentArray.length > 0 && this.currentIndex < this.currentArray.length) {
       return ActivationReadyStatus.Ready
     }
 
-    // 如果已完成，不再就绪
-    if (this.isCompleted) {
-      return ActivationReadyStatus.NotReady
-    }
-
-    // 等待新数组输入（使用基类默认逻辑）
+    // 已完成或未开始：使用基类默认逻辑检查是否有新数组输入
+    // 基类会检查入 Port 是否有新数据
     return super.isReadyToActivate(connectedPorts)
   }
 
@@ -86,22 +80,20 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
     _executorContext: ExecutorContext,
     inData: DistributeInput,
   ): Promise<DistributeOutput> {
-    // 如果有新的数组输入，重新开始
+    // 只有当前没有正在分发的数组时，才接受新数组输入
+    // 如果正在分发中，丢弃新输入，继续当前输出
     const inputArray = inData[DistributeNodePorts.IN.ARRAY]
-    if (inputArray !== undefined) {
+    if (this.currentIndex >= this.currentArray.length && inputArray !== undefined) {
       if (Array.isArray(inputArray)) {
         this.currentArray = inputArray
         this.currentIndex = 0
-        this.isCompleted = false
       } else {
         throw new Error('Input must be an array')
       }
     }
 
-    // 如果数组为空或已分发完毕
-    if (this.currentIndex >= this.currentArray.length) {
-      this.isCompleted = true
-      // 激活 done 控制 Port
+    // 如果数组为空，激活 done
+    if (this.currentArray.length === 0) {
       const donePort = this.outControlPorts.get(DistributeNodePorts.OUT_CONTROL.DONE)
       if (donePort) {
         donePort.write(null)
@@ -112,6 +104,14 @@ export class DistributeNode extends WebNode<DistributeInput, DistributeOutput> {
     // 输出当前元素
     const item = this.currentArray[this.currentIndex]
     const index = this.currentIndex
+
+    // 检查是否是最后一个元素，如果是则同步激活 done
+    if (this.currentIndex === this.currentArray.length - 1) {
+      const donePort = this.outControlPorts.get(DistributeNodePorts.OUT_CONTROL.DONE)
+      if (donePort) {
+        donePort.write(null)
+      }
+    }
 
     // 移动到下一个
     this.currentIndex++
