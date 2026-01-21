@@ -299,6 +299,11 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function handleExecutorEvent(event: ExecutorEvent): void {
     switch (event.type) {
+      case ExecutorEventType.StateChange:
+        // 状态变化时同步到 store
+        stateMachineState.value = event.newState
+        break
+
       case ExecutorEventType.Start:
         currentIteration.value = 0
         executingNodeIds.value.clear()
@@ -382,7 +387,7 @@ export const useGraphStore = defineStore('graph', () => {
     // 只有空闲状态才能开始执行
     if (stateMachineState.value !== ExecutorState.Idle) return
 
-    // 注册事件监听
+    // 注册事件监听（包含 StateChange 事件）
     const unsubscribe = executor.on(handleExecutorEvent)
 
     // 将迭代延迟传递给执行器上下文
@@ -397,11 +402,9 @@ export const useGraphStore = defineStore('graph', () => {
     }
 
     try {
-      stateMachineState.value = executor.executorState // 同步初始状态
       await executor.execute(currentGraph.value, context, options)
     } finally {
       unsubscribe()
-      stateMachineState.value = executor.executorState // 同步最终状态
     }
   }
 

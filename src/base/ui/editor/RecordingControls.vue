@@ -8,7 +8,7 @@
  *
  * 回放功能由独立的 ReplayView 页面处理
  */
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import { DemoRecorder } from '@/base/runtime/demo'
@@ -30,8 +30,23 @@ const graphStore = useGraphStore()
 // ========== 录制状态 ==========
 
 const recorder = ref<DemoRecorder | null>(null)
-const isRecording = ref(false)
-const recordedEventCount = ref(0)
+
+/** 是否正在录制（从 recorder 派生） */
+const isRecording = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  updateTrigger.value // 依赖 updateTrigger 以触发响应式更新
+  return recorder.value?.isRecording ?? false
+})
+
+/** 已录制的事件数量（从 recorder 派生） */
+const recordedEventCount = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  updateTrigger.value // 依赖 updateTrigger 以触发响应式更新
+  return recorder.value?.eventCount ?? 0
+})
+
+/** 用于触发 UI 更新的计数器 */
+const updateTrigger = ref(0)
 
 // ========== 录制操作 ==========
 
@@ -51,17 +66,15 @@ function startRecording(): void {
   const graph = graphStore.currentGraph
   newRecorder.bindGraph(graph)
 
-  // 设置状态变更回调
-  newRecorder.onRecordingChange = (recording, count) => {
-    isRecording.value = recording
-    recordedEventCount.value = count
+  // 设置状态变更回调（用于触发 UI 更新）
+  newRecorder.onRecordingChange = () => {
+    updateTrigger.value++
   }
 
   // 开始录制（传入节点位置和尺寸）
   newRecorder.startRecording(graphStore.nodePositions, graphStore.nodeSizes)
 
   recorder.value = newRecorder
-  isRecording.value = true
   console.log('[RecordingControls] Recording started')
 }
 
@@ -69,7 +82,6 @@ function stopRecording(): void {
   if (!recorder.value) return
 
   recorder.value.stopRecording()
-  isRecording.value = false
   console.log('[RecordingControls] Recording stopped, events:', recorder.value.eventCount)
   // 注意：不清空 recorder.value，保留数据以便导出
 }
@@ -86,10 +98,8 @@ function downloadRecording(): void {
   a.click()
   URL.revokeObjectURL(url)
 
-  // 下载后清理录制器和状态
+  // 下载后清理录制器
   recorder.value = null
-  recordedEventCount.value = 0
-  isRecording.value = false
 }
 
 // ========== 清理 ==========

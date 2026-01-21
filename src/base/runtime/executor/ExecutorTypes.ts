@@ -6,7 +6,7 @@
  */
 
 import type { BaseNode } from '../nodes/BaseNode'
-import { FinishReason } from './ExecutorStateMachine'
+import { FinishReason, ExecutorState } from './ExecutorStateMachine'
 
 /**
  * 执行器运行模式
@@ -58,6 +58,8 @@ export interface EdgeDataTransfer {
  * 用于类型安全的事件类型判断
  */
 export enum ExecutorEventType {
+  /** 状态变化 */
+  StateChange = 'state-change',
   /** 执行开始 */
   Start = 'start',
   /** 迭代开始 */
@@ -81,6 +83,7 @@ export enum ExecutorEventType {
  * 所有执行器（包括回放执行器）都发送相同格式的事件
  */
 export type ExecutorEvent =
+  | { type: ExecutorEventType.StateChange; oldState: ExecutorState; newState: ExecutorState }
   | { type: ExecutorEventType.Start }
   | { type: ExecutorEventType.Iteration; iteration: number }
   | { type: ExecutorEventType.NodeStart; node: BaseNode }

@@ -117,6 +117,13 @@ export class BasicExecutor {
   /** 是否已请求取消 */
   protected cancelRequested: boolean = false
 
+  constructor() {
+    // 监听状态机变化，统一通过 emit 发送 StateChange 事件
+    this.stateMachine.onStateChange((oldState, newState) => {
+      this.emit({ type: ExecutorEventType.StateChange, oldState, newState })
+    })
+  }
+
   // ==================== 执行上下文（execute 期间有效） ====================
 
   /** 当前执行的图 */
