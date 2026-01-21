@@ -86,9 +86,10 @@ function downloadRecording(): void {
   a.click()
   URL.revokeObjectURL(url)
 
-  // 下载后清理录制器
+  // 下载后清理录制器和状态
   recorder.value = null
   recordedEventCount.value = 0
+  isRecording.value = false
 }
 
 // ========== 清理 ==========
