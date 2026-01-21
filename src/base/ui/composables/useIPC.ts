@@ -39,7 +39,10 @@ class IPCController {
   private async handleMessage(event: MessageEvent): Promise<void> {
     console.log('[IPC] received window.postMessage:', JSON.stringify(event.data))
     const data = event.data as IPCMessage
-    if (!data || !data.type) return
+    if (!data || !data.type) {
+      console.warn('[IPC] ignored invalid message (no type):', event.data)
+      return
+    }
     await this.dispatchToHandlers(data)
   }
 
@@ -60,12 +63,18 @@ class IPCController {
       data = customEvent.detail
     }
 
-    if (!data || !data.type) return
+    if (!data || !data.type) {
+      console.warn('[IPC] ignored invalid document message (no type):', data)
+      return
+    }
     await this.dispatchToHandlers(data)
   }
 
   private async dispatchToHandlers(data: IPCMessage): Promise<void> {
     const handlers = this.handlers.get(data.type) ?? []
+    if (handlers.length === 0) {
+      console.warn(`[IPC] no handlers for message type: ${data.type}`, data)
+    }
     for (const h of handlers) {
       try {
         await h(data)
