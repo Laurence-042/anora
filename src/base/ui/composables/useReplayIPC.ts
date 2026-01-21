@@ -19,8 +19,8 @@ import type { IPCMessage } from '@/base/runtime/types'
 import { ExecutorEventType } from '@/base/runtime/executor'
 
 interface SeekData {
-  time?: number
-  index?: number
+  timeMs?: number
+  eventIndex?: number
 }
 
 interface KeyframeData {
@@ -93,18 +93,18 @@ export function useReplayIPC(options: {
   unsubscribers.push(
     on('replay.seek', async (msg) => {
       const data = (msg as IPCMessage<SeekData>).data ?? {}
-      const time = typeof data.time === 'number' ? data.time : undefined
-      const index = typeof data.index === 'number' ? data.index : undefined
+      const timeMs = typeof data.timeMs === 'number' ? data.timeMs : undefined
+      const eventIndex = typeof data.eventIndex === 'number' ? data.eventIndex : undefined
 
-      if (time !== undefined) {
-        const targetIndex = controller.seekToTime(time)
-        postMessage('replay.seeked', { time, index: targetIndex })
+      if (timeMs !== undefined) {
+        const targetIndex = controller.seekToTime(timeMs)
+        postMessage('replay.seeked', { timeMs, eventIndex: targetIndex })
         return
       }
 
-      if (index !== undefined) {
-        controller.seekToIndex(index)
-        postMessage('replay.seeked', { index })
+      if (eventIndex !== undefined) {
+        controller.seekToIndex(eventIndex)
+        postMessage('replay.seeked', { eventIndex })
         return
       }
 

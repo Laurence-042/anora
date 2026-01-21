@@ -268,8 +268,7 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.state",
-  "data": { "state": "Running" }
+  "type": "replay.played"
 }
 ```
 
@@ -289,8 +288,7 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.state",
-  "data": { "state": "Paused" }
+  "type": "replay.paused"
 }
 ```
 
@@ -310,19 +308,77 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.state",
-  "data": { "state": "Running" }
+  "type": "replay.toggled"
 }
 ```
 
-或
+---
+
+#### `replay.stepForward` - 单步前进
+
+执行一步（播放下一个事件）。
+
+**请求：**
+
+```json
+{ "type": "replay.stepForward" }
+```
+
+**响应：**
 
 ```json
 {
-  "type": "replay.state",
-  "data": { "state": "Paused" }
+  "type": "replay.stepped"
 }
 ```
+
+---
+
+#### `replay.restart` - 重新开始
+
+从头开始播放。
+
+**请求：**
+
+```json
+{ "type": "replay.restart" }
+```
+
+**响应：**
+
+```json
+{
+  "type": "replay.restarted"
+}
+```
+
+---
+
+### 播放速度
+
+#### `replay.setSpeed` - 设置播放速度
+
+设置播放速度倍率。
+
+**请求：**
+
+```json
+{
+  "type": "replay.setSpeed",
+  "data": { "speed": 2.0 }
+}
+```
+
+**响应：**
+
+```json
+{
+  "type": "replay.speedSet",
+  "data": { "speed": 2.0 }
+}
+```
+
+**支持的速度值：** 0.5, 1.0, 1.5, 2.0, 4.0（或任意正数）
 
 ---
 
@@ -379,21 +435,12 @@ interface IPCResponse {
 }
 ```
 
-**跳转到前一个关键帧：**
+**跳转到关键帧之前的位置（before=true）：**
 
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "data": { "direction": "before" }
-}
-```
-
-**跳转到后一个关键帧：**
-
-```json
-{
-  "type": "replay.seekToKeyframe",
-  "data": { "direction": "after" }
+  "data": { "keyframeIndex": 3, "before": true }
 }
 ```
 
@@ -401,11 +448,9 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.keyframe",
+  "type": "replay.seekToKeyframe",
   "data": {
-    "keyframeIndex": 3,
-    "timeMs": 7500,
-    "eventIndex": 67
+    "keyframeIndex": 3
   }
 }
 ```
@@ -437,21 +482,30 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.state",
-  "data": { "state": "Running" }
+  "type": "replay.playFor.started",
+  "data": { "durationMs": 3000, "timerId": 1 }
 }
 ```
 
-**响应（自动暂停）：**
+**响应（自动暂停/完成）：**
 
 ```json
 {
-  "type": "replay.playForComplete",
+  "type": "replay.playFor.completed",
   "data": {
-    "requestedDurationMs": 3000,
-    "actualDurationMs": 3012,
-    "finalTimeMs": 8512
+    "durationMs": 3000
   }
+}
+```
+
+**特殊用法：播放到结束**
+
+当 `durationMs` 为 `-1` 时，表示播放到录制结束：
+
+```json
+{
+  "type": "replay.playFor",
+  "data": { "durationMs": -1 }
 }
 ```
 
@@ -471,11 +525,16 @@ interface IPCResponse {
 
 **请求：**
 
+`data` 字段直接传入解析后的 DemoRecording 对象（不是 JSON 字符串）：
+
 ```json
 {
   "type": "replay.importRecording",
   "data": {
-    "recordingText": "{\"version\":\"2.0.0\",\"metadata\":{...},\"initialGraph\":{...},\"events\":[...]}"
+    "version": "2.0.0",
+    "metadata": { "createdAt": "...", "duration": 15000, "totalEvents": 234 },
+    "initialGraph": { ... },
+    "events": [ ... ]
   }
 }
 ```
@@ -484,12 +543,7 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.recordingLoaded",
-  "data": {
-    "version": "2.0.0",
-    "duration": 15000,
-    "totalEvents": 234
-  }
+  "type": "replay.importRecording.ok"
 }
 ```
 
@@ -497,10 +551,9 @@ interface IPCResponse {
 
 ```json
 {
-  "type": "replay.error",
+  "type": "replay.importRecording.error",
   "data": {
-    "command": "replay.importRecording",
-    "error": "Invalid JSON format"
+    "error": "no-data"
   }
 }
 ```
@@ -511,14 +564,20 @@ interface IPCResponse {
 
 ANORA 会主动发送以下类型的响应消息：
 
-| 响应类型                 | 触发时机         | 数据内容                                                 |
-| ------------------------ | ---------------- | -------------------------------------------------------- |
-| `replay.state`           | 播放状态改变     | `{ state: ExecutorState }`                               |
-| `replay.seeked`          | 跳转完成         | `{ timeMs, eventIndex }`                                 |
-| `replay.keyframe`        | 关键帧跳转完成   | `{ keyframeIndex, timeMs, eventIndex }`                  |
-| `replay.playForComplete` | 定时播放完成     | `{ requestedDurationMs, actualDurationMs, finalTimeMs }` |
-| `replay.recordingLoaded` | 录制文件加载成功 | `{ version, duration, totalEvents }`                     |
-| `replay.error`           | 命令执行失败     | `{ command, error }`                                     |
+| 响应类型                       | 触发时机       | 数据内容                                      |
+| ------------------------------ | -------------- | --------------------------------------------- |
+| `replay.played`                | 播放命令执行   | 无                                            |
+| `replay.paused`                | 暂停命令执行   | 无                                            |
+| `replay.toggled`               | 切换命令执行   | 无                                            |
+| `replay.stepped`               | 单步命令执行   | 无                                            |
+| `replay.restarted`             | 重启命令执行   | 无                                            |
+| `replay.seeked`                | 跳转完成       | `{ timeMs?, eventIndex?, error? }`            |
+| `replay.seekToKeyframe`        | 关键帧跳转完成 | `{ keyframeIndex }` 或 `{ error }`            |
+| `replay.speedSet`              | 速度设置完成   | `{ speed }`                                   |
+| `replay.playFor.started`       | 定时播放开始   | `{ durationMs, timerId? }` 或 `{ playToEnd }` |
+| `replay.playFor.completed`     | 定时播放完成   | `{ durationMs }` 或 `{ playedToEnd }`         |
+| `replay.importRecording.ok`    | 录制加载成功   | 无                                            |
+| `replay.importRecording.error` | 录制加载失败   | `{ error }`                                   |
 
 **ExecutorState 枚举值：**
 
@@ -563,10 +622,10 @@ func seek_to_time(time_ms: int):
     })
     webview.post_message(msg)
 
-func load_recording(recording_json: String):
+func load_recording(recording_data: Dictionary):
     var msg = JSON.stringify({
         "type": "replay.importRecording",
-        "data": {"recordingText": recording_json}
+        "data": recording_data
     })
     webview.post_message(msg)
 
@@ -587,8 +646,9 @@ func _on_ipc_message(message: String):
 # 游戏脚本中调用
 func show_tutorial():
     # 加载教程录制
-    var recording = load("res://tutorials/intro.json").get_as_text()
-    $ReplayController.load_recording(recording)
+    var file = FileAccess.open("res://tutorials/intro.json", FileAccess.READ)
+    var recording_data = JSON.parse_string(file.get_as_text())
+    $ReplayController.load_recording(recording_data)
 
     # 等待加载完成
     await get_tree().create_timer(0.5).timeout
@@ -656,9 +716,9 @@ func show_tutorial():
       async function loadRecording() {
         // 从服务器加载录制文件
         const response = await fetch('/api/recordings/demo.json')
-        const recordingText = await response.text()
+        const recording = await response.json()
 
-        sendCommand('replay.importRecording', { recordingText })
+        sendCommand('replay.importRecording', recording)
       }
     </script>
   </body>
@@ -671,13 +731,12 @@ func show_tutorial():
 
 ### 常见错误
 
-| 错误消息                 | 原因                                  | 解决方案                             |
-| ------------------------ | ------------------------------------- | ------------------------------------ |
-| `Executor not available` | Executor 未初始化或已销毁             | 确保页面加载完成后再发送命令         |
-| `Invalid JSON format`    | `replay.importRecording` 参数格式错误 | 验证 JSON 格式，确保完整的录制文件   |
-| `Invalid seek target`    | `replay.seek` 参数缺失或类型错误      | 提供 `timeMs` 或 `eventIndex` 之一   |
-| `Keyframe not found`     | 指定的关键帧索引超出范围              | 先调用 `getKeyframes()` 获取有效范围 |
-| `No keyframes available` | 录制文件未加载或无事件                | 先加载有效的录制文件                 |
+| 错误消息                 | 原因                             | 解决方案                                   |
+| ------------------------ | -------------------------------- | ------------------------------------------ |
+| `not-loaded`             | 录制文件未加载                   | 先调用 `replay.importRecording` 加载       |
+| `no-data`                | `replay.importRecording` 无数据  | 确保 `data` 字段包含有效的录制数据         |
+| `invalid-data`           | `replay.seek` 参数缺失或类型错误 | 提供 `timeMs` 或 `eventIndex` 之一（数字） |
+| `invalid-keyframe-index` | 指定的关键帧索引无效             | 确保 `keyframeIndex` 为非负整数            |
 
 ### 错误响应格式
 
@@ -750,12 +809,13 @@ window.addEventListener('message', (event) => {
 ```javascript
 async function runAutomatedDemo() {
   // 1. 加载录制
-  await loadRecording('demo-1.json')
+  const recording = await fetch('demo-1.json').then((r) => r.json())
+  sendCommand('replay.importRecording', recording)
   await sleep(500)
 
   // 2. 播放 3 秒
   sendCommand('replay.playFor', { durationMs: 3000 })
-  await waitForMessage('replay.playForComplete')
+  await waitForMessage('replay.playFor.completed')
 
   // 3. 暂停并高亮某个节点（需要自定义实现）
   sendCommand('replay.pause')
