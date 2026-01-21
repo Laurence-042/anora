@@ -62,9 +62,11 @@ function onPaneClick(): void {
   graphStore.clearSelection()
 }
 
-/** 处理节点拖拽结束 */
-function onNodeDragStop(nodeId: string, position: { x: number; y: number }): void {
-  graphStore.updateNodePosition(nodeId, position)
+/** 处理节点拖拽结束（支持多选拖动） */
+function onNodeDragStop(nodes: Array<{ id: string; position: { x: number; y: number } }>): void {
+  for (const node of nodes) {
+    graphStore.updateNodePosition(node.id, node.position)
+  }
 }
 
 /** 处理节点变更 */

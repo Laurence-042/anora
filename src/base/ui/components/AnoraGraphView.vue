@@ -82,7 +82,7 @@ const emit = defineEmits<{
   connect: [connection: Connection]
   nodeDoubleClick: [nodeId: string, node: SubGraphNode | null]
   paneClick: []
-  nodeDragStop: [nodeId: string, position: { x: number; y: number }]
+  nodeDragStop: [nodes: Array<{ id: string; position: { x: number; y: number } }>]
   nodesChange: [changes: unknown[]]
   edgesChange: [changes: unknown[]]
   drop: [data: { event: DragEvent; position: { x: number; y: number } }]
@@ -210,9 +210,14 @@ onPaneClick(() => {
   emit('paneClick')
 })
 
-function onNodeDragStop(event: { node: Node }): void {
+function onNodeDragStop(event: { node: Node; nodes: Node[] }): void {
   if (props.readonly) return
-  emit('nodeDragStop', event.node.id, { ...event.node.position })
+  // 处理所有被拖动的节点（多选拖动时 nodes 包含所有选中的节点）
+  const draggedNodes = event.nodes.map((n) => ({
+    id: n.id,
+    position: { ...n.position },
+  }))
+  emit('nodeDragStop', draggedNodes)
 }
 
 function onNodesChange(changes: unknown[]): void {
