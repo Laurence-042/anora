@@ -76,6 +76,9 @@ export const useGraphStore = defineStore('graph', () => {
   /** 不兼容的边（类型不匹配） */
   const incompatibleEdges = ref<Set<string>>(new Set())
 
+  /** 已展开的 ContainerPort ID 集合（用于判断子 Port 是否可见） */
+  const expandedPorts = ref<Set<string>>(new Set())
+
   // ==================== 执行器状态 ====================
   // 注意：执行器实例由各个 View 自己维护（EditorView/ReplayView）
   // graphStore 只负责管理执行状态，不持有执行器引用
@@ -289,6 +292,68 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function isNodeSelected(nodeId: string): boolean {
     return selectedNodeIds.value.has(nodeId)
+  }
+
+  // ==================== Port 展开状态操作 ====================
+
+  /**
+   * 切换 Port 展开状态
+   */
+  function togglePortExpand(portId: string): void {
+    if (expandedPorts.value.has(portId)) {
+      expandedPorts.value.delete(portId)
+    } else {
+      expandedPorts.value.add(portId)
+    }
+    graphRevision.value++
+  }
+
+  /**
+   * 展开 Port
+   */
+  function expandPort(portId: string): void {
+    expandedPorts.value.add(portId)
+    graphRevision.value++
+  }
+
+  /**
+   * 折叠 Port
+   */
+  function collapsePort(portId: string): void {
+    expandedPorts.value.delete(portId)
+    graphRevision.value++
+  }
+
+  /**
+   * 检查 Port 是否展开
+   */
+  function isPortExpanded(portId: string): boolean {
+    return expandedPorts.value.has(portId)
+  }
+
+  /**
+   * 检查 Port 是否可见
+   * Port 可见的条件：
+   * 1. Port 不是 ContainerPort 的子 Port（顶层 Port 总是可见）
+   * 2. 或者其所有祖先 ContainerPort 都已展开
+   */
+  function isPortVisible(portId: string): boolean {
+    const node = currentGraph.value.getNodeByPortId(portId)
+    if (!node) return true
+
+    const port = node.getPortById(portId)
+    if (!port) return true
+
+    // 检查所有祖先 Port 是否都展开
+    let currentPort = port.parentPort
+    while (currentPort) {
+      if (!expandedPorts.value.has(currentPort.id)) {
+        return false // 有一个祖先未展开，则不可见
+      }
+      currentPort = currentPort.parentPort
+    }
+
+    return true
   }
 
   // ==================== 执行器操作 ====================
@@ -527,6 +592,7 @@ export const useGraphStore = defineStore('graph', () => {
     selectedNodeIds,
     selectedEdges,
     incompatibleEdges,
+    expandedPorts,
     currentIteration,
     executingNodeIds,
     executorContext,
@@ -559,6 +625,13 @@ export const useGraphStore = defineStore('graph', () => {
     deselectNode,
     clearSelection,
     isNodeSelected,
+
+    // Port 展开状态操作
+    togglePortExpand,
+    expandPort,
+    collapsePort,
+    isPortExpanded,
+    isPortVisible,
 
     // 执行器事件处理
     handleExecutorEvent,

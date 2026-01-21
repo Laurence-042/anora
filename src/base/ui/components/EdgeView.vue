@@ -2,6 +2,10 @@
 /**
  * EdgeView - 自定义边组件
  * 使用贝塞尔曲线，支持动画效果和数据传递显示
+ *
+ * 视觉效果：
+ * - 两端 Port 都可见：实线，选中时高亮，小圆形周期性从出 Port 沿实线运动到入 Port
+ * - 任一 Port 被折叠不可见：虚线，选中时高亮，线段从出 Port 到入 Port 移动
  */
 import { computed, ref } from 'vue'
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@vue-flow/core'
@@ -11,7 +15,7 @@ import { storeToRefs } from 'pinia'
 const props = defineProps<EdgeProps>()
 
 const graphStore = useGraphStore()
-const { edgeDataTransfers } = storeToRefs(graphStore)
+const { edgeDataTransfers, expandedPorts, graphRevision } = storeToRefs(graphStore)
 
 /** 从边 ID 解析出 sourceHandleId 和 targetHandleId */
 const parsedHandleIds = computed(() => {
@@ -23,18 +27,39 @@ const parsedHandleIds = computed(() => {
   return { sourceHandleId: undefined, targetHandleId: undefined }
 })
 
+/** 源 Port 是否可见 */
+const isSourcePortVisible = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  graphRevision.value // 依赖 graphRevision 触发更新
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  expandedPorts.value // 依赖 expandedPorts 触发更新
+  const { sourceHandleId } = parsedHandleIds.value
+  if (!sourceHandleId) return true
+  return graphStore.isPortVisible(sourceHandleId)
+})
+
+/** 目标 Port 是否可见 */
+const isTargetPortVisible = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  graphRevision.value // 依赖 graphRevision 触发更新
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  expandedPorts.value // 依赖 expandedPorts 触发更新
+  const { targetHandleId } = parsedHandleIds.value
+  if (!targetHandleId) return true
+  return graphStore.isPortVisible(targetHandleId)
+})
+
+/** 两端 Port 是否都可见 */
+const areBothPortsVisible = computed(() => {
+  return isSourcePortVisible.value && isTargetPortVisible.value
+})
+
 /** 是否正在执行（用于动画） */
 const isActive = computed(() => {
   // 检查源节点是否正在执行
   const sourceNodeId = props.sourceNode?.id
   return sourceNodeId ? graphStore.isNodeExecuting(sourceNodeId) : false
 })
-
-/** 边的唯一标识 */
-const edgeKey = computed(() => props.id)
-
-/** 是否被选中 */
-const isSelected = computed(() => graphStore.selectedEdges.has(edgeKey.value))
 
 /** 是否有数据传递 */
 const hasDataTransfer = computed(() => {
@@ -93,16 +118,19 @@ const pathData = computed(() => {
 })
 
 /** 边的样式 */
-const edgeStyle = computed(() => ({
-  stroke: hasDataTransfer.value
-    ? '#22c55e'
-    : isActive.value
-      ? '#fbbf24'
-      : isSelected.value
-        ? '#60a5fa'
-        : '#64748b',
-  strokeWidth: hasDataTransfer.value ? 3 : isActive.value ? 3 : 2,
-}))
+const edgeStyle = computed(() => {
+  const baseStyle: Record<string, string | number> = {
+    stroke: hasDataTransfer.value ? '#22c55e' : isActive.value ? '#fbbf24' : '#64748b',
+    strokeWidth: hasDataTransfer.value ? 3 : isActive.value ? 3 : 2,
+  }
+
+  // 任一 Port 不可见时使用虚线
+  if (!areBothPortsVisible.value) {
+    baseStyle.strokeDasharray = '8 4'
+  }
+
+  return baseStyle
+})
 
 /** 标签是否悬浮显示完整内容 */
 const isHovered = ref(false)
@@ -116,15 +144,48 @@ const fullDataContent = computed(() => {
     return String(transferData.value.data)
   }
 })
+
+/** 计算边的长度（用于动画） */
+const pathLength = computed(() => {
+  // 使用两点间的直线距离作为近似值
+  const dx = props.targetX - props.sourceX
+  const dy = props.targetY - props.sourceY
+  // 贝塞尔曲线的长度约为直线距离的 1.2 倍
+  return Math.sqrt(dx * dx + dy * dy) * 1.2
+})
+
+/** 动画时长（基于路径长度，保持一致的速度感） */
+const animationDuration = computed(() => {
+  // 基础速度：每 100px 需要 0.5s
+  const baseDuration = (pathLength.value / 100) * 0.5
+  // 限制在 0.5s - 3s 之间
+  return Math.max(0.5, Math.min(3, baseDuration))
+})
 </script>
 
 <template>
+  <!-- 主边路径 -->
   <BaseEdge
     :id="id"
     :style="edgeStyle"
     :path="pathData[0]"
-    :class="{ 'edge-active': isActive, 'edge-data-transfer': hasDataTransfer }"
+    :class="{
+      'edge-active': isActive,
+      'edge-data-transfer': hasDataTransfer,
+      'edge-both-visible': areBothPortsVisible,
+      'edge-port-hidden': !areBothPortsVisible,
+    }"
   />
+
+  <!-- 小圆形动画标记（仅当两端 Port 都可见时显示） -->
+  <circle
+    v-if="areBothPortsVisible && !hasDataTransfer"
+    class="edge-flow-marker"
+    r="4"
+    :style="{ '--animation-duration': `${animationDuration}s` }"
+  >
+    <animateMotion :dur="`${animationDuration}s`" repeatCount="indefinite" :path="pathData[0]" />
+  </circle>
 
   <!-- 数据传递标签 -->
   <EdgeLabelRenderer v-if="showLabel">
@@ -147,24 +208,52 @@ const fullDataContent = computed(() => {
 </template>
 
 <style>
-/* 边动画 - 在全局样式中定义 */
-.vue-flow__edge.edge-active path {
-  stroke-dasharray: 5;
-  animation: edge-flow 0.5s linear infinite;
+/* 边的基础样式 */
+.vue-flow__edge path {
+  transition:
+    stroke 0.2s,
+    stroke-width 0.2s;
 }
 
+/* 选中/焦点状态高亮 */
+.vue-flow__edge.selected path,
+.vue-flow__edge:focus path,
+.vue-flow__edge:focus-visible path {
+  stroke: #60a5fa !important;
+  stroke-width: 3;
+}
+
+/* 数据传递状态 */
 .vue-flow__edge.edge-data-transfer path {
-  stroke-dasharray: none;
   filter: drop-shadow(0 0 3px #22c55e);
 }
 
-@keyframes edge-flow {
+/* 任一 Port 不可见时的虚线动画（线段移动效果） */
+.vue-flow__edge.edge-port-hidden path {
+  animation: dashed-flow 1s linear infinite;
+}
+
+@keyframes dashed-flow {
   from {
-    stroke-dashoffset: 10;
+    stroke-dashoffset: 24;
   }
   to {
     stroke-dashoffset: 0;
   }
+}
+
+/* 小圆形流动标记 */
+.edge-flow-marker {
+  fill: #94a3b8;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(148, 163, 184, 0.5));
+}
+
+/* 选中状态时小圆形变色 */
+.vue-flow__edge.selected .edge-flow-marker,
+.vue-flow__edge:focus .edge-flow-marker,
+.vue-flow__edge:focus-visible .edge-flow-marker {
+  fill: #60a5fa;
 }
 
 /* 数据传递标签样式 */

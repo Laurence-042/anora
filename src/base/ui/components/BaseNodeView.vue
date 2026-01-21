@@ -110,16 +110,14 @@ watch(
   },
 )
 
-/** 展开的 ContainerPort ID 集合 */
-const expandedPorts = ref<Set<string>>(new Set())
+/** 检查 Port 是否展开（使用 store 中的状态） */
+function isPortExpanded(portId: string): boolean {
+  return graphStore.isPortExpanded(portId)
+}
 
-/** 切换 Port 展开状态 */
+/** 切换 Port 展开状态（委托给 store） */
 function togglePortExpand(portId: string): void {
-  if (expandedPorts.value.has(portId)) {
-    expandedPorts.value.delete(portId)
-  } else {
-    expandedPorts.value.add(portId)
-  }
+  graphStore.togglePortExpand(portId)
 }
 
 // ==================== Resize 相关 ====================
@@ -247,7 +245,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           :name="name"
           :is-input="true"
           :is-control="true"
-          :expanded="expandedPorts.has(port.id)"
+          :expanded="isPortExpanded(port.id)"
           @toggle-expand="togglePortExpand(port.id)"
         />
 
@@ -258,7 +256,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           :port="port"
           :name="name"
           :is-input="true"
-          :expanded="expandedPorts.has(port.id)"
+          :expanded="isPortExpanded(port.id)"
           @toggle-expand="togglePortExpand(port.id)"
         />
       </div>
@@ -294,7 +292,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           :name="name"
           :is-input="false"
           :is-control="true"
-          :expanded="expandedPorts.has(port.id)"
+          :expanded="isPortExpanded(port.id)"
           @toggle-expand="togglePortExpand(port.id)"
         />
 
@@ -305,7 +303,7 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
           :port="port"
           :name="name"
           :is-input="false"
-          :expanded="expandedPorts.has(port.id)"
+          :expanded="isPortExpanded(port.id)"
           @toggle-expand="togglePortExpand(port.id)"
         />
       </div>

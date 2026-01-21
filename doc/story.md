@@ -82,12 +82,12 @@ Executor (执行控制)
 
 | 写入 ↓ / Port 类型 → | string         | number            | integer         | boolean                      | array         | object   | null     |
 | -------------------- | -------------- | ----------------- | --------------- | ---------------------------- | ------------- | -------- | -------- |
-| **string**           | 直接赋值       | Number.parseFloat | Number.parseInt | str.toLowerCase() === "true" | str.split("") | ❌不兼容 | 直接赋值 |
-| **number**           | toString       | 直接赋值          | Math.floor      | !!num                        | ❌不兼容      | ❌不兼容 | 直接赋值 |
-| **integer**          | toString       | 直接赋值          | 直接赋值        | !!num                        | ❌不兼容      | ❌不兼容 | 直接赋值 |
-| **boolean**          | toString       | 0/1               | 0/1             | 直接赋值                     | ❌不兼容      | ❌不兼容 | 直接赋值 |
-| **array**            | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                     | 直接赋值      | ❌不兼容 | 直接赋值 |
-| **object**           | JSON.stringify | ❌不兼容          | ❌不兼容        | ❌不兼容                     | ❌不兼容      | 直接赋值 | 直接赋值 |
+| **string**           | 直接赋值       | Number.parseFloat | Number.parseInt | str.toLowerCase() === "true" | str.split("") | ❌不兼容  | 直接赋值 |
+| **number**           | toString       | 直接赋值          | Math.floor      | !!num                        | ❌不兼容       | ❌不兼容  | 直接赋值 |
+| **integer**          | toString       | 直接赋值          | 直接赋值        | !!num                        | ❌不兼容       | ❌不兼容  | 直接赋值 |
+| **boolean**          | toString       | 0/1               | 0/1             | 直接赋值                     | ❌不兼容       | ❌不兼容  | 直接赋值 |
+| **array**            | JSON.stringify | ❌不兼容           | ❌不兼容         | ❌不兼容                      | 直接赋值      | ❌不兼容  | 直接赋值 |
+| **object**           | JSON.stringify | ❌不兼容           | ❌不兼容         | ❌不兼容                      | ❌不兼容       | 直接赋值 | 直接赋值 |
 | **null**             | null           | null              | null            | null                         | null          | null     | null     |
 
 **转换规则**：
@@ -973,8 +973,8 @@ src/
 - 连线使用**贝塞尔曲线**
 - ContainerPort 可**展开/收起**，显示表示其内部元素的 Port
 - 连线样式：
-  - 两端 Port 都**可见**：实线 + 小圆形周期性从出 Port 沿实线运动到入 Port
-  - 任一 Port 被**折叠不可见**：虚线 + 线段从出 Port 到入 Port 移动
+  - 两端 Port 都**可见**：实线，选中时高亮，小圆形周期性从出 Port 沿实线运动到入 Port
+  - 任一 Port 被**折叠不可见**：虚线，选中时高亮，线段从出 Port 到入 Port 移动
 
 ### 9.3 SubGraph 交互
 
