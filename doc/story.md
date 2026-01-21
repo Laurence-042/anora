@@ -308,21 +308,31 @@ B ──→ C    // B 执行后推数据给 C，C 的 B 入口标记为"有新�
 ```
 BaseNode
 ├── WebNode (可直接在浏览器环境中运行，子类大多是预置的通用节点)
-│   ├── ForwardNode (中继)
-│   ├── ParameterNode (参数)
-│   ├── ArithmeticNode (算术运算，context 指定运算符，包含布尔)
-│   ├── SetOperationNode (集合运算：并集、差集、交集)
-│   ├── SortNode (排序，context 指定默认 key，使用 lodash)
-│   ├── GetValueNode (取值，支持数组位置和对象 key)
+│   ├── ForwardNode (中继，支持直通模式)
+│   ├── ParameterNode (参数，JSON 或字符串常量)
+│   ├── ArithmeticNode (算术运算：+, -, *, /, %)
+│   ├── LogicNode (逻辑运算：AND, OR, NOT)
+│   ├── CompareNode (比较运算：>, <, ==, >=, <=, !=)
 │   ├── BranchNode (分支，输入 bool，按需激活 true/false 两个输出)
-│   ├── DistributeNode (分配/for-each)
-│   ├── AggregateNode (聚集)
-│   ├── CompareNode (比较，两个输入三个输出 gt/eq/lt)
-│   └── FileReadNode (文件读取，context 决定编码或 base64)
+│   ├── DistributeNode (分配/for-each，数组迭代输出)
+│   ├── AggregateNode (聚集，收集值到数组)
+│   ├── StringFormatNode (字符串插值格式化)
+│   ├── ConsoleLogNode (控制台输出)
+│   ├── NotifyNode (UI 通知)
+│   ├── ObjectAccessNode (对象属性访问)
+│   ├── ObjectSetNode (对象属性设置)
+│   ├── ArrayAccessNode (数组元素访问)
+│   ├── ArrayPushNode (数组追加元素)
+│   └── ArrayLengthNode (数组长度)
 ├── BackendNode (需调用后端功能，从 executorContext 获取 IPC 类型)
-│   ├── APINode (REST API 调用)
-│   └── WRYNode (godot-wry 通讯)
-└── SubGraphNode (封装子图)
+│   └── WryIpcNode (godot-wry 通讯，位于 godot-wry mod)
+└── SubGraphNode (封装子图，位于 base)
+
+# 计划中但未实现的节点：
+# - SetOperationNode (集合运算)
+# - SortNode (排序)
+# - FileReadNode (文件读取)
+# - APINode (REST API 调用)
 ```
 
 ### 4.5 特殊节点详解
@@ -834,13 +844,21 @@ interface TimestampedEvent {
 
 ### 7.3 回放功能
 
-`ReplayExecutor` 提供以下能力：
+回放系统由两个核心组件组成：
 
-- **时间轴播放**：按录制时的时间间隔重放事件
-- **播放速度控制**：支持 0.5x ~ 4x 速度
+**ReplayExecutor** - 继承 BasicExecutor，负责事件播放：
+
+- 复用基类的状态机和事件系统
+- 覆盖 `executeOneIteration()` 播放录制的事件
+- 支持播放速度控制（0.5x ~ 4x）
+
+**ReplayController** - 高级控制器，管理整个回放生命周期：
+
+- 维护响应式状态（播放进度、速度、关键帧）
+- 协调 ReplayExecutor 和 UI 状态同步
+- 提供统一的播放控制接口（加载、播放、暂停、跳转）
 - **时间跳转**：`seekToTime(timeMs)` 跳转到指定时间点
 - **关键帧聚合**：`getKeyframes(intervalMs)` 按时间间隔聚合事件
-- **状态重建**：`getStateAtIndex(index)` 获取指定时刻的 UI 状态
 
 ### 7.4 UI 特性
 
@@ -876,11 +894,13 @@ src/
 │   │   │   └── NullPort.ts
 │   │   ├── executor/
 │   │   │   ├── BasicExecutor.ts
-│   │   │   └── BasicContext.ts
+│   │   │   ├── ExecutorStateMachine.ts
+│   │   │   └── ExecutorTypes.ts
 │   │   ├── demo/                   # ← 录制与回放
 │   │   │   ├── DemoRecorder.ts
-│   │   │   ├── DemoPlayer.ts       # ReplayExecutor
-│   │   │   └── types.ts            # DemoRecording format
+│   │   │   ├── ReplayExecutor.ts   # 回放执行器（继承 BasicExecutor）
+│   │   │   ├── ReplayController.ts # 回放控制器（管理 UI 状态和播放逻辑）
+│   │   │   └── types.ts            # DemoRecording format (v2.0.0)
 │   │   ├── graph/
 │   │   │   └── AnoraGraph.ts
 │   │   └── registry/
@@ -896,10 +916,10 @@ src/
 │       │   └── EdgeView.vue
 │       ├── composables/
 │       │   ├── useGraph.ts
-│       │   ├── useExecutor.ts
 │       │   ├── useIPC.ts           # Base IPC controller
 │       │   ├── useReplayIPC.ts     # Replay-specific IPC
-│       │   └── useDemo.ts
+│       │   ├── useNodeContext.ts   # Node context management
+│       │   └── useNodeInput.ts     # Node input handling
 │       ├── editor/
 │       │   ├── GraphEditor.vue
 │       │   ├── NodePalette.vue
@@ -913,20 +933,22 @@ src/
 │   │   ├── runtime/
 │   │   │   ├── nodes/
 │   │   │   │   ├── ForwardNode.ts
+│   │   │   │   ├── ParameterNode.ts
 │   │   │   │   ├── BranchNode.ts
 │   │   │   │   ├── CompareNode.ts
 │   │   │   │   ├── ArithmeticNode.ts
+│   │   │   │   ├── LogicNode.ts
 │   │   │   │   ├── AggregateNode.ts
 │   │   │   │   ├── DistributeNode.ts
+│   │   │   │   ├── StringFormatNode.ts
 │   │   │   │   ├── ConsoleLogNode.ts
-│   │   │   │   └── ...
+│   │   │   │   ├── NotifyNode.ts
+│   │   │   │   ├── DataNodes.ts        # ObjectAccess/Set, ArrayAccess/Push/Length
+│   │   │   │   └── PortNames.ts        # Port 名称常量
 │   │   │   └── ports/
-│   │   │       ├── StringPort.ts
-│   │   │       ├── NumberPort.ts
-│   │   │       ├── BooleanPort.ts
-│   │   │       ├── IntegerPort.ts
-│   │   │       ├── ArrayPort.ts
-│   │   │       └── ObjectPort.ts
+│   │   │       ├── PrimitivePorts.ts   # String, Number, Integer, Boolean
+│   │   │       ├── ContainerPorts.ts   # Array, Object
+│   │   │       └── PortFactory.ts
 │   │   ├── ui/
 │   │   │   └── nodes/              # Custom node views (if any)
 │   │   └── locales/
@@ -935,15 +957,16 @@ src/
 │   └── godot-wry/                  # ← Godot 后端集成
 │       ├── runtime/
 │       │   └── nodes/
-│       │       └── GodotNode.ts    # BackendNode example
+│       │       └── WryIpcNode.ts   # BackendNode example
 │       └── locales/
 │           ├── en.ts
 │           └── zh-CN.ts
 ├── stores/
 │   └── graph.ts                    # Pinia store for graph/executor state
 ├── views/
-│   ├── EditorView.vue              # Main editor
-│   ├── DemoView.vue                # Recording mode
+│   ├── EditorView.vue              # Main editor (includes recording controls)
+│   ├── HomeView.vue                # Home/landing page
+│   ├── AboutView.vue               # About page
 │   └── ReplayView.vue              # Playback mode (no toolbar)
 └── router/
     └── index.ts
