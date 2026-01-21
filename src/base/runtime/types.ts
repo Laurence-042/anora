@@ -150,10 +150,10 @@ export interface SerializedNode {
   size?: { width: number; height: number }
   /** 依赖 Port：连接后节点必须等待此 Port 被写入才能激活 */
   inDependsOnPort: SerializedPort
-  outDependsOnPort: SerializedPort
   /** 激活 Port：用于可选的激活触发，不参与首次激活条件判断 */
   inActivateOnPort: SerializedPort
-  outActivateOnPort: SerializedPort
+  /** 触发 Port：节点执行完成后触发下游 */
+  outTriggerPort: SerializedPort
   inControlPorts: Record<string, SerializedPort>
   outControlPorts: Record<string, SerializedPort>
   inPorts: Record<string, SerializedPort>

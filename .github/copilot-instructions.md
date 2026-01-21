@@ -53,10 +53,11 @@ export class YourNode extends WebNode<YourInput, YourOutput> {
 
 ### Node Flow Control Ports
 
-Nodes have two types of flow control ports:
+Nodes have flow control ports for execution sequencing:
 
-- **DependsOn Ports** (`inDependsOnPort`/`outDependsOnPort`): Hard dependency - node must wait for this port to be written before activation
-- **ActivateOn Ports** (`inActivateOnPort`/`outActivateOnPort`): Soft activation - can trigger node re-activation without blocking initial execution. Used for feedback loops in cyclic graphs.
+- **inDependsOnPort**: Hard dependency - node must wait for this port to be written before activation
+- **inActivateOnPort**: Soft activation - can trigger node re-activation without blocking initial execution. Used for feedback loops in cyclic graphs.
+- **outTriggerPort**: Fires when node completes execution, can connect to downstream `inDependsOnPort` or `inActivateOnPort`
 
 ### Custom Node Views
 

@@ -268,18 +268,10 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 
       <!-- 右侧：输出 Ports -->
       <div class="ports-column ports-right">
-        <!-- 依赖出 Port -->
+        <!-- 触发出 Port -->
         <BasePortView
-          :port="node.outDependsOnPort"
-          name="dependsOn"
-          :is-input="false"
-          :is-exec="true"
-        />
-
-        <!-- 激活出 Port -->
-        <BasePortView
-          :port="node.outActivateOnPort"
-          name="activateOn"
+          :port="node.outTriggerPort"
+          name="trigger"
           :is-input="false"
           :is-exec="true"
         />

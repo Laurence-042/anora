@@ -86,11 +86,12 @@ export abstract class BaseNode<
 
   /** 依赖 Port：用于不需要传递数据但需要顺序执行的情况，数据类型是 null，连接后节点必须等待此 Port 被写入才能激活 */
   readonly inDependsOnPort: BasePort
-  readonly outDependsOnPort: BasePort
 
   /** 激活 Port：用于可选的激活触发，不参与首次激活条件判断，主要用于环结构中的反馈激活 */
   readonly inActivateOnPort: BasePort
-  readonly outActivateOnPort: BasePort
+
+  /** 触发 Port：节点执行完成后触发，可连接到下游的 inDependsOnPort 或 inActivateOnPort */
+  readonly outTriggerPort: BasePort
 
   /** 控制 Port：用于特定情况下的额外流程控制 */
   readonly inControlPorts: Map<string, BasePort> = new Map()
@@ -121,11 +122,12 @@ export abstract class BaseNode<
 
     // 创建依赖 Port
     this.inDependsOnPort = new NullPort(this)
-    this.outDependsOnPort = new NullPort(this)
 
     // 创建激活 Port
     this.inActivateOnPort = new NullPort(this)
-    this.outActivateOnPort = new NullPort(this)
+
+    // 创建触发 Port（节点执行完成后触发下游）
+    this.outTriggerPort = new NullPort(this)
   }
 
   /**
@@ -393,9 +395,8 @@ export abstract class BaseNode<
       port.clear()
     }
     this.inDependsOnPort.clear()
-    this.outDependsOnPort.clear()
     this.inActivateOnPort.clear()
-    this.outActivateOnPort.clear()
+    this.outTriggerPort.clear()
   }
 
   /**
@@ -442,9 +443,8 @@ export abstract class BaseNode<
         }
       }
 
-      // 激活 outDependsOnPort 和 outActivateOnPort
-      this.outDependsOnPort.write(null)
-      this.outActivateOnPort.write(null)
+      // 激活 outTriggerPort
+      this.outTriggerPort.write(null)
 
       this.executionStatus = NodeExecutionStatus.SUCCESS
     } catch (error) {
@@ -484,9 +484,8 @@ export abstract class BaseNode<
   getAllPorts(): BasePort[] {
     return [
       this.inDependsOnPort,
-      this.outDependsOnPort,
       this.inActivateOnPort,
-      this.outActivateOnPort,
+      this.outTriggerPort,
       ...this.inControlPorts.values(),
       ...this.outControlPorts.values(),
       ...this.inPorts.values(),
@@ -521,15 +520,10 @@ export abstract class BaseNode<
   }
 
   /**
-   * 获取所有出 Port（包括 outDependsOnPort、outActivateOnPort 和 outControlPorts）
+   * 获取所有出 Port（包括 outTriggerPort 和 outControlPorts）
    */
   getOutputPorts(): BasePort[] {
-    return [
-      this.outDependsOnPort,
-      this.outActivateOnPort,
-      ...this.outControlPorts.values(),
-      ...this.outPorts.values(),
-    ]
+    return [this.outTriggerPort, ...this.outControlPorts.values(), ...this.outPorts.values()]
   }
 
   /**
@@ -563,9 +557,8 @@ export abstract class BaseNode<
       context: this.context,
       position: { x: 0, y: 0 }, // 位置由 UI 层管理
       inDependsOnPort: this.inDependsOnPort.serialize(),
-      outDependsOnPort: this.outDependsOnPort.serialize(),
       inActivateOnPort: this.inActivateOnPort.serialize(),
-      outActivateOnPort: this.outActivateOnPort.serialize(),
+      outTriggerPort: this.outTriggerPort.serialize(),
       inControlPorts: serializePorts(this.inControlPorts) as Record<string, never>,
       outControlPorts: serializePorts(this.outControlPorts) as Record<string, never>,
       inPorts: serializePorts(this.inPorts) as Record<string, never>,
@@ -590,18 +583,15 @@ export abstract class BaseNode<
       }
     }
 
-    // 恢复 dependsOn 和 activateOn ports
+    // 恢复 dependsOn、activateOn 和 trigger ports
     if (serialized.inDependsOnPort?.id) {
       this.inDependsOnPort.restoreId(serialized.inDependsOnPort.id)
-    }
-    if (serialized.outDependsOnPort?.id) {
-      this.outDependsOnPort.restoreId(serialized.outDependsOnPort.id)
     }
     if (serialized.inActivateOnPort?.id) {
       this.inActivateOnPort.restoreId(serialized.inActivateOnPort.id)
     }
-    if (serialized.outActivateOnPort?.id) {
-      this.outActivateOnPort.restoreId(serialized.outActivateOnPort.id)
+    if (serialized.outTriggerPort?.id) {
+      this.outTriggerPort.restoreId(serialized.outTriggerPort.id)
     }
 
     // 恢复各类 ports
