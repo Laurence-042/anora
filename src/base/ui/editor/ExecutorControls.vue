@@ -41,6 +41,9 @@ const currentIteration = computed(() => graphStore.currentIteration)
 /** 延迟设置（本地状态） */
 const delayInput = ref(graphStore.iterationDelay)
 
+/** 是否正在执行单步操作（防止重复点击） */
+const isStepInProgress = ref(false)
+
 /** 状态文本 */
 const statusText = computed(() => {
   switch (state.value) {
@@ -103,8 +106,20 @@ function handleResume(): void {
 
 /** 单步执行 */
 async function handleStep(): Promise<void> {
-  await props.executor.stepForward()
-  graphStore.syncExecutorState(props.executor)
+  // 防止重复点击
+  if (isStepInProgress.value) return
+  isStepInProgress.value = true
+
+  try {
+    const stepPromise = props.executor.stepForward()
+    // 立即同步状态（stepForward 内部状态转换是同步的）
+    graphStore.syncExecutorState(props.executor)
+    await stepPromise
+    // 完成后再次同步
+    graphStore.syncExecutorState(props.executor)
+  } finally {
+    isStepInProgress.value = false
+  }
 }
 
 // 暴露状态枚举给模板
@@ -160,7 +175,7 @@ const State = ExecutorState
         <button
           class="control-btn step-btn"
           @click="handleStep"
-          :disabled="state !== State.Paused"
+          :disabled="state !== State.Paused || isStepInProgress"
           :title="`${t('executor.step')} (F10)`"
         >
           ⏭ {{ t('executor.step') }}

@@ -128,7 +128,7 @@ function togglePortExpand(portId: string): void {
 const isReadonly = computed(() => props.data.readonly ?? false)
 
 /** 最小尺寸 */
-const MIN_WIDTH = 180
+const MIN_WIDTH = 300
 const MIN_HEIGHT = 80
 
 /** 处理 resize 结束事件 */
@@ -157,14 +157,6 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
 </script>
 
 <template>
-  <!-- NodeResizer 组件 -->
-  <NodeResizer
-    v-if="!isReadonly"
-    :min-width="MIN_WIDTH"
-    :min-height="MIN_HEIGHT"
-    @resize-end="onResizeEnd"
-  />
-
   <div
     class="anora-node"
     :class="{
@@ -174,6 +166,14 @@ const warnings = computed(() => node.value.getConfigurationWarnings())
     }"
     :style="{ borderColor: statusBorderColor }"
   >
+    <!-- NodeResizer 组件 -->
+    <NodeResizer
+      v-if="!isReadonly"
+      :min-width="MIN_WIDTH"
+      :min-height="MIN_HEIGHT"
+      @resize-end="onResizeEnd"
+    />
+
     <!-- 节点头部 -->
     <div class="node-header">
       <div class="header-info">

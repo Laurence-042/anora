@@ -509,8 +509,9 @@ export class BasicExecutor {
     }
 
     // 数据传播后的延迟（用于调试/演示，让用户看到执行状态和边数据）
+    // 单步模式下跳过延迟，因为用户手动控制每一步
     const delay = context.iterationDelay ?? 0
-    if (delay > 0) {
+    if (delay > 0 && this.stateMachine.state !== ExecutorState.Stepping) {
       try {
         await cancellableDelay(delay)
       } catch {
