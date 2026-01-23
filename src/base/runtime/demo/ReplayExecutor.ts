@@ -103,7 +103,14 @@ export class ReplayExecutor extends BasicExecutor {
     if (this.stateMachine.state === ExecutorState.Running) {
       const currentTimestamp =
         this.currentEventIndex >= 0 ? this.recording.events[this.currentEventIndex]!.timestamp : 0
-      const nextEvent = this.recording.events[this.currentEventIndex + 1]!
+      const nextEvent = this.recording.events[this.currentEventIndex + 1]
+      if (!nextEvent) {
+        console.error(
+          '[ReplayExecutor] nextEvent is undefined at index',
+          this.currentEventIndex + 1,
+        )
+        return false
+      }
       const delay = (nextEvent.timestamp - currentTimestamp) / this.playbackSpeed
 
       if (delay > 0) {
@@ -117,7 +124,30 @@ export class ReplayExecutor extends BasicExecutor {
 
     // 播放下一个事件
     this.currentEventIndex++
-    const timestampedEvent = this.recording.events[this.currentEventIndex]!
+
+    if (!this.recording || !this.recording.events) {
+      console.error('[ReplayExecutor] recording or events is null after delay!')
+      return false
+    }
+
+    const timestampedEvent = this.recording.events[this.currentEventIndex]
+    if (!timestampedEvent) {
+      console.error(
+        '[ReplayExecutor] timestampedEvent is undefined at index',
+        this.currentEventIndex,
+      )
+      return false
+    }
+
+    if (!timestampedEvent.event) {
+      console.error(
+        '[ReplayExecutor] timestampedEvent.event is undefined at index',
+        this.currentEventIndex,
+        JSON.stringify(timestampedEvent),
+      )
+      return false
+    }
+
     const executorEvent = this.deserializeEvent(timestampedEvent.event)
 
     if (executorEvent) {

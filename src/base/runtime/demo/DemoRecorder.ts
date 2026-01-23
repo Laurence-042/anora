@@ -160,6 +160,11 @@ export class DemoRecorder {
     const timestamp = Date.now() - this.startTime
     const serialized = this.serializeEvent(event)
 
+    if (!serialized) {
+      console.error('[DemoRecorder] Failed to serialize event, skipping:', event.type, event)
+      return
+    }
+
     this.events.push({
       timestamp,
       event: serialized,
@@ -232,6 +237,13 @@ export class DemoRecorder {
           type: ExecutorEventType.Error,
           error: event.error.message,
         }
+
+      default: {
+        // 捕获未处理的事件类型
+        console.warn('[DemoRecorder] Unknown event type:', (event as { type: string }).type, event)
+        // 返回一个带有原始 type 的对象，避免丢失事件
+        return { type: (event as { type: string }).type } as SerializedExecutorEvent
+      }
     }
   }
 
