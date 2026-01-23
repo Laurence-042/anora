@@ -158,6 +158,87 @@ func _on_ipc_message(message: String):
 
 ---
 
+## IPC Ready 机制
+
+当 ANORA 的 IPC 系统完成初始化并准备好接收外部命令时，会向所有通道广播 `ipc:ready` 消息。外部程序应监听此消息，确保在 ANORA 准备就绪后再发送命令。
+
+### Ready 消息格式
+
+```json
+{
+  "type": "ipc:ready",
+  "data": {
+    "timestamp": 1706000000000
+  }
+}
+```
+
+### 监听 Ready 消息
+
+**JavaScript (iframe)：**
+
+```javascript
+window.addEventListener('message', (event) => {
+  if (event.data.type === 'ipc:ready') {
+    console.log('ANORA IPC is ready at:', event.data.data.timestamp)
+    // 现在可以安全地发送命令
+    sendCommand('replay.importRecording', recordingData)
+  }
+})
+```
+
+**GDScript (Godot-WRY)：**
+
+```gdscript
+var anora_ready = false
+
+func _on_ipc_message(message: String):
+    var data = JSON.parse_string(message)
+    if data.type == "ipc:ready":
+        print("ANORA IPC is ready at: ", data.data.timestamp)
+        anora_ready = true
+        # 现在可以安全地发送命令
+        load_recording(tutorial_data)
+
+func send_command_safe(type: String, data = null):
+    if not anora_ready:
+        push_warning("ANORA IPC not ready yet")
+        return
+    # 发送命令...
+```
+
+### 为什么需要 Ready 消息
+
+| 场景       | 问题                                  | Ready 机制解决方案            |
+| ---------- | ------------------------------------- | ----------------------------- |
+| 页面加载   | 外部程序无法确定 ANORA 何时完成初始化 | 收到 `ipc:ready` 后再发送命令 |
+| 重新加载   | ANORA 刷新后外部程序不知道何时恢复    | 监听新的 `ipc:ready` 消息     |
+| 多实例管理 | 无法追踪哪些实例已就绪                | 每个实例独立发送 ready 消息   |
+
+### 通道架构
+
+IPC 系统采用通道抽象设计，便于扩展新的通信方式：
+
+```typescript
+interface IPCChannel {
+  readonly name: string
+  send(message: IPCMessage): void
+  startListening(handler: (msg: IPCMessage) => Promise<void>): void
+  stopListening(): void
+}
+```
+
+**内置通道：**
+
+| 通道名称             | 接收方式                               | 发送方式                      | 适用场景                |
+| -------------------- | -------------------------------------- | ----------------------------- | ----------------------- |
+| `window.postMessage` | `window.addEventListener('message')`   | `window.parent.postMessage()` | iframe 嵌入、浏览器测试 |
+| `godot-wry`          | `document.addEventListener('message')` | `window.ipc.postMessage()`    | Godot 游戏引擎集成      |
+
+Ready 消息会同时通过所有已注册的通道发送，确保无论外部程序使用哪种通信方式都能收到通知。
+
+---
+
 ## 录制格式说明
 
 回放模式使用 JSON 格式的录制文件：
