@@ -1035,6 +1035,27 @@ window.postMessage({ type: 'response', data: { ... } }, '*')
 
 **详细文档：** 见 [IPC 控制文档](./replay-ipc-guide.md)
 
+### 9.6 QoL
+
+#### 9.6.1 右键菜单
+
+右键点击边、节点、空白处能呼出对应的 context menu（使用 `@imengyu/vue3-context-menu` 实现），具体功能如下
+
+- 边
+  - 删除 Backspace/Delete（需要支持框选节点和边的情况，vue-flow应该内置了支持）
+  - 禁用/启用 DoubleClick （禁用后不再有动画，执行器也不会将其视为一个可用的边）
+
+- 节点
+  - 删除 Backspace/Delete（需要支持框选节点和边的情况，vue-flow应该内置了支持）
+  - 复制 Ctrl+C（需要支持框选节点和边的情况）
+
+- 空白
+  - 删除 Backspace/Delete（需要支持框选节点和边的情况，vue-flow应该内置了支持）
+  - 复制 Ctrl+Z（需要支持框选节点和边的情况）
+  - 粘贴 Ctrl+V
+  - 撤销 Ctrl+Z（只需要记录节点/边级别的增删和位置、大小修改即可，在修改节点/边时发送对应事件，编辑历史记录器会记录这些事件供Ctrl+Z和这个右键菜单）
+
+
 ---
 
 ## 10. 与 Vue-Flow 解耦
