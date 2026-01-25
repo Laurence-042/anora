@@ -1039,21 +1039,105 @@ window.postMessage({ type: 'response', data: { ... } }, '*')
 
 #### 9.6.1 右键菜单
 
-右键点击边、节点、空白处能呼出对应的 context menu（使用 `@imengyu/vue3-context-menu` 实现），具体功能如下
+右键点击**边、节点、空白处**可呼出对应的 Context Menu，使用 `@imengyu/vue3-context-menu` 实现。
 
-- 边
-  - 删除 Backspace/Delete（需要支持框选节点和边的情况，vue-flow应该内置了支持）
-  - 禁用/启用 DoubleClick （禁用后不再有动画，执行器也不会将其视为一个可用的边）
+**菜单功能一览**：
 
-- 节点
-  - 删除 Backspace/Delete（需要支持框选节点和边的情况，vue-flow应该内置了支持）
-  - 复制 Ctrl+C（需要支持框选节点和边的情况）
+| 点击目标 | 菜单项    | 快捷键           | 说明                                 |
+| -------- | --------- | ---------------- | ------------------------------------ |
+| 边       | 删除      | Backspace/Delete | 删除选中的边（支持多选）             |
+| 边       | 禁用/启用 | Double Click     | 切换边的启用状态                     |
+| 节点     | 删除      | Backspace/Delete | 删除选中的节点及其关联边（支持多选） |
+| 节点     | 复制      | Ctrl+C           | 复制选中的节点（支持多选）           |
+| 空白     | 粘贴      | Ctrl+V           | 在鼠标位置粘贴已复制的节点           |
+| 空白     | 撤销      | Ctrl+Z           | 撤销上一步操作                       |
+| 空白     | 重做      | Ctrl+Y           | 重做已撤销的操作                     |
 
-- 空白
-  - 删除 Backspace/Delete（需要支持框选节点和边的情况，vue-flow应该内置了支持）
-  - 复制 Ctrl+Z（需要支持框选节点和边的情况）
-  - 粘贴 Ctrl+V
-  - 撤销 Ctrl+Z（只需要记录节点/边级别的增删和位置、大小修改即可，在修改节点/边时发送对应事件，编辑历史记录器会记录这些事件供Ctrl+Z和这个右键菜单）
+**边的视觉样式**：
+
+| 状态        | 颜色      | 动画 |
+| ----------- | --------- | ---- |
+| 启用        | `#66ccff` | 有   |
+| 启用 + 选中 | `#ee82ee` | 有   |
+| 禁用        | `#e2e8f0` | 无   |
+| 禁用 + 选中 | `#ee0000` | 无   |
+
+> **注**：折叠的边（任一 Port 不可见）使用虚线样式，颜色规则同上。
+
+**边的禁用状态**：
+
+- **执行**：Executor 不将其视为有效连接，数据不会通过该边传播
+- **用途**：调试时临时断开连接，无需删除边
+
+**复制粘贴机制**：
+
+```typescript
+interface ClipboardData {
+  nodes: SerializedNode[]     // 选中的节点（含位置偏移）
+  edges: SerializedEdge[]     // 选中节点之间的内部边
+}
+```
+
+- 复制时记录选中节点的**相对位置**（以选区中心为原点）
+- 粘贴时以**鼠标位置**为中心放置节点
+- 粘贴的节点生成**新的 UUID**，边的连接关系同步更新
+- 仅复制选中节点之间的**内部边**，与外部节点的连接不保留
+
+**快捷键支持**：
+
+Vue-Flow 内置了删除（Backspace/Delete）的快捷键支持。其他快捷键需要在 `GraphEditor.vue` 中注册：
+
+```typescript
+// 快捷键注册示例
+const keyboardShortcuts = {
+  'ctrl+c': handleCopy,
+  'ctrl+v': handlePaste,
+  'ctrl+z': handleUndo,
+  'ctrl+y': handleRedo,
+}
+```
+
+#### 9.6.2 编辑历史（撤销/重做）
+
+使用**命令模式**记录可撤销的操作，仅记录图结构级别的变更：
+
+| 操作类型     | 记录内容               |
+| ------------ | ---------------------- |
+| 节点增删     | 节点序列化数据、关联边 |
+| 边增删       | 边的两端 Port ID       |
+| 节点移动     | 节点 ID、移动前后位置  |
+| 节点大小调整 | 节点 ID、调整前后尺寸  |
+| 边禁用/启用  | 边 ID、状态变更        |
+
+**不记录的操作**：
+
+- Port 数据变更（运行时状态）
+- 节点 context 配置变更（可考虑后续支持）
+- 视口缩放/平移
+
+**实现要点**：
+
+```typescript
+interface EditCommand {
+  type: EditCommandType
+  execute(): void    // 执行/重做
+  undo(): void       // 撤销
+}
+
+class EditHistory {
+  private undoStack: EditCommand[] = []
+  private redoStack: EditCommand[] = []
+  private maxSize: number = 50  // 历史记录上限
+
+  push(command: EditCommand): void
+  undo(): void
+  redo(): void
+  canUndo(): boolean
+  canRedo(): boolean
+}
+```
+
+**批量操作合并**：框选删除多个节点/边时，合并为**单个 EditCommand**，撤销时一次性恢复
 
 
 ---
