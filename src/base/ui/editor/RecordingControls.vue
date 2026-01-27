@@ -5,23 +5,26 @@
  * 只负责录制功能：
  * - 开始/停止录制
  * - 导出录制文件
+ * - 通过 addTimeline 录制其他 Timeline 的事件
  *
  * 回放功能由独立的 ReplayView 页面处理
  */
 import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
-import { DemoRecorder } from '@/base/runtime/demo'
-import type { DemoRecording } from '@/base/runtime/demo'
+import { DemoRecorder } from '@/base/ui/replay'
+import type { Timeline } from '@/base/runtime/timeline'
 import type { ExecutorEventListener } from '@/base/runtime/executor'
 
-/** Executor 接口 - DemoRecorder 需要的方法 */
+/** Executor 接口 */
 interface IExecutorForRecording {
   on(listener: ExecutorEventListener): () => void
 }
 
 const props = defineProps<{
   executor: IExecutorForRecording
+  /** 额外的 Timeline 事件源列表（事件已经是 TimelineEvent，无需转换） */
+  eventTimelines?: Timeline[]
 }>()
 
 const { t } = useI18n()
@@ -60,7 +63,16 @@ function startRecording(): void {
   }
 
   const newRecorder = new DemoRecorder()
+
+  // 绑定执行器（默认事件源）
   newRecorder.bindExecutor(props.executor)
+
+  // 添加额外的 Timeline 事件源
+  if (props.eventTimelines) {
+    for (const timeline of props.eventTimelines) {
+      newRecorder.addTimeline(timeline)
+    }
+  }
 
   // 绑定 graph
   const graph = graphStore.currentGraph
@@ -89,7 +101,12 @@ function stopRecording(): void {
 function downloadRecording(): void {
   if (!recorder.value) return
 
-  const data: DemoRecording = recorder.value.exportRecording()
+  const data = recorder.value.exportRecording()
+  if (!data) {
+    console.warn('[RecordingControls] No recording data to export')
+    return
+  }
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

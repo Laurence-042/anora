@@ -3,9 +3,13 @@
  *
  * 统一定义所有执行器（BasicExecutor, ReplayExecutor 等）共用的事件类型
  * 前端组件只需监听这些事件即可响应执行状态变化
+ *
+ * 设计原则：
+ * - ExecutorEvent 是可序列化的（使用 nodeId 而非 node 引用）
+ * - ExecutorEvent 可以直接存入 Timeline，无需额外转换
+ * - 需要 BaseNode 引用时，通过 Graph.getNode(nodeId) 获取
  */
 
-import type { BaseNode } from '../nodes/BaseNode'
 import { FinishReason, ExecutorState } from './ExecutorStateMachine'
 
 /**
@@ -25,7 +29,7 @@ export interface ExecutionResult {
   /** 结束原因 */
   finishReason: FinishReason
   /** 错误信息（如果有） */
-  error?: Error
+  error?: string
   /** 执行的迭代次数 */
   iterations: number
   /** 执行时间（毫秒） */
@@ -36,9 +40,9 @@ export interface ExecutionResult {
  * 节点执行结果
  */
 export interface NodeExecutionResult {
-  node: BaseNode
+  nodeId: string
   success: boolean
-  error?: Error
+  error?: string
 }
 
 /**
@@ -79,19 +83,21 @@ export enum ExecutorEventType {
 }
 
 /**
- * 执行器事件
+ * 执行器事件（可序列化）
+ *
  * 所有执行器（包括回放执行器）都发送相同格式的事件
+ * 事件使用 nodeId 而非 node 引用，可以直接存入 Timeline
  */
 export type ExecutorEvent =
   | { type: ExecutorEventType.StateChange; oldState: ExecutorState; newState: ExecutorState }
   | { type: ExecutorEventType.Start }
   | { type: ExecutorEventType.Iteration; iteration: number }
-  | { type: ExecutorEventType.NodeStart; node: BaseNode }
-  | { type: ExecutorEventType.NodeComplete; node: BaseNode; success: boolean; error?: Error }
+  | { type: ExecutorEventType.NodeStart; nodeId: string }
+  | { type: ExecutorEventType.NodeComplete; nodeId: string; success: boolean; error?: string }
   | { type: ExecutorEventType.DataPropagate; transfers: EdgeDataTransfer[] }
   | { type: ExecutorEventType.Complete; result: ExecutionResult }
   | { type: ExecutorEventType.Cancelled }
-  | { type: ExecutorEventType.Error; error: Error }
+  | { type: ExecutorEventType.Error; error: string }
 
 /**
  * 事件监听器

@@ -53,3 +53,22 @@ export {
   AnoraRegister,
 } from './registry'
 export type { NodeConstructor, PortConstructor, ExecutorConstructor } from './registry'
+
+// Timeline 系统（统一的事件记录底层）
+export {
+  Timeline,
+  TimelineEventCategory,
+  TimelineSystemEventType,
+  EditCommandType,
+} from './timeline'
+export type {
+  TimelineEvent,
+  BaseTimelineEvent,
+  ExecutionTimelineEvent,
+  EditTimelineEvent,
+  SerializedEditCommand,
+  TimelineRecording,
+  TimelineMetadata,
+  TimelineSystemEvent,
+  TimelineSystemEventListener,
+} from './timeline'

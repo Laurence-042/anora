@@ -145,4 +145,35 @@ export default {
     root: '根图',
     back: '返回上一级',
   },
+
+  // 右键菜单
+  contextMenu: {
+    // 通用操作
+    copy: '复制',
+    paste: '粘贴',
+    delete: '删除',
+    undo: '撤销',
+    redo: '重做',
+
+    // 边操作
+    toggleEdge: '启用/禁用',
+    enableEdge: '启用边',
+    disableEdge: '禁用边',
+
+    // 节点操作
+    duplicate: '复制',
+    enterSubGraph: '进入子图',
+  },
+
+  // 编辑历史
+  editHistory: {
+    addNode: '添加节点',
+    removeNode: '删除节点',
+    addEdge: '添加边',
+    removeEdge: '删除边',
+    moveNode: '移动节点',
+    resizeNode: '调整节点大小',
+    toggleEdge: '切换边状态',
+    batch: '批量操作',
+  },
 }

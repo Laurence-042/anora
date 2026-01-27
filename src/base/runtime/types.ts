@@ -2,6 +2,13 @@
  * ANORA 核心类型定义
  */
 
+// ==================== 版本 ====================
+
+/**
+ * 序列化模式版本
+ */
+export const SCHEMA_VERSION = 1
+
 // ==================== 数据类型 ====================
 
 /**
@@ -62,6 +69,7 @@ export interface INode {
   executionStatus: NodeExecutionStatus
   readonly inPorts: Map<string, IPort>
   readonly outPorts: Map<string, IPort>
+  deserialize(data: SerializedNode): void
 }
 
 /**

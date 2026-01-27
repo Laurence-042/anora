@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { ActivationReadyStatus, NodeExecutionStatus } from '../types'
 import type { ExecutorContext, SerializedNode, SerializedPort, RealDataType } from '../types'
-import { BasePort, NullPort } from '../ports'
+import { BasePort, ContainerPort, NullPort } from '../ports'
 
 /**
  * 节点输入数据类型
@@ -79,7 +79,12 @@ export abstract class BaseNode<
   static subclasses: (typeof BaseNode)[] = []
 
   /** UUID */
-  readonly id: string
+  private _id: string
+
+  /** 获取节点 ID */
+  get id(): string {
+    return this._id
+  }
 
   /** 节点标签/名称 */
   label: string
@@ -117,7 +122,7 @@ export abstract class BaseNode<
   private _contextChangeListeners: Set<NodeContextChangeListener> = new Set()
 
   constructor(id?: string, label?: string) {
-    this.id = id ?? uuidv4()
+    this._id = id ?? uuidv4()
     this.label = label ?? this.constructor.name
 
     // 创建依赖 Port
@@ -494,6 +499,27 @@ export abstract class BaseNode<
   }
 
   /**
+   * 遍历所有 Port（包含 ContainerPort 的子孙 Port）
+   * @param handler 处理函数，返回 false 停止遍历
+   */
+  traverseAllPorts(handler: (port: BasePort) => boolean | void): void {
+    for (const port of this.getAllPorts()) {
+      if (port instanceof ContainerPort) {
+        let stopped = false
+        port.traverseDeep((p) => {
+          if (handler(p) === false) {
+            stopped = true
+            return false
+          }
+        })
+        if (stopped) return
+      } else {
+        if (handler(port) === false) return
+      }
+    }
+  }
+
+  /**
    * 获取单个入 Port
    */
   getInPort(name: string): BasePort | undefined {
@@ -567,6 +593,78 @@ export abstract class BaseNode<
   }
 
   /**
+   * 重新生成节点 ID 和所有 Port ID
+   * @returns { oldNodeId, newNodeId, portIdMap }
+   */
+  regenerateIds(): {
+    oldNodeId: string
+    newNodeId: string
+    portIdMap: Map<string, string>
+  } {
+    const portIdMap = new Map<string, string>()
+
+    // 重新生成节点 ID
+    const oldNodeId = this._id
+    this._id = uuidv4()
+    const newNodeId = this._id
+
+    // 重新生成所有 Port ID
+    this.traverseAllPorts((port) => {
+      const { oldId, newId } = port.regenerateId()
+      portIdMap.set(oldId, newId)
+    })
+
+    return { oldNodeId, newNodeId, portIdMap }
+  }
+
+  /**
+   * 复制节点并生成新 ID（节点 ID 和所有 Port ID）
+   * @param newNodeId 可选的新节点 ID，不提供则自动生成
+   * @returns { data: 带新 ID 的序列化数据, oldNodeId, newNodeId, portIdMap }
+   */
+  duplicate(newNodeId?: string): {
+    data: SerializedNode
+    oldNodeId: string
+    newNodeId: string
+    portIdMap: Map<string, string>
+  } {
+    const portIdMap = new Map<string, string>()
+    const oldNodeId = this.id
+    const actualNewNodeId = newNodeId ?? uuidv4()
+
+    const duplicatePort = (port: BasePort): SerializedPort => {
+      const { data, idMap } = port.duplicate()
+      for (const [k, v] of idMap) portIdMap.set(k, v)
+      return data
+    }
+
+    const duplicatePortMap = (ports: Map<string, BasePort>): Record<string, SerializedPort> => {
+      const result: Record<string, SerializedPort> = {}
+      for (const [name, port] of ports) {
+        result[name] = duplicatePort(port)
+      }
+      return result
+    }
+
+    const data: SerializedNode = {
+      id: actualNewNodeId,
+      typeId: this.typeId,
+      label: this.label,
+      context: this.context,
+      position: { x: 0, y: 0 },
+      inPorts: duplicatePortMap(this.inPorts),
+      outPorts: duplicatePortMap(this.outPorts),
+      inControlPorts: duplicatePortMap(this.inControlPorts),
+      outControlPorts: duplicatePortMap(this.outControlPorts),
+      inDependsOnPort: duplicatePort(this.inDependsOnPort),
+      inActivateOnPort: duplicatePort(this.inActivateOnPort),
+      outTriggerPort: duplicatePort(this.outTriggerPort),
+    }
+
+    return { data, oldNodeId, newNodeId: actualNewNodeId, portIdMap }
+  }
+
+  /**
    * 从序列化数据恢复端口 ID
    * @param serialized 序列化的节点数据
    */
@@ -613,5 +711,42 @@ export abstract class BaseNode<
     if (serialized.outPorts) {
       restorePortMapIds(this.outPorts, serialized.outPorts as Record<string, SerializedPort>)
     }
+  }
+
+  /**
+   * 从序列化数据恢复节点状态
+   * @param data 序列化的节点数据
+   */
+  deserialize(data: SerializedNode): void {
+    // 恢复 context
+    if (data.context !== undefined) {
+      this.context = data.context as TContext
+    }
+
+    // 恢复端口 ID（必须在恢复端口数据之前，这样边连接才能正确恢复）
+    this.restorePortIds(data)
+
+    // 恢复端口数据
+    const deserializePortMap = (
+      portMap: Map<string, BasePort>,
+      serializedPorts: Record<string, SerializedPort> | undefined,
+    ) => {
+      if (!serializedPorts) return
+      for (const [portName, portData] of Object.entries(serializedPorts)) {
+        const port = portMap.get(portName)
+        if (port && portData.data !== null) {
+          try {
+            port.deserialize(portData)
+          } catch (e) {
+            console.warn(`[BaseNode] Failed to deserialize port ${portName}:`, e)
+          }
+        }
+      }
+    }
+
+    deserializePortMap(this.inPorts, data.inPorts as Record<string, SerializedPort>)
+    deserializePortMap(this.outPorts, data.outPorts as Record<string, SerializedPort>)
+    deserializePortMap(this.inControlPorts, data.inControlPorts as Record<string, SerializedPort>)
+    deserializePortMap(this.outControlPorts, data.outControlPorts as Record<string, SerializedPort>)
   }
 }

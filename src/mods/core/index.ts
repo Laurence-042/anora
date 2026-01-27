@@ -22,6 +22,9 @@ import NotifyNodeView from './ui/nodes/NotifyNodeView.vue'
 import StringFormatNodeView from './ui/nodes/StringFormatNodeView.vue'
 import ConsoleLogNodeView from './ui/nodes/ConsoleLogNodeView.vue'
 
+// Context Menu
+import { registerCoreContextMenu } from './ui/contextmenu'
+
 export {
   ParameterNodeView,
   ForwardNodeView,
@@ -49,6 +52,9 @@ export const coreModDef: ModDefinition = {
     registerNodeView('notify-node', NotifyNodeView, ['core.NotifyNode'])
     registerNodeView('string-format-node', StringFormatNodeView, ['core.StringFormatNode'])
     registerNodeView('console-log-node', ConsoleLogNodeView, ['core.ConsoleLogNode'])
+
+    // 注册右键菜单
+    registerCoreContextMenu()
   },
 }
 

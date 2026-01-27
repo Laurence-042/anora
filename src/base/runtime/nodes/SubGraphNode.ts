@@ -138,7 +138,7 @@ export class SubGraphNode extends WebNode<NodeInput, NodeOutput> {
     const result = await this._executor.execute(this._graph, executorContext)
 
     if (result.error) {
-      throw result.error
+      throw new Error(result.error)
     }
 
     // 收集出口节点的输出

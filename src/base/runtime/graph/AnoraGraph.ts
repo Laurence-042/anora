@@ -1,6 +1,6 @@
 import { BaseNode } from '../nodes/BaseNode'
 import { BasePort, ContainerPort } from '../ports'
-import { areTypesCompatible } from '../types'
+import { areTypesCompatible, SCHEMA_VERSION } from '../types'
 import type { SerializedGraph, SerializedEdge, SerializedNode } from '../types'
 import { NodeRegistry } from '../registry'
 
@@ -32,8 +32,50 @@ export class AnoraGraph {
   /** 所有边（连接关系） */
   private edges: Edge[] = []
 
-  /** 不兼容的边（类型不匹配的连接） */
-  private incompatibleEdges: Set<string> = new Set()
+  /** 不兼容的边（类型不匹配的连接）: fromPortId -> Set<toPortId> */
+  private incompatibleEdges: Map<string, Set<string>> = new Map()
+
+  // ==================== 不兼容边管理 ====================
+
+  /**
+   * 标记边为不兼容
+   */
+  private markEdgeIncompatible(fromPortId: string, toPortId: string): void {
+    let toSet = this.incompatibleEdges.get(fromPortId)
+    if (!toSet) {
+      toSet = new Set()
+      this.incompatibleEdges.set(fromPortId, toSet)
+    }
+    toSet.add(toPortId)
+  }
+
+  /**
+   * 取消边的不兼容标记
+   */
+  private unmarkEdgeIncompatible(fromPortId: string, toPortId: string): void {
+    const toSet = this.incompatibleEdges.get(fromPortId)
+    if (toSet) {
+      toSet.delete(toPortId)
+      if (toSet.size === 0) {
+        this.incompatibleEdges.delete(fromPortId)
+      }
+    }
+  }
+
+  /**
+   * 清理与指定 Port 相关的所有不兼容边标记
+   */
+  private clearIncompatibleEdgesForPort(portId: string): void {
+    // 作为 fromPort 的记录
+    this.incompatibleEdges.delete(portId)
+    // 作为 toPort 的记录
+    for (const [fromId, toSet] of this.incompatibleEdges) {
+      toSet.delete(portId)
+      if (toSet.size === 0) {
+        this.incompatibleEdges.delete(fromId)
+      }
+    }
+  }
 
   /** Port ID 到 Node 的映射（用于 O(1) 查询） */
   private portToNode: Map<string, BaseNode> = new Map()
@@ -100,7 +142,7 @@ export class AnoraGraph {
    */
   private registerContainerPortChildren(port: BasePort, node: BaseNode): void {
     if (port instanceof ContainerPort) {
-      for (const child of port.getChildren()) {
+      for (const child of port.getChildren().values()) {
         this.portToNode.set(child.id, node)
         this.registerContainerPortChildren(child, node)
       }
@@ -115,9 +157,15 @@ export class AnoraGraph {
     if (!node) return
 
     // 移除与该节点相关的所有边
-    const portsToRemove = node.getAllPorts().map((p) => p.id)
+    const portsToRemove = new Set(node.getAllPorts().map((p) => p.id))
+
+    // 清理 incompatibleEdges 中相关的边
+    for (const portId of portsToRemove) {
+      this.clearIncompatibleEdgesForPort(portId)
+    }
+
     this.edges = this.edges.filter(
-      (edge) => !portsToRemove.includes(edge.fromPortId) && !portsToRemove.includes(edge.toPortId),
+      (edge) => !portsToRemove.has(edge.fromPortId) && !portsToRemove.has(edge.toPortId),
     )
 
     // 更新连接映射
@@ -206,6 +254,9 @@ export class AnoraGraph {
       (edge) => !(edge.fromPortId === fromPortId && edge.toPortId === toPortId),
     )
 
+    // 清理 incompatibleEdges
+    this.unmarkEdgeIncompatible(fromPortId, toPortId)
+
     // 更新连接映射
     const outConnections = this.outPortConnections.get(fromPortId)
     if (outConnections) {
@@ -270,10 +321,10 @@ export class AnoraGraph {
         // 检查类型兼容性
         if (!areTypesCompatible(fromPort.dataType, toPort.dataType)) {
           incompatible.push([edge.fromPortId, edge.toPortId])
-          this.incompatibleEdges.add(`${edge.fromPortId}->${edge.toPortId}`)
+          this.markEdgeIncompatible(edge.fromPortId, edge.toPortId)
         } else {
           // 如果之前不兼容现在兼容了，移除标记
-          this.incompatibleEdges.delete(`${edge.fromPortId}->${edge.toPortId}`)
+          this.unmarkEdgeIncompatible(edge.fromPortId, edge.toPortId)
         }
       }
     }
@@ -283,16 +334,23 @@ export class AnoraGraph {
 
   /**
    * 获取所有不兼容的边
+   * @returns 边数组 [fromPortId, toPortId][]
    */
-  getIncompatibleEdges(): Set<string> {
-    return new Set(this.incompatibleEdges)
+  getIncompatibleEdges(): Array<[string, string]> {
+    const result: Array<[string, string]> = []
+    for (const [fromPortId, toSet] of this.incompatibleEdges) {
+      for (const toPortId of toSet) {
+        result.push([fromPortId, toPortId])
+      }
+    }
+    return result
   }
 
   /**
    * 检查边是否不兼容
    */
   isEdgeIncompatible(fromPortId: string, toPortId: string): boolean {
-    return this.incompatibleEdges.has(`${fromPortId}->${toPortId}`)
+    return this.incompatibleEdges.get(fromPortId)?.has(toPortId) ?? false
   }
 
   // ==================== O(1) 查询 ====================
@@ -355,7 +413,7 @@ export class AnoraGraph {
     const result = this.getConnectedPorts(port)
 
     if (port instanceof ContainerPort) {
-      for (const child of port.getChildren()) {
+      for (const child of port.getChildren().values()) {
         result.push(...this.getConnectedPortsIncludingChildren(child))
       }
     }
@@ -442,7 +500,7 @@ export class AnoraGraph {
     }))
 
     return {
-      schemaVersion: 1,
+      schemaVersion: SCHEMA_VERSION,
       nodes: Array.from(this.nodes.values()).map((node) => {
         const serialized = node.serialize()
         // 如果提供了位置映射，使用 UI 层的位置
@@ -523,55 +581,16 @@ export class AnoraGraph {
    * 反序列化单个节点
    */
   private deserializeNode(data: SerializedNode): BaseNode | null {
-    const node = NodeRegistry.createNode(data.typeId, data.id, data.label)
+    const node = NodeRegistry.createNode(data.typeId, data.id, data.label) as BaseNode | undefined
     if (!node) {
       console.warn(`[AnoraGraph] Failed to create node of type: ${data.typeId}`)
       return null
     }
 
-    const baseNode = node as BaseNode
+    // 让节点自己恢复状态
+    node.deserialize(data)
 
-    // 恢复 context
-    if (data.context && baseNode.context) {
-      baseNode.context = data.context
-    }
-
-    // 恢复端口数据
-    this.deserializePorts(baseNode, data)
-
-    return baseNode
-  }
-
-  /**
-   * 反序列化节点的端口数据
-   */
-  private deserializePorts(node: BaseNode, data: SerializedNode): void {
-    // 恢复端口 ID（必须在恢复端口数据之前，这样边连接才能正确恢复）
-    node.restorePortIds(data)
-
-    // 恢复入端口数据
-    for (const [portName, portData] of Object.entries(data.inPorts)) {
-      const port = node.inPorts.get(portName)
-      if (port && portData.data !== null) {
-        try {
-          port.deserialize(portData)
-        } catch (e) {
-          console.warn(`[AnoraGraph] Failed to deserialize inPort ${portName}:`, e)
-        }
-      }
-    }
-
-    // 恢复出端口数据
-    for (const [portName, portData] of Object.entries(data.outPorts)) {
-      const port = node.outPorts.get(portName)
-      if (port && portData.data !== null) {
-        try {
-          port.deserialize(portData)
-        } catch (e) {
-          console.warn(`[AnoraGraph] Failed to deserialize outPort ${portName}:`, e)
-        }
-      }
-    }
+    return node
   }
 
   /**
@@ -580,6 +599,7 @@ export class AnoraGraph {
   clear(): void {
     this.nodes.clear()
     this.edges = []
+    this.incompatibleEdges.clear()
     this.portToNode.clear()
     this.outPortConnections.clear()
     this.inPortConnections.clear()

@@ -19,10 +19,8 @@ export function useGraph() {
   /** 所有节点 */
   const nodes = computed(() => store.nodes)
 
-  /** 选中的节点 */
-  const selectedNodes = computed(() => {
-    return nodes.value.filter((node) => store.isNodeSelected(node.id))
-  })
+  // 注意：选中状态现在由 Vue Flow 管理，通过 AnoraGraphView.getSelectedNodeIds() 获取
+  // 如果需要选中节点，请直接使用 AnoraGraphView 暴露的方法
 
   /**
    * 创建节点并添加到图中
@@ -51,22 +49,8 @@ export function useGraph() {
     store.removeNode(nodeId)
   }
 
-  /**
-   * 删除选中的节点
-   */
-  function deleteSelectedNodes(): void {
-    for (const nodeId of store.selectedNodeIds) {
-      store.removeNode(nodeId)
-    }
-  }
-
-  /**
-   * 复制选中的节点（返回 JSON 字符串）
-   */
-  function copySelectedNodes(): string {
-    const nodesToCopy = selectedNodes.value.map((node) => node.serialize())
-    return JSON.stringify(nodesToCopy)
-  }
+  // 注意：deleteSelectedNodes 和 copySelectedNodes 已移除
+  // 因为选中状态现在由 Vue Flow 管理，请使用 GraphEditor 中的相应方法
 
   /**
    * 获取可用的节点类型列表
@@ -114,11 +98,8 @@ export function useGraph() {
   return {
     graph,
     nodes,
-    selectedNodes,
     createNode,
     deleteNode,
-    deleteSelectedNodes,
-    copySelectedNodes,
     getAvailableNodeTypes,
     canConnect,
   }

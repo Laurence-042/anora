@@ -20,6 +20,10 @@ import i18n from './locales'
 import { initAllMods } from './mods'
 initAllMods()
 
+// 注册核心事件处理器（用于 Timeline 回放/撤销）
+import { registerCoreEventHandlers } from '@/base/ui/replay'
+registerCoreEventHandlers()
+
 const app = createApp(App)
 
 app.use(createPinia())

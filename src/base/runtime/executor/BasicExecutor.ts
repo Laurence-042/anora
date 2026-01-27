@@ -279,7 +279,7 @@ export class BasicExecutor {
       // 检查是否有节点失败
       const failed = results.filter((r) => !r.success)
       if (failed.length > 0) {
-        const errorMessages = failed.map((f) => f.error?.message || 'Unknown error').join('; ')
+        const errorMessages = failed.map((f) => f.error || 'Unknown error').join('; ')
         throw new Error(`Nodes failed: ${errorMessages}`)
       }
 
@@ -317,7 +317,7 @@ export class BasicExecutor {
 
     const result: ExecutionResult = {
       finishReason: reason,
-      error,
+      error: error?.message,
       iterations: this._iterations,
       duration: Date.now() - this._startTime,
     }
@@ -327,7 +327,7 @@ export class BasicExecutor {
     } else if (reason === FinishReason.Cancelled) {
       this.emit({ type: ExecutorEventType.Cancelled })
     } else if (reason === FinishReason.Error && error) {
-      this.emit({ type: ExecutorEventType.Error, error })
+      this.emit({ type: ExecutorEventType.Error, error: error.message })
     }
 
     // resolve execute() 的 Promise
@@ -469,15 +469,20 @@ export class BasicExecutor {
     // 并行执行所有节点
     const promises = nodes.map(async (node) => {
       try {
-        this.emit({ type: ExecutorEventType.NodeStart, node })
+        this.emit({ type: ExecutorEventType.NodeStart, nodeId: node.id })
         await node.activate(context)
         // 暂不发送 node-complete，等数据传播和延迟后再发送
-        return { node, success: true, error: undefined } as NodeExecutionResult
+        return { nodeId: node.id, success: true, error: undefined } as NodeExecutionResult
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
         // 失败时立即发送 node-complete
-        this.emit({ type: ExecutorEventType.NodeComplete, node, success: false, error: err })
-        return { node, success: false, error: err } as NodeExecutionResult
+        this.emit({
+          type: ExecutorEventType.NodeComplete,
+          nodeId: node.id,
+          success: false,
+          error: err.message,
+        })
+        return { nodeId: node.id, success: false, error: err.message } as NodeExecutionResult
       }
     })
 
@@ -491,10 +496,12 @@ export class BasicExecutor {
         results.push(result.value)
       } else {
         const node = nodes[i]!
+        const err =
+          result.reason instanceof Error ? result.reason : new Error(String(result.reason))
         results.push({
-          node,
+          nodeId: node.id,
           success: false,
-          error: result.reason as Error,
+          error: err.message,
         })
       }
     }
@@ -507,11 +514,14 @@ export class BasicExecutor {
     // 对成功执行的节点：传播出 Port 数据
     for (const result of results) {
       if (result.success) {
+        // 通过 nodeId 找到节点
+        const node = nodes.find((n) => n.id === result.nodeId)!
+
         // 传播数据到下游，并处理直通节点
-        await this.propagateDataWithDirectThrough(result.node, graph, context)
+        await this.propagateDataWithDirectThrough(node, graph, context)
 
         // 发送成功节点的 node-complete 事件
-        this.emit({ type: ExecutorEventType.NodeComplete, node: result.node, success: true })
+        this.emit({ type: ExecutorEventType.NodeComplete, nodeId: result.nodeId, success: true })
       }
     }
 
@@ -615,15 +625,20 @@ export class BasicExecutor {
 
     // 直通节点：立即执行
     try {
-      this.emit({ type: ExecutorEventType.NodeStart, node })
+      this.emit({ type: ExecutorEventType.NodeStart, nodeId: node.id })
       await node.activate(context)
-      this.emit({ type: ExecutorEventType.NodeComplete, node, success: true })
+      this.emit({ type: ExecutorEventType.NodeComplete, nodeId: node.id, success: true })
 
       // 递归传播数据（可能触发更多直通节点）
       await this.propagateDataWithDirectThrough(node, graph, context)
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
-      this.emit({ type: ExecutorEventType.NodeComplete, node, success: false, error: err })
+      this.emit({
+        type: ExecutorEventType.NodeComplete,
+        nodeId: node.id,
+        success: false,
+        error: err.message,
+      })
       throw err
     }
   }

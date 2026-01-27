@@ -2,17 +2,23 @@
  * 图状态管理 Store
  * 管理 AnoraGraph、执行状态、UI 状态等
  *
+ * 架构职责：
+ * - 作为 Runtime 层 (AnoraGraph) 和 UI 层 (Vue-Flow) 之间的适配层
+ * - 持有 AnoraGraph 实例，暴露 Anora 语义的操作方法
+ * - 内部管理 Vue-Flow 状态，对外暴露 vfNodes/vfEdges 供 UI 组件使用
+ * - UI 组件只依赖此 Store，不直接依赖 Vue-Flow
+ *
  * 响应式更新机制：
  * - currentGraph 使用 shallowRef，不追踪对象内部变化
  * - graphRevision 是独立的 ref<number>，每次图结构变化时递增
  * - AnoraGraph.onUpdate() 回调在图变化时自动触发 graphRevision++ 和 triggerRef()
- * - 组件通过 graphRevision prop 触发重新渲染（Vue 能追踪基本类型的变化）
- * - setupGraphCallback() 为新图设置 onUpdate 回调，并清除旧监听器
+ * - vfNodes/vfEdges computed 依赖 graphRevision 触发重新计算
  *
  * 注意：此 Store 不关心录制/回放，那些逻辑由 RecordingControls 组件自行管理
  */
 import { defineStore } from 'pinia'
-import { ref, computed, shallowRef, triggerRef } from 'vue'
+import { ref, computed, shallowRef, triggerRef, markRaw, type Component } from 'vue'
+import { useVueFlow, type Node as VFNode, type Edge as VFEdge } from '@vue-flow/core'
 import { AnoraGraph } from '@/base/runtime/graph'
 import {
   ExecutorEventType,
@@ -25,8 +31,12 @@ import {
 } from '@/base/runtime/executor'
 import { BaseNode } from '@/base/runtime/nodes'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
-import { DEFAULT_EXECUTOR_CONTEXT, NodeExecutionStatus } from '@/base/runtime/types'
-import type { ExecutorContext } from '@/base/runtime/types'
+import {
+  DEFAULT_EXECUTOR_CONTEXT,
+  NodeExecutionStatus,
+  type ExecutorContext,
+} from '@/base/runtime/types'
+import { NodeViewRegistry } from '@/base/ui/registry'
 
 /**
  * Executor 接口 - 定义 graphStore 需要的 executor 方法
@@ -46,7 +56,26 @@ export interface SubGraphStackItem {
   label: string
 }
 
+/** Vue Flow 实例 ID（内部使用） */
+const ANORA_FLOW_ID = 'anora-graph-flow'
+
 export const useGraphStore = defineStore('graph', () => {
+  // ==================== Vue Flow 内部状态 ====================
+  // Vue Flow 作为内部实现细节，UI 组件不应直接访问
+  const {
+    getSelectedNodes,
+    getSelectedEdges,
+    addSelectedNodes,
+    removeSelectedNodes,
+    findNode,
+    fitView: vfFitView,
+    project: vfProject,
+  } = useVueFlow(ANORA_FLOW_ID)
+
+  // ==================== 节点视图 ====================
+  // 视图组件注册委托给 NodeViewRegistry（静态注册表）
+  // 这里只提供访问方法，实际注册通过 NodeViewRegistry 完成
+
   // ==================== 图状态 ====================
 
   /** 根子图节点（整个项目的最外层） */
@@ -67,14 +96,8 @@ export const useGraphStore = defineStore('graph', () => {
   /** 子图导航栈 */
   const subGraphStack = ref<SubGraphStackItem[]>([])
 
-  /** 当前选中的节点 ID 列表 */
-  const selectedNodeIds = ref<Set<string>>(new Set())
-
-  /** 当前选中的边（出 Port ID -> 入 Port ID） */
-  const selectedEdges = ref<Set<string>>(new Set())
-
-  /** 不兼容的边（类型不匹配） */
-  const incompatibleEdges = ref<Set<string>>(new Set())
+  /** 不兼容的边（类型不匹配）: fromPortId -> Set<toPortId> */
+  const incompatibleEdges = ref<Map<string, Set<string>>>(new Map())
 
   /** 已展开的 ContainerPort ID 集合（用于判断子 Port 是否可见） */
   const expandedPorts = ref<Set<string>>(new Set())
@@ -101,10 +124,29 @@ export const useGraphStore = defineStore('graph', () => {
   /** 边上传递的数据（用于调试/演示显示） */
   const edgeDataTransfers = ref<Map<string, EdgeDataTransfer>>(new Map())
 
+  /** 是否只读模式（禁用拖拽、连线等） */
+  const readonly = ref<boolean>(false)
+
+  // ==================== 视图访问方法 ====================
+
+  /**
+   * 根据节点 typeId 获取对应的 Vue-Flow 类型名
+   * 委托给 NodeViewRegistry
+   */
+  function getViewType(nodeTypeId: string): string {
+    return NodeViewRegistry.getViewType(nodeTypeId)
+  }
+
   // ==================== 计算属性 ====================
 
   /** 所有节点 */
   const nodes = computed(() => currentGraph.value.getAllNodes())
+
+  /** 选中的节点 ID 集合（从 Vue Flow 读取） */
+  const selectedNodeIds = computed(() => new Set(getSelectedNodes.value.map((n) => n.id)))
+
+  /** 选中的边 ID 集合（从 Vue Flow 读取） */
+  const selectedEdges = computed(() => new Set(getSelectedEdges.value.map((e) => e.id)))
 
   /** 当前面包屑路径 */
   const breadcrumbPath = computed(() => {
@@ -116,6 +158,91 @@ export const useGraphStore = defineStore('graph', () => {
     }
     return path
   })
+
+  // ==================== Vue-Flow 适配层 ====================
+
+  /**
+   * Vue-Flow 节点数据（供 AnoraGraphView 使用）
+   */
+  const vfNodes = computed<VFNode[]>(() => {
+    // 依赖 graphRevision 来触发重新计算
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    graphRevision.value
+
+    const result: VFNode[] = []
+    const allNodes = currentGraph.value.getAllNodes()
+
+    for (const node of allNodes) {
+      const pos = nodePositions.value.get(node.id) ?? { x: 0, y: 0 }
+      const size = nodeSizes.value.get(node.id)
+      result.push({
+        id: node.id,
+        type: getViewType(node.typeId),
+        position: pos,
+        data: { node: markRaw(node), readonly: readonly.value, size },
+        draggable: !readonly.value,
+        selectable: !readonly.value,
+      } as VFNode)
+    }
+    return result
+  })
+
+  /**
+   * Vue-Flow 边数据（供 AnoraGraphView 使用）
+   */
+  const vfEdges = computed<VFEdge[]>(() => {
+    // 依赖 graphRevision 以触发更新
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    graphRevision.value
+
+    const result: VFEdge[] = []
+
+    for (const node of currentGraph.value.getAllNodes()) {
+      for (const port of node.getOutputPorts()) {
+        const connectedPorts = currentGraph.value.getConnectedPorts(port)
+        for (const targetPort of connectedPorts) {
+          const edgeId = `${port.id}->${targetPort.id}`
+          result.push({
+            id: edgeId,
+            source: node.id,
+            target: currentGraph.value.getNodeByPort(targetPort)?.id ?? '',
+            sourceHandle: port.id,
+            targetHandle: targetPort.id,
+            type: 'default',
+          })
+        }
+      }
+    }
+
+    return result
+  })
+
+  /**
+   * Vue-Flow 节点类型映射（供 AnoraGraphView 使用）
+   * 从 NodeViewRegistry 读取
+   */
+  const vfNodeTypes = computed<Record<string, Component>>(() => {
+    return NodeViewRegistry.getNodeTypes()
+  })
+
+  /**
+   * Vue-Flow 实例 ID（供 AnoraGraphView 内部使用）
+   */
+  const vfFlowId = ANORA_FLOW_ID
+
+  /**
+   * 调整视图以适应所有节点
+   */
+  function fitView(options?: { padding?: number }): void {
+    vfFitView({ padding: options?.padding ?? 0.2 })
+  }
+
+  /**
+   * 将屏幕坐标转换为画布坐标
+   */
+  function screenToFlowCoordinate(point: { x: number; y: number }): { x: number; y: number } {
+    return vfProject(point)
+  }
 
   // ==================== 图操作 ====================
 
@@ -156,10 +283,13 @@ export const useGraphStore = defineStore('graph', () => {
 
   /**
    * 移除节点
+   * 同时清理关联的 UI 数据（位置、尺寸）
    */
   function removeNode(nodeId: string): void {
     currentGraph.value.removeNode(nodeId)
-    selectedNodeIds.value.delete(nodeId)
+    // 清理 UI 关联数据
+    nodePositions.value.delete(nodeId)
+    nodeSizes.value.delete(nodeId)
     // graphRevision 由 onUpdate 回调自动递增
   }
 
@@ -177,7 +307,6 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function removeEdge(fromPortId: string, toPortId: string): void {
     currentGraph.value.removeEdge(fromPortId, toPortId)
-    selectedEdges.value.delete(`${fromPortId}->${toPortId}`)
     // graphRevision 由 onUpdate 回调自动递增
   }
 
@@ -207,8 +336,6 @@ export const useGraphStore = defineStore('graph', () => {
       label: node.label,
     })
     currentGraph.value = graph
-    selectedNodeIds.value.clear()
-    selectedEdges.value.clear()
     triggerRef(currentGraph)
   }
 
@@ -230,8 +357,6 @@ export const useGraphStore = defineStore('graph', () => {
 
     setupGraphCallback(graph)
     currentGraph.value = graph
-    selectedNodeIds.value.clear()
-    selectedEdges.value.clear()
     triggerRef(currentGraph)
   }
 
@@ -255,8 +380,6 @@ export const useGraphStore = defineStore('graph', () => {
 
     setupGraphCallback(graph)
     currentGraph.value = graph
-    selectedNodeIds.value.clear()
-    selectedEdges.value.clear()
     triggerRef(currentGraph)
   }
 
@@ -264,27 +387,35 @@ export const useGraphStore = defineStore('graph', () => {
 
   /**
    * 选中节点
+   * @param nodeId 节点 ID
+   * @param append 是否追加选中（默认清除现有选中）
    */
   function selectNode(nodeId: string, append: boolean = false): void {
+    const node = findNode(nodeId)
+    if (!node) return
+
     if (!append) {
-      selectedNodeIds.value.clear()
+      // 清除现有选中后添加
+      removeSelectedNodes(getSelectedNodes.value)
     }
-    selectedNodeIds.value.add(nodeId)
+    addSelectedNodes([node])
   }
 
   /**
    * 取消选中节点
    */
   function deselectNode(nodeId: string): void {
-    selectedNodeIds.value.delete(nodeId)
+    const node = findNode(nodeId)
+    if (node) {
+      removeSelectedNodes([node])
+    }
   }
 
   /**
    * 清空选择
    */
   function clearSelection(): void {
-    selectedNodeIds.value.clear()
-    selectedEdges.value.clear()
+    removeSelectedNodes(getSelectedNodes.value)
   }
 
   /**
@@ -292,6 +423,17 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function isNodeSelected(nodeId: string): boolean {
     return selectedNodeIds.value.has(nodeId)
+  }
+
+  /**
+   * 通过 ID 列表选中节点
+   */
+  function selectNodesByIds(nodeIds: string[], append: boolean = false): void {
+    if (!append) {
+      removeSelectedNodes(getSelectedNodes.value)
+    }
+    const nodes = nodeIds.map((id) => findNode(id)).filter((n) => n !== undefined)
+    addSelectedNodes(nodes)
   }
 
   // ==================== Port 展开状态操作 ====================
@@ -390,22 +532,32 @@ export const useGraphStore = defineStore('graph', () => {
 
       case ExecutorEventType.NodeStart:
         // 创建新 Set 以触发响应式更新
-        executingNodeIds.value = new Set([...executingNodeIds.value, event.node.id])
+        executingNodeIds.value = new Set([...executingNodeIds.value, event.nodeId])
         // 设置节点状态为执行中
-        event.node.executionStatus = NodeExecutionStatus.EXECUTING
+        {
+          const node = currentGraph.value.getNode(event.nodeId)
+          if (node) {
+            node.executionStatus = NodeExecutionStatus.EXECUTING
+          }
+        }
         break
 
       case ExecutorEventType.NodeComplete:
         // 从执行中节点集合移除
         executingNodeIds.value = new Set(
-          [...executingNodeIds.value].filter((id) => id !== event.node.id),
+          [...executingNodeIds.value].filter((id) => id !== event.nodeId),
         )
         // 设置节点完成状态
-        event.node.executionStatus = event.success
-          ? NodeExecutionStatus.SUCCESS
-          : NodeExecutionStatus.FAILED
-        if (event.error) {
-          event.node.lastError = event.error.message
+        {
+          const node = currentGraph.value.getNode(event.nodeId)
+          if (node) {
+            node.executionStatus = event.success
+              ? NodeExecutionStatus.SUCCESS
+              : NodeExecutionStatus.FAILED
+            if (event.error) {
+              node.lastError = event.error
+            }
+          }
         }
         break
 
@@ -435,7 +587,7 @@ export const useGraphStore = defineStore('graph', () => {
       case ExecutorEventType.Error:
         executingNodeIds.value.clear()
         edgeDataTransfers.value.clear()
-        console.error('[Executor Error]', event.error.message, event.error.stack)
+        console.error('[Executor Error]', event.error)
         break
     }
 
@@ -504,15 +656,24 @@ export const useGraphStore = defineStore('graph', () => {
     }
 
     // 只更新 incompatibleEdges，不触发 currentGraph 刷新
-    // 这样只会影响边的样式计算，不会导致全图重新渲染
-    incompatibleEdges.value = currentGraph.value.getIncompatibleEdges()
+    // 从数组重建 Map<string, Set<string>>
+    const newMap = new Map<string, Set<string>>()
+    for (const [fromPortId, toPortId] of currentGraph.value.getIncompatibleEdges()) {
+      let toSet = newMap.get(fromPortId)
+      if (!toSet) {
+        toSet = new Set()
+        newMap.set(fromPortId, toSet)
+      }
+      toSet.add(toPortId)
+    }
+    incompatibleEdges.value = newMap
   }
 
   /**
    * 检查边是否不兼容
    */
   function isEdgeIncompatible(fromPortId: string, toPortId: string): boolean {
-    return incompatibleEdges.value.has(`${fromPortId}->${toPortId}`)
+    return incompatibleEdges.value.get(fromPortId)?.has(toPortId) ?? false
   }
 
   /**
@@ -540,8 +701,6 @@ export const useGraphStore = defineStore('graph', () => {
     nodeSizes.value = sizes
     rootSubGraph.value.setGraph(graph)
     subGraphStack.value = []
-    selectedNodeIds.value.clear()
-    selectedEdges.value.clear()
     executingNodeIds.value = new Set()
     edgeDataTransfers.value = new Map()
     triggerRef(currentGraph)
@@ -589,8 +748,6 @@ export const useGraphStore = defineStore('graph', () => {
     nodePositions,
     nodeSizes,
     subGraphStack,
-    selectedNodeIds,
-    selectedEdges,
     incompatibleEdges,
     expandedPorts,
     currentIteration,
@@ -599,10 +756,19 @@ export const useGraphStore = defineStore('graph', () => {
     iterationDelay,
     edgeDataTransfers,
     stateMachineState,
+    readonly,
 
     // 计算属性
     nodes,
     breadcrumbPath,
+
+    // Vue-Flow 适配层（供 UI 组件使用）
+    vfNodes,
+    vfEdges,
+    vfNodeTypes,
+    vfFlowId,
+    fitView,
+    screenToFlowCoordinate,
 
     // 图操作
     initializeRootGraph,
@@ -619,12 +785,6 @@ export const useGraphStore = defineStore('graph', () => {
     updateNodeSize,
     getNodeSize,
     clearExecutionState,
-
-    // 选择操作
-    selectNode,
-    deselectNode,
-    clearSelection,
-    isNodeSelected,
 
     // Port 展开状态操作
     togglePortExpand,
@@ -648,5 +808,16 @@ export const useGraphStore = defineStore('graph', () => {
     // 边数据传递
     getEdgeDataTransfer,
     hasEdgeDataTransfer,
+
+    // 选择状态（来自 Vue Flow）
+    selectedNodeIds,
+    selectedEdges,
+
+    // 选择操作
+    selectNode,
+    deselectNode,
+    clearSelection,
+    isNodeSelected,
+    selectNodesByIds,
   }
 })

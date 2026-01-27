@@ -6,7 +6,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGraphStore } from '@/stores/graph'
 import type { SerializedGraph } from '@/base/runtime/types'
-import type { DemoRecording } from '@/base/runtime/demo/types'
+import type { DemoRecording } from '@/base/ui/replay'
 
 const { t } = useI18n()
 const graphStore = useGraphStore()
@@ -81,13 +81,8 @@ function importGraph(file: File): void {
 
 /** 检测是否为 replay 文件 */
 function isReplayFile(data: unknown): data is DemoRecording {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'version' in data &&
-    'initialGraph' in data &&
-    'events' in data
-  )
+  if (typeof data !== 'object' || data === null) return false
+  return 'version' in data && 'initialGraph' in data && 'events' in data
 }
 </script>
 

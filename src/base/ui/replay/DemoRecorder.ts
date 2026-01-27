@@ -10,14 +10,14 @@
  *   2. Executor（ExecutorEvent 已经是可序列化的，直接包装为 ExecutionTimelineEvent）
  * - 所有事件类型一视同仁，通过 category 区分
  */
-import type { AnoraGraph } from '../graph'
-import type { ExecutorEvent, ExecutorEventListener } from '../executor'
+import type { AnoraGraph } from '@/base/runtime/graph'
+import type { ExecutorEvent, ExecutorEventListener } from '@/base/runtime/executor'
 import {
   Timeline,
   TimelineEventCategory,
   type ExecutionTimelineEvent,
   type TimelineRecording,
-} from '../timeline'
+} from '@/base/runtime/timeline'
 
 export class DemoRecorder {
   /** 私有 Timeline（存储录制事件，永不清理） */

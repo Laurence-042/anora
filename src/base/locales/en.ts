@@ -145,4 +145,35 @@ export default {
     root: 'Root',
     back: 'Go Back',
   },
+
+  // Context Menu
+  contextMenu: {
+    // Common actions
+    copy: 'Copy',
+    paste: 'Paste',
+    delete: 'Delete',
+    undo: 'Undo',
+    redo: 'Redo',
+
+    // Edge actions
+    toggleEdge: 'Toggle Enable/Disable',
+    enableEdge: 'Enable Edge',
+    disableEdge: 'Disable Edge',
+
+    // Node actions
+    duplicate: 'Duplicate',
+    enterSubGraph: 'Enter SubGraph',
+  },
+
+  // Edit History
+  editHistory: {
+    addNode: 'Add Node',
+    removeNode: 'Remove Node',
+    addEdge: 'Add Edge',
+    removeEdge: 'Remove Edge',
+    moveNode: 'Move Node',
+    resizeNode: 'Resize Node',
+    toggleEdge: 'Toggle Edge',
+    batch: 'Batch Operation',
+  },
 }

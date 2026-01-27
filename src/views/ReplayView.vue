@@ -18,9 +18,9 @@ import { useI18n } from 'vue-i18n'
 import { ElUpload } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import AnoraGraphView from '@/base/ui/components/AnoraGraphView.vue'
-import { ReplayController } from '@/base/runtime/demo'
+import { ReplayController } from '@/base/ui/replay'
 import { useGraphStore } from '@/stores/graph'
-import type { DemoRecording } from '@/base/runtime/demo'
+import type { DemoRecording } from '@/base/ui/replay'
 import { useReplayIPC } from '@/base/ui/composables/useReplayIPC'
 import { useIPC } from '@/base/ui/composables/useIPC'
 
@@ -95,20 +95,23 @@ async function loadRecordingText(text: string): Promise<void> {
 async function loadRecording(data: DemoRecording): Promise<void> {
   // 版本检查
   if (data.version !== '2.0.0') {
-    alert(t('demo.unsupportedVersion', { version: data.version }))
+    alert(t('demo.unsupportedVersion', { version: data.version ?? 'unknown' }))
     return
   }
+
+  // 设置为只读模式
+  graphStore.readonly = true
 
   // 加载图到 graphStore
   graphStore.loadFromSerialized(data.initialGraph)
 
-  // 加载到控制器
-  await controller.loadRecording(data, graphStore.currentGraph)
+  // 加载到控制器（传递 graphStore 以支持编辑事件回放）
+  await controller.loadRecording(data, graphStore.currentGraph, graphStore)
 
   console.log('[ReplayView] Recording loaded')
 
   // 自动适应视图
-  setTimeout(() => graphViewRef.value?.fitView(), 100)
+  setTimeout(() => graphStore.fitView(), 100)
 }
 
 // ==================== 播放控制 ====================
@@ -194,18 +197,7 @@ onUnmounted(() => {
       </div>
 
       <!-- 图展示 -->
-      <AnoraGraphView
-        v-else
-        ref="graphViewRef"
-        :graph="controller.graph.value!"
-        :node-positions="graphStore.nodePositions"
-        :graph-revision="graphStore.graphRevision"
-        :readonly="true"
-        :executing-node-ids="graphStore.executingNodeIds"
-        :incompatible-edges="new Set()"
-        :edge-data-transfers="graphStore.edgeDataTransfers"
-        :selected-node-ids="new Set()"
-      />
+      <AnoraGraphView v-else ref="graphViewRef" />
     </div>
 
     <!-- 底部控制栏 -->

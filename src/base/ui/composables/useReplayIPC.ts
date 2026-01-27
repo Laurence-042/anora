@@ -13,8 +13,8 @@
  */
 
 import { useIPC } from './useIPC'
-import type { ReplayController } from '@/base/runtime/demo'
-import type { DemoRecording } from '@/base/runtime/demo'
+import type { ReplayController } from '@/base/ui/replay'
+import type { DemoRecording } from '@/base/ui/replay'
 import type { IPCMessage } from '@/base/runtime/types'
 import { ExecutorEventType } from '@/base/runtime/executor'
 
@@ -166,8 +166,16 @@ export function useReplayIPC(options: {
       if (durationMs < 0) {
         const handlerId = ++playToEndCounter
 
-        // 直接订阅执行器事件，不干扰 onExecutorEvent
-        const unsubscribe = controller.subscribeToExecutorEvents((event) => {
+        // 使用 controller.onExecutorEvent 回调，保存原有回调并在完成后恢复
+        const originalCallback = controller.onExecutorEvent
+        const unsubscribe = () => {
+          controller.onExecutorEvent = originalCallback
+        }
+
+        controller.onExecutorEvent = (event) => {
+          // 先调用原有回调
+          originalCallback?.(event)
+          // 检查是否完成
           if (
             event.type === ExecutorEventType.Complete ||
             event.type === ExecutorEventType.Cancelled
@@ -177,7 +185,7 @@ export function useReplayIPC(options: {
             unsubscribe()
             playToEndHandlers.delete(handlerId)
           }
-        })
+        }
 
         playToEndHandlers.set(handlerId, unsubscribe)
         postMessage('replay.playFor.started', { durationMs: -1, playToEnd: true })

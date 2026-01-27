@@ -2,79 +2,33 @@
 /**
  * AnoraGraphView - Anora 图展示组件
  *
- * 纯展示层，提供 Vue-Flow 和 Anora 体系的映射
- * - 接收 AnoraGraph + nodePositions 渲染图
- * - 响应 Executor 事件更新 UI 状态（节点高亮、边数据流等）
- * - 不关心是编辑还是回放
+ * 纯展示层，从 graphStore 读取 Vue-Flow 数据进行渲染
+ * - 不直接调用 useVueFlow()，只依赖 graphStore
+ * - 事件通过 emit 上报给父组件处理
  *
  * 使用方：
  * - GraphEditor: 编辑模式，启用拖拽/连线
  * - ReplayView: 回放模式，只读展示
  */
-import { computed, watch, markRaw, type PropType } from 'vue'
-import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
-import { Background, BackgroundVariant } from '@vue-flow/background'
+import { computed, watch, markRaw, onMounted } from 'vue'
+import { VueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
-import type { AnoraGraph } from '@/base/runtime/graph'
-import type { EdgeDataTransfer } from '@/base/runtime/executor'
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
+import { useGraphStore } from '@/stores/graph'
+import { NodeViewRegistry } from '@/base/ui/registry'
 
-import BaseNodeView from '../components/BaseNodeView.vue'
-import EdgeView from '../components/EdgeView.vue'
-import { NodeViewRegistry } from '../registry'
+import BaseNodeView from './BaseNodeView.vue'
+import EdgeView from './EdgeView.vue'
+
+// 获取 graphStore
+const graphStore = useGraphStore()
 
 // 初始化时设置默认视图
-NodeViewRegistry.setDefaultView(BaseNodeView)
-
-// ==================== Props ====================
-const props = defineProps({
-  /** Anora 图实例 */
-  graph: {
-    type: Object as PropType<AnoraGraph>,
-    required: true,
-  },
-  /** 节点位置映射 */
-  nodePositions: {
-    type: Object as PropType<Map<string, { x: number; y: number }>>,
-    required: true,
-  },
-  /** 节点尺寸映射 */
-  nodeSizes: {
-    type: Object as PropType<Map<string, { width: number; height: number }>>,
-    default: () => new Map(),
-  },
-  /** 是否只读模式（禁用拖拽、连线等） */
-  readonly: {
-    type: Boolean,
-    default: false,
-  },
-  /** 当前正在执行的节点 ID 集合 */
-  executingNodeIds: {
-    type: Object as PropType<Set<string>>,
-    default: () => new Set(),
-  },
-  /** 不兼容的边集合 */
-  incompatibleEdges: {
-    type: Object as PropType<Set<string>>,
-    default: () => new Set(),
-  },
-  /** 边数据传递（用于显示数据流） */
-  edgeDataTransfers: {
-    type: Object as PropType<Map<string, EdgeDataTransfer>>,
-    default: () => new Map(),
-  },
-  /** 选中的节点 ID 集合 */
-  selectedNodeIds: {
-    type: Object as PropType<Set<string>>,
-    default: () => new Set(),
-  },
-  /** 图版本计数器（用于触发响应式更新） */
-  graphRevision: {
-    type: Number,
-    default: 0,
-  },
+onMounted(() => {
+  NodeViewRegistry.setDefaultView(BaseNodeView)
 })
 
 // ==================== Emits ====================
@@ -82,77 +36,21 @@ const emit = defineEmits<{
   connect: [connection: Connection]
   nodeDoubleClick: [nodeId: string, node: SubGraphNode | null]
   paneClick: []
+  nodeDragStart: [nodes: Array<{ id: string; position: { x: number; y: number } }>]
   nodeDragStop: [nodes: Array<{ id: string; position: { x: number; y: number } }>]
   nodesChange: [changes: unknown[]]
   edgesChange: [changes: unknown[]]
   drop: [data: { event: DragEvent; position: { x: number; y: number } }]
+  paneContextMenu: [event: MouseEvent]
+  nodeContextMenu: [event: MouseEvent | TouchEvent, nodeId: string]
+  edgeContextMenu: [event: MouseEvent | TouchEvent, edgeId: string]
 }>()
 
-// ==================== Vue-Flow ====================
-const { onConnect, onNodeDoubleClick, onPaneClick, fitView, getEdges } = useVueFlow()
-
-/** 根据节点 typeId 获取对应的视图组件类型 */
-function getNodeViewType(typeId: string): string {
-  return NodeViewRegistry.getViewType(typeId)
-}
-
-/** 将 AnoraGraph 转换为 Vue-Flow 节点 */
-const vfNodes = computed<Node[]>(() => {
-  // 依赖 graphRevision 来触发重新计算
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  props.graphRevision
-
-  const nodes: Node[] = []
-  const allNodes = props.graph.getAllNodes()
-
-  for (const node of allNodes) {
-    const pos = props.nodePositions.get(node.id) ?? { x: 0, y: 0 }
-    const size = props.nodeSizes.get(node.id)
-    const isSelected = props.selectedNodeIds?.has(node.id) ?? false
-    nodes.push({
-      id: node.id,
-      type: getNodeViewType(node.typeId),
-      position: pos,
-      data: { node: markRaw(node), readonly: props.readonly, size },
-      draggable: !props.readonly,
-      selectable: !props.readonly,
-      ...(isSelected ? { selected: true } : {}),
-    } as Node)
-  }
-  return nodes
-})
-
-/** 将 AnoraGraph 边转换为 Vue-Flow 边 */
-const vfEdges = computed<Edge[]>(() => {
-  // 依赖 graphRevision 以触发更新
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  props.graphRevision
-
-  const edges: Edge[] = []
-
-  for (const node of props.graph.getAllNodes()) {
-    for (const port of node.getOutputPorts()) {
-      const connectedPorts = props.graph.getConnectedPorts(port)
-      for (const targetPort of connectedPorts) {
-        const edgeId = `${port.id}->${targetPort.id}`
-
-        edges.push({
-          id: edgeId,
-          source: node.id,
-          target: props.graph.getNodeByPort(targetPort)?.id ?? '',
-          sourceHandle: port.id,
-          targetHandle: targetPort.id,
-          type: 'default',
-        })
-      }
-    }
-  }
-
-  return edges
-})
-
-/** 自定义节点类型 */
-const nodeTypes = computed(() => NodeViewRegistry.getNodeTypes())
+// ==================== 从 Store 读取数据 ====================
+const vfNodes = computed(() => graphStore.vfNodes)
+const vfEdges = computed(() => graphStore.vfEdges)
+const nodeTypes = computed(() => graphStore.vfNodeTypes)
+const readonly = computed(() => graphStore.readonly)
 
 /** 自定义边类型 */
 const edgeTypes = {
@@ -165,29 +63,17 @@ const normalEdgeStyle = { stroke: '#64748b', strokeWidth: 2 }
 
 /** 监听 incompatibleEdges 变化，更新边样式 */
 watch(
-  () => props.incompatibleEdges,
-  (newIncompatible, oldIncompatible) => {
-    const edges = getEdges.value
-
-    for (const edgeId of newIncompatible) {
-      if (!oldIncompatible?.has(edgeId)) {
-        const edge = edges.find((e) => e.id === edgeId)
-        if (edge) {
-          edge.style = incompatibleEdgeStyle
-          edge.animated = true
-        }
-      }
-    }
-
-    if (oldIncompatible) {
-      for (const edgeId of oldIncompatible) {
-        if (!newIncompatible.has(edgeId)) {
-          const edge = edges.find((e) => e.id === edgeId)
-          if (edge) {
-            edge.style = normalEdgeStyle
-            edge.animated = false
-          }
-        }
+  () => graphStore.incompatibleEdges,
+  () => {
+    // 遍历所有边，根据 incompatibleEdges 更新样式
+    for (const edge of graphStore.vfEdges) {
+      const [fromPortId, toPortId] = edge.id.split('->')
+      if (fromPortId && toPortId && graphStore.isEdgeIncompatible(fromPortId, toPortId)) {
+        edge.style = incompatibleEdgeStyle
+        edge.animated = true
+      } else {
+        edge.style = normalEdgeStyle
+        edge.animated = false
       }
     }
   },
@@ -195,23 +81,51 @@ watch(
 )
 
 // ==================== 事件处理 ====================
-onConnect((connection: Connection) => {
-  if (props.readonly) return
+function onConnect(connection: Connection): void {
+  if (readonly.value) return
   emit('connect', connection)
-})
+}
 
-onNodeDoubleClick(({ node }) => {
-  const anoraNode = props.graph.getNode(node.id)
+function onNodeDoubleClick({ node }: { node: Node }): void {
+  const anoraNode = graphStore.currentGraph.getNode(node.id)
   const subGraphNode = anoraNode instanceof SubGraphNode ? anoraNode : null
   emit('nodeDoubleClick', node.id, subGraphNode)
-})
+}
 
-onPaneClick(() => {
+function onPaneClick(): void {
   emit('paneClick')
-})
+}
+
+// ==================== 右键菜单事件 ====================
+function onNodeContextMenu({ event, node }: { event: MouseEvent | TouchEvent; node: Node }): void {
+  if (readonly.value) return
+  event.preventDefault()
+  emit('nodeContextMenu', event, node.id)
+}
+
+function onPaneContextMenu(event: MouseEvent): void {
+  if (readonly.value) return
+  event.preventDefault()
+  emit('paneContextMenu', event)
+}
+
+function onEdgeContextMenu({ event, edge }: { event: MouseEvent | TouchEvent; edge: Edge }): void {
+  if (readonly.value) return
+  event.preventDefault()
+  emit('edgeContextMenu', event, edge.id)
+}
+
+function onNodeDragStart(event: { node: Node; nodes: Node[] }): void {
+  if (readonly.value) return
+  const draggedNodes = event.nodes.map((n) => ({
+    id: n.id,
+    position: { ...n.position },
+  }))
+  emit('nodeDragStart', draggedNodes)
+}
 
 function onNodeDragStop(event: { node: Node; nodes: Node[] }): void {
-  if (props.readonly) return
+  if (readonly.value) return
   // 处理所有被拖动的节点（多选拖动时 nodes 包含所有选中的节点）
   const draggedNodes = event.nodes.map((n) => ({
     id: n.id,
@@ -225,16 +139,16 @@ function onNodesChange(changes: unknown[]): void {
 }
 
 function onEdgesChange(changes: unknown[]): void {
-  if (props.readonly) return
+  if (readonly.value) return
   emit('edgesChange', changes)
 }
 
 /** 处理画布拖放 */
 function onPaneDrop(event: DragEvent): void {
-  if (props.readonly) return
+  if (readonly.value) return
   event.preventDefault()
 
-  // 获取画布坐标（Vue Flow 会自动处理坐标转换）
+  // 获取画布坐标
   const vueFlowElement = event.currentTarget as HTMLElement
   const rect = vueFlowElement.getBoundingClientRect()
 
@@ -249,22 +163,31 @@ function onPaneDrop(event: DragEvent): void {
 
 /** 阻止默认拖放行为 */
 function onPaneDragOver(event: DragEvent): void {
-  if (props.readonly) return
+  if (readonly.value) return
   event.preventDefault()
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'copy'
   }
 }
 
-// ==================== 公开方法 ====================
+// ==================== 公开方法（通过 store 实现） ====================
 defineExpose({
-  fitView: () => fitView({ padding: 0.2 }),
+  fitView: () => graphStore.fitView({ padding: 0.2 }),
+  /** 获取选中的节点 ID 列表 */
+  getSelectedNodeIds: () => Array.from(graphStore.selectedNodeIds),
+  /** 获取选中的边 ID 列表 */
+  getSelectedEdgeIds: () => Array.from(graphStore.selectedEdges),
+  /** 通过 ID 选中节点 */
+  addSelectedNodes: (nodeIds: string[]) => graphStore.selectNodesByIds(nodeIds, true),
+  /** 取消选中节点（清空所有选中） */
+  removeSelectedNodes: () => graphStore.clearSelection(),
 })
 </script>
 
 <template>
   <div class="anora-graph-view">
     <VueFlow
+      :id="graphStore.vfFlowId"
       :nodes="vfNodes"
       :edges="vfEdges"
       :node-types="nodeTypes"
@@ -274,13 +197,20 @@ defineExpose({
       :snap-grid="[20, 20]"
       :multi-selection-key-code="'Shift'"
       fit-view-on-init
+      @connect="onConnect"
+      @node-double-click="onNodeDoubleClick"
+      @pane-click="onPaneClick"
+      @node-context-menu="onNodeContextMenu"
+      @pane-context-menu="onPaneContextMenu"
+      @edge-context-menu="onEdgeContextMenu"
+      @node-drag-start="onNodeDragStart"
       @node-drag-stop="onNodeDragStop"
       @nodes-change="onNodesChange"
       @edges-change="onEdgesChange"
       @drop="onPaneDrop"
       @dragover="onPaneDragOver"
     >
-      <Background :variant="BackgroundVariant.Dots" :gap="20" :size="1" pattern-color="#3a3a5c" />
+      <Background variant="dots" :gap="20" :size="1" pattern-color="#3a3a5c" />
       <slot />
     </VueFlow>
   </div>

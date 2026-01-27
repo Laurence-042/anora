@@ -175,6 +175,28 @@ export abstract class BasePort {
       this.write(data.data as string | number | boolean | object | null)
     }
   }
+
+  /**
+   * 复制序列化数据并生成新 ID
+   * @returns { data: 序列化数据, idMap: ID 映射 }
+   */
+  duplicate(): { data: SerializedPort; idMap: Map<string, string> } {
+    const oldId = this.id
+    const newId = uuidv4()
+    const idMap = new Map<string, string>()
+    idMap.set(oldId, newId)
+    return { data: { ...this.serialize(), id: newId }, idMap }
+  }
+
+  /**
+   * 重新生成 ID
+   * @returns { oldId, newId }
+   */
+  regenerateId(): { oldId: string; newId: string } {
+    const oldId = this._id
+    this._id = uuidv4()
+    return { oldId, newId: this._id }
+  }
 }
 
 /**
@@ -193,17 +215,25 @@ export abstract class ContainerPort extends BasePort {
   }
 
   /**
-   * 获取所有子 Port 的 key 列表
+   * 获取子 Port 映射（key -> Port）
    */
-  getKeys(): (string | number)[] {
-    return Array.from(this._children.keys())
+  getChildren(): Map<string | number, BasePort> {
+    return new Map(this._children)
   }
 
   /**
-   * 获取所有子 Port
+   * 深度优先遍历所有子孙 Port（包含自身）
+   * @param handler 处理函数，返回 false 则停止遍历
    */
-  getChildren(): BasePort[] {
-    return Array.from(this._children.values())
+  traverseDeep(handler: (port: BasePort) => boolean | void): void {
+    if (handler(this) === false) return
+    for (const child of this._children.values()) {
+      if (child instanceof ContainerPort) {
+        child.traverseDeep(handler)
+      } else {
+        if (handler(child) === false) return
+      }
+    }
   }
 
   /**
@@ -256,5 +286,29 @@ export abstract class ContainerPort extends BasePort {
       ...base,
       children,
     }
+  }
+
+  /**
+   * 复制序列化数据并生成新 ID（递归处理子 Port）
+   * @returns { data: 序列化数据, idMap: 所有 Port 的 ID 映射 }
+   */
+  override duplicate(): { data: SerializedPort; idMap: Map<string, string> } {
+    const idMap = new Map<string, string>()
+    const oldId = this.id
+    const newId = uuidv4()
+    idMap.set(oldId, newId)
+
+    const result: SerializedPort = { ...this.serialize(), id: newId }
+
+    if (this._children.size > 0) {
+      result.children = []
+      for (const child of this._children.values()) {
+        const { data, idMap: childIdMap } = child.duplicate()
+        result.children.push(data)
+        for (const [k, v] of childIdMap) idMap.set(k, v)
+      }
+    }
+
+    return { data: result, idMap }
   }
 }
