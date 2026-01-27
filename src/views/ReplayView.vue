@@ -311,7 +311,9 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="time-display">{{ formatTime(controller.totalDuration.value) }}</div>
-        <div class="progress-text">{{ (smoothProgress / controller.totalDuration.value * 100).toFixed(1) }}%</div>
+        <div class="progress-text">
+          {{ ((smoothProgress / controller.totalDuration.value) * 100).toFixed(1) }}%
+        </div>
       </div>
 
       <!-- 播放控制 -->
