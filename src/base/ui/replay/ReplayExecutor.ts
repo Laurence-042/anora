@@ -321,17 +321,21 @@ export class ReplayExecutor {
     }
 
     // 计算到下一个事件的延迟
+    // 注意：getCurrentTime() 返回的是相对于第一个事件的时间
+    // nextEvent.timestamp 是绝对时间戳，需要减去 baseTime 转换为相对时间
     const currentTime = this.timeline.getCurrentTime()
+    const baseTime = this.timeline.getBaseTime()
     const nextEvent = this.timeline.getEvent(this.timeline.cursor + 1)
     if (!nextEvent) {
       this.setState(ReplayState.Completed)
       return
     }
 
-    const delay = (nextEvent.timestamp - currentTime) / this.playbackSpeed
+    const nextRelativeTime = nextEvent.timestamp - baseTime
+    const delay = (nextRelativeTime - currentTime) / this.playbackSpeed
 
     console.log(
-      `[ReplayExecutor] scheduleNextEvent: cursor=${this.timeline.cursor}, currentTime=${currentTime}, nextTimestamp=${nextEvent.timestamp}, delay=${delay}ms`,
+      `[ReplayExecutor] scheduleNextEvent: cursor=${this.timeline.cursor}, currentTime=${currentTime}, nextRelativeTime=${nextRelativeTime}, delay=${delay}ms`,
     )
 
     this.playTimer = setTimeout(
@@ -505,12 +509,14 @@ export class ReplayExecutor {
     const totalDuration = this.totalDuration
     if (totalDuration === 0) return []
 
+    const baseTime = this.timeline.getBaseTime()
     let currentKeyframeStart = 0
     let currentKeyframeTime = 0
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i]!
-      const eventTime = event.timestamp
+      // 转换为相对时间
+      const eventTime = event.timestamp - baseTime
 
       if (eventTime >= currentKeyframeTime + intervalMs || i === 0) {
         if (i > 0) {

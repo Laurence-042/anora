@@ -20,6 +20,9 @@ import i18n from './locales'
 import { initAllMods } from './mods'
 initAllMods()
 
+// 初始化 UI 层（注册默认视图等）
+import '@/base/ui'
+
 // 注册核心事件处理器（用于 Timeline 回放/撤销）
 import { registerCoreEventHandlers } from '@/base/ui/replay'
 registerCoreEventHandlers()

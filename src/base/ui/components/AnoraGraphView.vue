@@ -10,7 +10,7 @@
  * - GraphEditor: 编辑模式，启用拖拽/连线
  * - ReplayView: 回放模式，只读展示
  */
-import { computed, watch, markRaw, onMounted } from 'vue'
+import { computed, watch, markRaw } from 'vue'
 import { VueFlow, type Node, type Edge, type Connection } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import '@vue-flow/core/dist/style.css'
@@ -18,18 +18,11 @@ import '@vue-flow/core/dist/theme-default.css'
 
 import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { useGraphStore } from '@/stores/graph'
-import { NodeViewRegistry } from '@/base/ui/registry'
 
-import BaseNodeView from './BaseNodeView.vue'
 import EdgeView from './EdgeView.vue'
 
 // 获取 graphStore
 const graphStore = useGraphStore()
-
-// 初始化时设置默认视图
-onMounted(() => {
-  NodeViewRegistry.setDefaultView(BaseNodeView)
-})
 
 // ==================== Emits ====================
 const emit = defineEmits<{

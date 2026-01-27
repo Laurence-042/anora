@@ -32,3 +32,10 @@ export * from './clipboard'
 
 // Replay
 export * from './replay'
+
+// ==================== 初始化默认视图 ====================
+import BaseNodeView from './components/BaseNodeView.vue'
+import { NodeViewRegistry } from './registry'
+
+// 立即注册默认视图，确保在任何组件使用前可用
+NodeViewRegistry.setDefaultView(BaseNodeView)
