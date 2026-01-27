@@ -265,15 +265,15 @@ function deleteSelectedEdges(): void {
 }
 
 /** 处理复制 */
-function handleCopy(): void {
-  clipboard.copy(graphStore)
+async function handleCopy(): Promise<void> {
+  await clipboard.copy(graphStore)
 }
 
 /** 处理粘贴 */
-function handlePaste(position?: { x: number; y: number }): void {
+async function handlePaste(position?: { x: number; y: number }): Promise<void> {
   // 默认粘贴位置：视口中心
   const pastePosition = position ?? { x: 200, y: 200 }
-  clipboard.paste(graphStore, pastePosition, editHistory)
+  await clipboard.paste(graphStore, pastePosition, editHistory)
 }
 
 /** 处理撤销 */

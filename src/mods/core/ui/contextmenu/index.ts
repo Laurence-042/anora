@@ -26,6 +26,7 @@ export const CoreMenuItemIds = {
   EDGE_TOGGLE: 'core.edge.toggle',
 
   // 空白处菜单
+  PANE_COPY: 'core.pane.copy',
   PANE_PASTE: 'core.pane.paste',
   PANE_UNDO: 'core.pane.undo',
   PANE_REDO: 'core.pane.redo',
@@ -68,7 +69,7 @@ const coreNodeMenuItems: ContextMenuItem[] = [
     shortcut: 'Ctrl+C',
     priority: 10,
     onClick(context) {
-      context.clipboard?.copy(context.graphStore)
+      void context.clipboard?.copy(context.graphStore)
     },
   },
   {
@@ -106,15 +107,35 @@ const coreEdgeMenuItems: ContextMenuItem[] = [
 
 const corePaneMenuItems: ContextMenuItem[] = [
   {
+    id: CoreMenuItemIds.PANE_COPY,
+    label: 'contextMenu.copy',
+    icon: '📋',
+    shortcut: 'Ctrl+C',
+    priority: 5,
+    // 只在有选中节点时显示
+    visible: (context) => context.selectedNodeIds.size > 0,
+    onClick(context) {
+      void context.clipboard?.copy(context.graphStore)
+    },
+  },
+  {
     id: CoreMenuItemIds.PANE_PASTE,
     label: 'contextMenu.paste',
     icon: '📋',
     shortcut: 'Ctrl+V',
     priority: 10,
-    disabled: (context) => !context.clipboard?.hasData(),
+    // 由于系统剪贴板检查是异步的，这里不做禁用检查
+    // 实际粘贴操作会在没有有效数据时静默失败
+    disabled: false,
     onClick(context) {
       if (context.clipboard && context.canvasPosition) {
-        context.clipboard.paste(context.graphStore, context.canvasPosition, context.editHistory)
+        // clipboard.paste 是异步的，但 onClick 不支持 async
+        // 直接调用，内部会处理无数据的情况
+        void context.clipboard.paste(
+          context.graphStore,
+          context.canvasPosition,
+          context.editHistory,
+        )
       }
     },
   },

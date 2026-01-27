@@ -3,22 +3,23 @@
  * 剪贴板系统类型定义
  */
 
-import type { SerializedNode, SerializedEdge } from '@/base/runtime/types'
+import type { SerializedGraph } from '@/base/runtime/types'
 
 /**
- * 剪贴板数据格式
+ * 剪贴板数据标识符
+ * 用于在系统剪贴板中识别 ANORA 数据
+ */
+export const CLIPBOARD_MARKER = 'ANORA_GRAPH_CLIPBOARD_V1'
+
+/**
+ * 系统剪贴板数据格式
+ * 直接序列化为 JSON 字符串存入系统剪贴板
  */
 export interface ClipboardData {
-  /** 复制的节点（含相对位置） */
-  nodes: Array<{
-    /** 节点序列化数据 */
-    node: SerializedNode
-    /** 相对于选区中心的偏移 */
-    offset: { x: number; y: number }
-  }>
-
-  /** 选中节点之间的内部边 */
-  edges: SerializedEdge[]
+  /** 数据标识符 */
+  marker: typeof CLIPBOARD_MARKER
+  /** 序列化的子图数据 */
+  graph: SerializedGraph
 }
 
 /**
