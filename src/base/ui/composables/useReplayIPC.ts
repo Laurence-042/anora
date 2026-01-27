@@ -128,7 +128,7 @@ export function useReplayIPC(options: {
         return
       }
 
-      controller.seekToKeyframe(kfIndex, before)
+      await controller.seekToKeyframe(kfIndex, before)
       postMessage('replay.seekToKeyframe', { keyframeIndex: kfIndex })
     }),
   )
@@ -238,7 +238,7 @@ export function useReplayIPC(options: {
 
       // If we're already past or at the target keyframe, just seek to it
       if (currentTime >= targetTime) {
-        controller.seekToKeyframe(keyframeIndex, false)
+        await controller.seekToKeyframe(keyframeIndex, false)
         postMessage('replay.playToKeyframe.completed', { keyframeIndex, alreadyPast: true })
         return
       }
@@ -265,7 +265,7 @@ export function useReplayIPC(options: {
           // Unsubscribe BEFORE seeking to avoid infinite loop
           unsubscribe()
           playToKeyframeHandlers.delete(handlerId)
-          // Seek exactly to the keyframe position
+          // Seek exactly to the keyframe position (fire and forget since we're in event callback)
           controller.seekToKeyframe(keyframeIndex, false)
           postMessage('replay.playToKeyframe.completed', { keyframeIndex })
           return

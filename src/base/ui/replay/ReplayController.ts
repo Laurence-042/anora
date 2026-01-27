@@ -190,7 +190,7 @@ export class ReplayController {
     const success = this._executor.value.stepBackward()
     if (success) {
       // 后退后需要重建 UI 状态
-      this.applyStateSnapshot()
+      await this.applyStateSnapshot()
     }
   }
 
@@ -208,7 +208,7 @@ export class ReplayController {
 
   // ==================== 跳转控制 ====================
 
-  seekToTime(timeMs: number): number {
+  async seekToTime(timeMs: number): Promise<number> {
     if (!this._executor.value) return -1
 
     const wasPlaying = this.isPlaying.value
@@ -217,12 +217,12 @@ export class ReplayController {
     }
 
     const targetIndex = this._executor.value.seekToTime(timeMs)
-    this.applyStateSnapshot()
+    await this.applyStateSnapshot()
 
     return targetIndex
   }
 
-  seekToIndex(index: number): void {
+  async seekToIndex(index: number): Promise<void> {
     if (!this._executor.value) return
 
     const wasPlaying = this.isPlaying.value
@@ -231,10 +231,10 @@ export class ReplayController {
     }
 
     this._executor.value.seekToIndex(index)
-    this.applyStateSnapshot()
+    await this.applyStateSnapshot()
   }
 
-  seekToKeyframe(keyframeIndex: number, before: boolean = false): void {
+  async seekToKeyframe(keyframeIndex: number, before: boolean = false): Promise<void> {
     const kf = this._keyframes.value[keyframeIndex]
     if (!kf || !this._recording.value) return
 
@@ -243,21 +243,31 @@ export class ReplayController {
     const endTime = endEvent?.timestamp ?? kf.time
     const time = before ? Math.max(0, kf.time - 1) : endTime
 
-    this.seekToTime(time)
+    await this.seekToTime(time)
   }
 
   /**
-   * 应用当前位置的状态快照到 UI
+   * 应用当前位置的状态到 UI
+   *
+   * 核心策略：
+   * 1. 重置到初始状态（清空执行状态 + 恢复初始图）
+   * 2. 从头 replay 所有事件到当前位置
+   *
+   * 这样可以正确处理所有类型的 TimelineEvent（包括 Edit 事件）
    */
-  private applyStateSnapshot(): void {
+  private async applyStateSnapshot(): Promise<void> {
     if (!this._executor.value || !this._graph.value) return
 
-    const snapshot = this._executor.value.getStateSnapshot()
-
-    // 1. 清空状态
+    // 1. 发送 Start 事件清空执行相关的 UI 状态
     this.onExecutorEvent?.({ type: ExecutorEventType.Start })
 
-    // 2. 应用已完成节点
+    // 2. 恢复边到初始状态并重放编辑事件
+    await this._executor.value.restoreEdgeStateAndReplayEditEvents()
+
+    // 3. 获取从开始到当前位置的执行状态快照
+    const snapshot = this._executor.value.getStateSnapshot()
+
+    // 4. 应用已完成节点状态
     for (const [nodeId, status] of snapshot.completedNodeIds) {
       this.onExecutorEvent?.({
         type: ExecutorEventType.NodeComplete,
@@ -267,7 +277,7 @@ export class ReplayController {
       })
     }
 
-    // 3. 应用数据传输
+    // 5. 应用数据传输（边激活状态）
     if (snapshot.dataTransfers.size > 0) {
       const transfers = Array.from(snapshot.dataTransfers.values())
       this.onExecutorEvent?.({
@@ -276,7 +286,7 @@ export class ReplayController {
       })
     }
 
-    // 4. 应用正在执行的节点
+    // 6. 应用正在执行的节点
     for (const nodeId of snapshot.executingNodeIds) {
       this.onExecutorEvent?.({ type: ExecutorEventType.NodeStart, nodeId })
     }

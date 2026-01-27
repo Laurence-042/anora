@@ -427,6 +427,68 @@ export class ReplayExecutor {
     }
   }
 
+  // ============ 状态重建（用于 seek）============
+
+  /**
+   * 恢复边到初始状态并重放编辑事件到当前位置
+   * 用于 seek 时重建图的完整编辑状态
+   *
+   * 流程：
+   * 1. 将所有边恢复到 initialGraph 中的状态（如 disabled）
+   * 2. 按顺序重放从开始到当前位置的所有编辑事件
+   */
+  async restoreEdgeStateAndReplayEditEvents(): Promise<void> {
+    if (!this.context || !this.graph) return
+
+    // 1. 恢复边到初始状态
+    const initialGraph = this.timeline.getInitialGraph()
+    if (initialGraph) {
+      // 构建初始边状态的映射: edgeKey -> disabled
+      const initialEdgeStates = new Map<string, boolean>()
+      for (const edge of initialGraph.edges) {
+        const key = `${edge.fromPortId}->${edge.toPortId}`
+        initialEdgeStates.set(key, edge.disabled ?? false)
+      }
+
+      // 将当前图的边恢复到初始状态
+      for (const edge of this.graph.getAllEdges()) {
+        const key = `${edge.fromPortId}->${edge.toPortId}`
+        const initialDisabled = initialEdgeStates.get(key) ?? false
+        const currentDisabled = this.graph.isEdgeDisabled(edge.fromPortId, edge.toPortId)
+        if (currentDisabled !== initialDisabled) {
+          this.graph.setEdgeDisabled(edge.fromPortId, edge.toPortId, initialDisabled)
+        }
+      }
+    }
+
+    // 2. 重放编辑事件到当前位置
+    const events = this.timeline.getEvents()
+    const currentIndex = this.timeline.cursor
+
+    for (let i = 0; i <= currentIndex && i < events.length; i++) {
+      const event = events[i]
+      if (!event || event.category !== TimelineEventCategory.EDIT) continue
+
+      // 使用 EventHandlerRegistry 重放编辑事件
+      await EventHandlerRegistry.replay(event, this.context)
+    }
+  }
+
+  /**
+   * 重放从开始到当前位置的所有编辑事件（旧方法，保留兼容）
+   * @deprecated 使用 restoreEdgeStateAndReplayEditEvents 代替
+   */
+  async replayEditEventsToCursor(): Promise<void> {
+    await this.restoreEdgeStateAndReplayEditEvents()
+  }
+
+  /**
+   * 获取回放上下文（用于外部访问）
+   */
+  getContext(): EventReplayContext | null {
+    return this.context
+  }
+
   // ============ 状态快照（用于 UI 渲染）============
 
   /**
@@ -458,6 +520,7 @@ export class ReplayExecutor {
           break
         case ExecutorEventType.Iteration:
           executingNodeIds.clear()
+          dataTransfers.clear() // 新迭代开始时清空边数据，与 graph.ts handleExecutorEvent 保持一致
           break
         case ExecutorEventType.NodeStart:
           executingNodeIds.add(execEvent.nodeId)
