@@ -13,7 +13,7 @@
  * - 不再手动管理进度动画
  * - 通过 controller 的响应式属性直接绑定 UI
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElUpload } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
@@ -65,6 +65,90 @@ controller.onExecutorEvent = (event) => {
   }
   graphStore.handleExecutorEvent(event)
 }
+
+// ==================== 平滑进度动画 ====================
+
+/** 平滑进度值（用于进度条显示） */
+const smoothProgress = ref(0)
+
+/** 动画帧 ID */
+let animationFrameId: number | null = null
+
+/** 动画起始时间和起始进度 */
+let animationStartTime = 0
+let animationStartProgress = 0
+
+/**
+ * 启动平滑进度动画
+ * 在播放状态时，进度条会平滑地从当前位置移动到下一个事件位置
+ */
+function startProgressAnimation() {
+  if (animationFrameId !== null) return
+
+  animationStartTime = performance.now()
+  animationStartProgress = controller.currentTime.value
+
+  function animate() {
+    if (!controller.isPlaying.value) {
+      animationFrameId = null
+      return
+    }
+
+    const elapsed = (performance.now() - animationStartTime) * controller.playbackSpeed.value
+    const targetTime = controller.currentTime.value
+    const totalDuration = controller.totalDuration.value
+
+    // 计算预期的当前时间
+    // 如果真实 currentTime 已经更新（事件触发），则跳到新位置重新开始插值
+    if (targetTime !== animationStartProgress) {
+      // 事件触发了，更新起点
+      animationStartTime = performance.now()
+      animationStartProgress = targetTime
+    }
+
+    // 从上次事件时间开始，加上经过的时间
+    const interpolatedTime = Math.min(animationStartProgress + elapsed, totalDuration)
+    smoothProgress.value = interpolatedTime
+
+    animationFrameId = requestAnimationFrame(animate)
+  }
+
+  animationFrameId = requestAnimationFrame(animate)
+}
+
+/**
+ * 停止平滑进度动画
+ */
+function stopProgressAnimation() {
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+  // 停止时同步到真实进度
+  smoothProgress.value = controller.currentTime.value
+}
+
+// 监听播放状态变化
+watch(
+  () => controller.isPlaying.value,
+  (isPlaying) => {
+    if (isPlaying) {
+      startProgressAnimation()
+    } else {
+      stopProgressAnimation()
+    }
+  },
+)
+
+// 监听 currentTime 变化（用于 seek 等非播放状态的更新）
+watch(
+  () => controller.currentTime.value,
+  (newTime) => {
+    if (!controller.isPlaying.value) {
+      smoothProgress.value = newTime
+    }
+  },
+)
 
 // ==================== UI 引用 ====================
 
@@ -171,6 +255,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopProgressAnimation()
   controller.dispose()
   ipcHandle?.destroy()
 })
@@ -204,13 +289,13 @@ onUnmounted(() => {
     <div v-if="controller.isLoaded.value" class="replay-controls">
       <!-- 进度条 -->
       <div class="progress-section">
-        <div class="time-display">{{ formatTime(controller.currentTime.value) }}</div>
+        <div class="time-display">{{ formatTime(smoothProgress) }}</div>
         <div class="progress-wrapper">
           <input
             type="range"
             :min="0"
             :max="controller.totalDuration.value"
-            :value="controller.currentTime.value"
+            :value="smoothProgress"
             class="progress-slider"
             @input="handleProgressChange"
           />
@@ -226,7 +311,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="time-display">{{ formatTime(controller.totalDuration.value) }}</div>
-        <div class="progress-text">{{ controller.progress.value.toFixed(1) }}%</div>
+        <div class="progress-text">{{ (smoothProgress / controller.totalDuration.value * 100).toFixed(1) }}%</div>
       </div>
 
       <!-- 播放控制 -->
