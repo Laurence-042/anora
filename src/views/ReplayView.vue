@@ -33,6 +33,7 @@ const isDev = import.meta.env.DEV
 const isDebugMode = ref(isDev)
 const debugDurationMs = ref(-1)
 const debugSeekKeyframeIndex = ref(0)
+const debugPlayToKeyframeIndex = ref(0)
 const debugLog = ref<string[]>([])
 
 function addDebugLog(message: string) {
@@ -94,17 +95,18 @@ function startProgressAnimation() {
       return
     }
 
-    const elapsed = (performance.now() - animationStartTime) * controller.playbackSpeed.value
     const targetTime = controller.currentTime.value
     const totalDuration = controller.totalDuration.value
 
-    // 计算预期的当前时间
     // 如果真实 currentTime 已经更新（事件触发），则跳到新位置重新开始插值
     if (targetTime !== animationStartProgress) {
       // 事件触发了，更新起点
       animationStartTime = performance.now()
       animationStartProgress = targetTime
     }
+
+    // 计算从上次事件到现在经过的时间（必须在可能的重置之后计算）
+    const elapsed = (performance.now() - animationStartTime) * controller.playbackSpeed.value
 
     // 从上次事件时间开始，加上经过的时间
     const interpolatedTime = Math.min(animationStartProgress + elapsed, totalDuration)
@@ -423,6 +425,17 @@ onUnmounted(() => {
             "
           >
             Send SeekToKeyframe
+          </button>
+        </div>
+        <div class="debug-input-group">
+          <label>PlayToKeyframe (index):</label>
+          <input v-model.number="debugPlayToKeyframeIndex" type="number" />
+          <button
+            @click="
+              sendDebugMessage('replay.playToKeyframe', { keyframeIndex: debugPlayToKeyframeIndex })
+            "
+          >
+            Send PlayToKeyframe
           </button>
         </div>
       </div>

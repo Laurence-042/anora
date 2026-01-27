@@ -32,6 +32,10 @@ interface PlayForData {
   durationMs?: number
 }
 
+interface PlayToKeyframeData {
+  keyframeIndex?: number
+}
+
 /**
  * useReplayIPC
  * @param options.controller - ReplayController 实例
@@ -203,6 +207,86 @@ export function useReplayIPC(options: {
     }),
   )
 
+  // playToKeyframe - play until reaching a specific keyframe then pause
+  const playToKeyframeHandlers = new Map<number, () => void>()
+  let playToKeyframeCounter = 0
+
+  unsubscribers.push(
+    on('replay.playToKeyframe', async (msg) => {
+      const data = (msg as IPCMessage<PlayToKeyframeData>).data ?? {}
+      const keyframeIndex = typeof data.keyframeIndex === 'number' ? data.keyframeIndex : -1
+
+      if (!controller.isLoaded.value) {
+        postMessage('replay.playToKeyframe', { error: 'not-loaded' })
+        return
+      }
+
+      const keyframes = controller.keyframes.value
+      if (keyframeIndex < 0 || keyframeIndex >= keyframes.length) {
+        postMessage('replay.playToKeyframe', { error: 'invalid-keyframe-index' })
+        return
+      }
+
+      const targetKeyframe = keyframes[keyframeIndex]
+      if (!targetKeyframe) {
+        postMessage('replay.playToKeyframe', { error: 'invalid-keyframe-index' })
+        return
+      }
+
+      const targetTime = targetKeyframe.time
+      const currentTime = controller.currentTime.value
+
+      // If we're already past or at the target keyframe, just seek to it
+      if (currentTime >= targetTime) {
+        controller.seekToKeyframe(keyframeIndex, false)
+        postMessage('replay.playToKeyframe.completed', { keyframeIndex, alreadyPast: true })
+        return
+      }
+
+      // Start playback
+      await controller.play()
+
+      const handlerId = ++playToKeyframeCounter
+
+      // Set up event listener to detect when we reach the target keyframe
+      const originalCallback = controller.onExecutorEvent
+      const unsubscribe = () => {
+        controller.onExecutorEvent = originalCallback
+      }
+
+      controller.onExecutorEvent = (event) => {
+        // Call original callback first
+        originalCallback?.(event)
+
+        // Check if we've reached or passed the target time
+        const nowTime = controller.currentTime.value
+        if (nowTime >= targetTime) {
+          controller.pause()
+          // Unsubscribe BEFORE seeking to avoid infinite loop
+          unsubscribe()
+          playToKeyframeHandlers.delete(handlerId)
+          // Seek exactly to the keyframe position
+          controller.seekToKeyframe(keyframeIndex, false)
+          postMessage('replay.playToKeyframe.completed', { keyframeIndex })
+          return
+        }
+
+        // Also stop if playback completes or is cancelled
+        if (
+          event.type === ExecutorEventType.Complete ||
+          event.type === ExecutorEventType.Cancelled
+        ) {
+          unsubscribe()
+          playToKeyframeHandlers.delete(handlerId)
+          postMessage('replay.playToKeyframe.completed', { keyframeIndex, endedEarly: true })
+        }
+      }
+
+      playToKeyframeHandlers.set(handlerId, unsubscribe)
+      postMessage('replay.playToKeyframe.started', { keyframeIndex, targetTime })
+    }),
+  )
+
   // ==================== 导入录制 ====================
 
   if (options.loadRecording) {
@@ -236,6 +320,12 @@ export function useReplayIPC(options: {
       unsubscribe()
     }
     playToEndHandlers.clear()
+
+    // Clean up play-to-keyframe handlers
+    for (const unsubscribe of playToKeyframeHandlers.values()) {
+      unsubscribe()
+    }
+    playToKeyframeHandlers.clear()
   }
 
   return {

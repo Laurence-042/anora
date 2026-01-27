@@ -546,6 +546,50 @@ interface IPCResponse {
 
 ### 定时播放
 
+#### `replay.playToKeyframe` - 播放到指定关键帧后自动暂停
+
+从当前位置播放，到达指定关键帧时自动暂停。用于分段演示和交互式教程。
+
+**请求：**
+
+```json
+{
+  "type": "replay.playToKeyframe",
+  "data": { "keyframeIndex": 5 }
+}
+```
+
+**响应（播放开始）：**
+
+```json
+{
+  "type": "replay.playToKeyframe.started",
+  "data": { "keyframeIndex": 5, "targetTime": 2500 }
+}
+```
+
+**响应（到达关键帧/完成）：**
+
+```json
+{
+  "type": "replay.playToKeyframe.completed",
+  "data": { "keyframeIndex": 5 }
+}
+```
+
+**特殊情况：**
+
+- 如果当前位置已经在目标关键帧之后，会直接跳转到该关键帧并返回 `alreadyPast: true`
+- 如果在到达目标前播放结束，返回 `endedEarly: true`
+
+**使用场景：**
+
+- 分段教学演示（"播放到下一个重要节点"）
+- 交互式教程（用户点击"下一步"播放到下个关键帧）
+- 自动化截图（播放到关键帧后截图）
+
+---
+
 #### `replay.playFor` - 播放指定时长后自动暂停
 
 从当前位置播放指定毫秒数后自动暂停。用于分段演示。
@@ -645,20 +689,22 @@ interface IPCResponse {
 
 ANORA 会主动发送以下类型的响应消息：
 
-| 响应类型                       | 触发时机       | 数据内容                                      |
-| ------------------------------ | -------------- | --------------------------------------------- |
-| `replay.played`                | 播放命令执行   | 无                                            |
-| `replay.paused`                | 暂停命令执行   | 无                                            |
-| `replay.toggled`               | 切换命令执行   | 无                                            |
-| `replay.stepped`               | 单步命令执行   | 无                                            |
-| `replay.restarted`             | 重启命令执行   | 无                                            |
-| `replay.seeked`                | 跳转完成       | `{ timeMs?, eventIndex?, error? }`            |
-| `replay.seekToKeyframe`        | 关键帧跳转完成 | `{ keyframeIndex }` 或 `{ error }`            |
-| `replay.speedSet`              | 速度设置完成   | `{ speed }`                                   |
-| `replay.playFor.started`       | 定时播放开始   | `{ durationMs, timerId? }` 或 `{ playToEnd }` |
-| `replay.playFor.completed`     | 定时播放完成   | `{ durationMs }` 或 `{ playedToEnd }`         |
-| `replay.importRecording.ok`    | 录制加载成功   | 无                                            |
-| `replay.importRecording.error` | 录制加载失败   | `{ error }`                                   |
+| 响应类型                          | 触发时机       | 数据内容                                            |
+| --------------------------------- | -------------- | --------------------------------------------------- |
+| `replay.played`                   | 播放命令执行   | 无                                                  |
+| `replay.paused`                   | 暂停命令执行   | 无                                                  |
+| `replay.toggled`                  | 切换命令执行   | 无                                                  |
+| `replay.stepped`                  | 单步命令执行   | 无                                                  |
+| `replay.restarted`                | 重启命令执行   | 无                                                  |
+| `replay.seeked`                   | 跳转完成       | `{ timeMs?, eventIndex?, error? }`                  |
+| `replay.seekToKeyframe`           | 关键帧跳转完成 | `{ keyframeIndex }` 或 `{ error }`                  |
+| `replay.speedSet`                 | 速度设置完成   | `{ speed }`                                         |
+| `replay.playFor.started`          | 定时播放开始   | `{ durationMs, timerId? }` 或 `{ playToEnd }`       |
+| `replay.playFor.completed`        | 定时播放完成   | `{ durationMs }` 或 `{ playedToEnd }`               |
+| `replay.playToKeyframe.started`   | 关键帧播放开始 | `{ keyframeIndex, targetTime }`                     |
+| `replay.playToKeyframe.completed` | 关键帧播放完成 | `{ keyframeIndex }` 或含 `alreadyPast`/`endedEarly` |
+| `replay.importRecording.ok`       | 录制加载成功   | 无                                                  |
+| `replay.importRecording.error`    | 录制加载失败   | `{ error }`                                         |
 
 **ExecutorState 枚举值：**
 
