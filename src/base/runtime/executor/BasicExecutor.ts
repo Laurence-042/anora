@@ -433,7 +433,8 @@ export class BasicExecutor {
   }
 
   /**
-   * 获取节点所有入 Port 中已被连接的 Port ID 集合（排除禁用的边）
+   * 获取节点所有入 Port 中已被连接的 Port ID 集合
+   * 注意：禁用的边仍然算作连接，因为节点需要知道它有入边（即使数据不会通过禁用边传播）
    */
   private getConnectedInPortIds(node: BaseNode, graph: AnoraGraph): Set<string> {
     const connectedIds = new Set<string>()
@@ -441,12 +442,8 @@ export class BasicExecutor {
 
     for (const port of inputPorts) {
       const connected = graph.getConnectedPorts(port)
-      // 检查是否有启用的边连接到此入 Port
-      for (const sourcePort of connected) {
-        if (!graph.isEdgeDisabled(sourcePort.id, port.id)) {
-          connectedIds.add(port.id)
-          break // 只要有一条启用的边就算连接
-        }
+      if (connected.length > 0) {
+        connectedIds.add(port.id)
       }
     }
 
