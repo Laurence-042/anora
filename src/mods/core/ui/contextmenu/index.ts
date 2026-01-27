@@ -12,6 +12,7 @@ import {
   type ContextMenuContext,
 } from '@/base/ui/contextmenu'
 import { removeNodesWithHistory, removeEdgesWithHistory } from '@/base/ui/history'
+import { EditCommandType } from '@/base/runtime/timeline'
 
 /**
  * 核心菜单项 ID 常量
@@ -85,6 +86,80 @@ const coreNodeMenuItems: ContextMenuItem[] = [
 
 const coreEdgeMenuItems: ContextMenuItem[] = [
   {
+    id: CoreMenuItemIds.EDGE_TOGGLE,
+    label: 'contextMenu.toggleEdge',
+    icon: '🔌',
+    shortcut: 'Double Click',
+    priority: 50,
+    onClick(context) {
+      const { graphStore, editHistory, selectedEdges, edgeId } = context
+
+      // 确定要操作的边：优先使用选中的边，如果没有选中则使用右键点击的边
+      const edgesToToggle: string[] = []
+      if (selectedEdges.size > 0) {
+        edgesToToggle.push(...selectedEdges)
+      } else if (edgeId) {
+        edgesToToggle.push(edgeId)
+      }
+
+      if (edgesToToggle.length === 0) return
+
+      // 收集所有边的状态切换操作
+      const toggleCommands: Array<{
+        fromPortId: string
+        toPortId: string
+        oldDisabled: boolean
+        newDisabled: boolean
+      }> = []
+
+      for (const eid of edgesToToggle) {
+        const [fromPortId, toPortId] = eid.split('->')
+        if (fromPortId && toPortId) {
+          const oldDisabled = graphStore.isEdgeDisabled(fromPortId, toPortId)
+          const newDisabled = !oldDisabled
+          toggleCommands.push({ fromPortId, toPortId, oldDisabled, newDisabled })
+          // 执行切换
+          graphStore.setEdgeDisabled(fromPortId, toPortId, newDisabled)
+        }
+      }
+
+      // 记录到编辑历史（批量操作）
+      if (editHistory && toggleCommands.length > 0) {
+        if (toggleCommands.length === 1) {
+          const cmd = toggleCommands[0]!
+          editHistory.push(
+            EditCommandType.TOGGLE_EDGE,
+            {
+              type: EditCommandType.TOGGLE_EDGE,
+              fromPortId: cmd.fromPortId,
+              toPortId: cmd.toPortId,
+              oldDisabled: cmd.oldDisabled,
+              newDisabled: cmd.newDisabled,
+            },
+            cmd.newDisabled ? 'Disable edge' : 'Enable edge',
+          )
+        } else {
+          // 批量操作
+          editHistory.push(
+            EditCommandType.BATCH,
+            {
+              type: EditCommandType.BATCH,
+              description: 'Toggle edges',
+              commands: toggleCommands.map((cmd) => ({
+                type: EditCommandType.TOGGLE_EDGE,
+                fromPortId: cmd.fromPortId,
+                toPortId: cmd.toPortId,
+                oldDisabled: cmd.oldDisabled,
+                newDisabled: cmd.newDisabled,
+              })),
+            },
+            `Toggle ${toggleCommands.length} edges`,
+          )
+        }
+      }
+    },
+  },
+  {
     id: CoreMenuItemIds.EDGE_DELETE,
     label: 'contextMenu.delete',
     icon: '🗑️',
@@ -92,17 +167,6 @@ const coreEdgeMenuItems: ContextMenuItem[] = [
     priority: 100,
     onClick: deleteSelectedEdges,
   },
-  // TODO: 边的禁用/启用功能需要在 AnoraGraph 中支持 disabled 状态
-  // {
-  //   id: CoreMenuItemIds.EDGE_TOGGLE,
-  //   label: 'contextMenu.toggleEdge',
-  //   icon: '🔌',
-  //   shortcut: 'Double Click',
-  //   priority: 50,
-  //   onClick(context) {
-  //     // TODO: Toggle edge disabled state
-  //   },
-  // },
 ]
 
 const corePaneMenuItems: ContextMenuItem[] = [

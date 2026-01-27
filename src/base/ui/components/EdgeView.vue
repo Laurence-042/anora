@@ -54,6 +54,15 @@ const areBothPortsVisible = computed(() => {
   return isSourcePortVisible.value && isTargetPortVisible.value
 })
 
+/** 是否被禁用 */
+const isDisabled = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  graphRevision.value // 依赖 graphRevision 触发更新
+  const { sourceHandleId, targetHandleId } = parsedHandleIds.value
+  if (!sourceHandleId || !targetHandleId) return false
+  return graphStore.isEdgeDisabled(sourceHandleId, targetHandleId)
+})
+
 /** 是否正在执行（用于动画） */
 const isActive = computed(() => {
   // 检查源节点是否正在执行
@@ -119,8 +128,21 @@ const pathData = computed(() => {
 
 /** 边的样式 */
 const edgeStyle = computed(() => {
+  // 禁用状态：灰色，无动画
+  if (isDisabled.value) {
+    const style: Record<string, string | number> = {
+      stroke: '#e2e8f0',
+      strokeWidth: 2,
+    }
+    // 折叠时仍然使用虚线
+    if (!areBothPortsVisible.value) {
+      style.strokeDasharray = '8 4'
+    }
+    return style
+  }
+
   const baseStyle: Record<string, string | number> = {
-    stroke: hasDataTransfer.value ? '#22c55e' : isActive.value ? '#fbbf24' : '#64748b',
+    stroke: hasDataTransfer.value ? '#22c55e' : isActive.value ? '#fbbf24' : '#66ccff',
     strokeWidth: hasDataTransfer.value ? 3 : isActive.value ? 3 : 2,
   }
 
@@ -170,16 +192,17 @@ const animationDuration = computed(() => {
     :style="edgeStyle"
     :path="pathData[0]"
     :class="{
-      'edge-active': isActive,
-      'edge-data-transfer': hasDataTransfer,
+      'edge-active': isActive && !isDisabled,
+      'edge-data-transfer': hasDataTransfer && !isDisabled,
       'edge-both-visible': areBothPortsVisible,
-      'edge-port-hidden': !areBothPortsVisible,
+      'edge-port-hidden': !areBothPortsVisible && !isDisabled,
+      'edge-disabled': isDisabled,
     }"
   />
 
-  <!-- 小圆形动画标记（仅当两端 Port 都可见时显示） -->
+  <!-- 小圆形动画标记（仅当两端 Port 都可见且未禁用时显示） -->
   <circle
-    v-if="areBothPortsVisible && !hasDataTransfer"
+    v-if="areBothPortsVisible && !hasDataTransfer && !isDisabled"
     class="edge-flow-marker"
     r="4"
     :style="{ '--animation-duration': `${animationDuration}s` }"
@@ -219,7 +242,15 @@ const animationDuration = computed(() => {
 .vue-flow__edge.selected path,
 .vue-flow__edge:focus path,
 .vue-flow__edge:focus-visible path {
-  stroke: #60a5fa !important;
+  stroke: #ee82ee !important;
+  stroke-width: 3;
+}
+
+/* 禁用状态下的选中高亮（红色） - edge-disabled 在 path 上，selected 在外层 */
+.vue-flow__edge.selected path.edge-disabled,
+.vue-flow__edge:focus path.edge-disabled,
+.vue-flow__edge:focus-visible path.edge-disabled {
+  stroke: #ee0000 !important;
   stroke-width: 3;
 }
 
@@ -244,16 +275,16 @@ const animationDuration = computed(() => {
 
 /* 小圆形流动标记 */
 .edge-flow-marker {
-  fill: #94a3b8;
+  fill: #66ccff;
   pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(148, 163, 184, 0.5));
+  filter: drop-shadow(0 0 2px rgba(102, 204, 255, 0.5));
 }
 
 /* 选中状态时小圆形变色 */
 .vue-flow__edge.selected .edge-flow-marker,
 .vue-flow__edge:focus .edge-flow-marker,
 .vue-flow__edge:focus-visible .edge-flow-marker {
-  fill: #60a5fa;
+  fill: #ee82ee;
 }
 
 /* 数据传递标签样式 */

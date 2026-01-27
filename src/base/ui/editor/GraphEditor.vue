@@ -20,6 +20,7 @@ import { SubGraphNode } from '@/base/runtime/nodes/SubGraphNode'
 import { BaseNode } from '@/base/runtime/nodes'
 import { NodeRegistry } from '@/base/runtime/registry'
 import { BasicExecutor, ExecutorState } from '@/base/runtime/executor'
+import { EditCommandType } from '@/base/runtime/timeline'
 import { autoLayoutGraph } from '@/base/ui/utils/layout'
 
 // Context Menu, Edit History, Clipboard
@@ -98,6 +99,34 @@ function onNodeDoubleClick(_nodeId: string, subGraphNode: SubGraphNode | null): 
   if (subGraphNode) {
     graphStore.enterSubGraph(subGraphNode)
   }
+}
+
+/** 处理边双击（切换启用/禁用状态） */
+function onEdgeDoubleClick(edgeId: string): void {
+  const [fromPortId, toPortId] = edgeId.split('->')
+  if (!fromPortId || !toPortId) return
+
+  const oldDisabled = graphStore.isEdgeDisabled(fromPortId, toPortId)
+  const newDisabled = !oldDisabled
+
+  // 执行切换
+  graphStore.setEdgeDisabled(fromPortId, toPortId, newDisabled)
+
+  // 取消边的选中状态（双击切换后不应该选中边）
+  graphStore.clearEdgeSelection()
+
+  // 记录到编辑历史
+  editHistory.push(
+    EditCommandType.TOGGLE_EDGE,
+    {
+      type: EditCommandType.TOGGLE_EDGE,
+      fromPortId,
+      toPortId,
+      oldDisabled,
+      newDisabled,
+    },
+    newDisabled ? 'Disable edge' : 'Enable edge',
+  )
 }
 
 /** 处理画布点击（Vue Flow 自动处理选中清除） */
@@ -418,6 +447,7 @@ defineExpose({
       <AnoraGraphView
         @connect="onConnect"
         @node-double-click="onNodeDoubleClick"
+        @edge-double-click="onEdgeDoubleClick"
         @pane-click="onPaneClick"
         @node-drag-start="onNodeDragStart"
         @node-drag-stop="onNodeDragStop"

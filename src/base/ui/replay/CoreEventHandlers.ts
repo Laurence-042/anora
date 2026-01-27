@@ -95,6 +95,11 @@ function executeEditCommand(data: SerializedEditCommand, context: EditReplayCont
       break
     }
 
+    case EditCommandType.TOGGLE_EDGE: {
+      graphStore.setEdgeDisabled(data.fromPortId, data.toPortId, data.newDisabled)
+      break
+    }
+
     case EditCommandType.BATCH: {
       for (const cmd of data.commands) {
         executeEditCommand(cmd, context)
@@ -155,6 +160,12 @@ function undoEditCommand(data: SerializedEditCommand, context: EditReplayContext
     case EditCommandType.RESIZE_NODE: {
       // 调整大小的逆操作是恢复原大小
       graphStore.updateNodeSize(data.nodeId, data.oldSize)
+      break
+    }
+
+    case EditCommandType.TOGGLE_EDGE: {
+      // 切换边状态的逆操作是恢复到旧状态
+      graphStore.setEdgeDisabled(data.fromPortId, data.toPortId, data.oldDisabled)
       break
     }
 

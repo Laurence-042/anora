@@ -433,7 +433,7 @@ export class BasicExecutor {
   }
 
   /**
-   * 获取节点所有入 Port 中已被连接的 Port ID 集合
+   * 获取节点所有入 Port 中已被连接的 Port ID 集合（排除禁用的边）
    */
   private getConnectedInPortIds(node: BaseNode, graph: AnoraGraph): Set<string> {
     const connectedIds = new Set<string>()
@@ -441,8 +441,12 @@ export class BasicExecutor {
 
     for (const port of inputPorts) {
       const connected = graph.getConnectedPorts(port)
-      if (connected.length > 0) {
-        connectedIds.add(port.id)
+      // 检查是否有启用的边连接到此入 Port
+      for (const sourcePort of connected) {
+        if (!graph.isEdgeDisabled(sourcePort.id, port.id)) {
+          connectedIds.add(port.id)
+          break // 只要有一条启用的边就算连接
+        }
       }
     }
 
@@ -569,6 +573,11 @@ export class BasicExecutor {
       const connectedPorts = graph.getConnectedPorts(outPort)
 
       for (const targetPort of connectedPorts) {
+        // 跳过禁用的边
+        if (graph.isEdgeDisabled(outPort.id, targetPort.id)) {
+          continue
+        }
+
         // 使用 peek() 获取数据
         const data = outPort.peek()
 

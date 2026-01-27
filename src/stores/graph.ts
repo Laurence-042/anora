@@ -67,6 +67,7 @@ export const useGraphStore = defineStore('graph', () => {
     getSelectedEdges,
     addSelectedNodes,
     removeSelectedNodes,
+    removeSelectedEdges,
     findNode,
     fitView: vfFitView,
     project: vfProject,
@@ -175,14 +176,20 @@ export const useGraphStore = defineStore('graph', () => {
     for (const node of allNodes) {
       const pos = nodePositions.value.get(node.id) ?? { x: 0, y: 0 }
       const size = nodeSizes.value.get(node.id)
-      result.push({
+      const vfNode: VFNode = {
         id: node.id,
         type: getViewType(node.typeId),
         position: pos,
         data: { node: markRaw(node), readonly: readonly.value, size },
         draggable: !readonly.value,
         selectable: !readonly.value,
-      } as VFNode)
+      }
+      // 如果有尺寸信息，直接设置到节点上（Vue Flow 需要这些属性来恢复尺寸）
+      if (size) {
+        vfNode.width = size.width
+        vfNode.height = size.height
+      }
+      result.push(vfNode)
     }
     return result
   })
@@ -311,6 +318,30 @@ export const useGraphStore = defineStore('graph', () => {
   }
 
   /**
+   * 设置边的禁用状态
+   */
+  function setEdgeDisabled(fromPortId: string, toPortId: string, disabled: boolean): void {
+    currentGraph.value.setEdgeDisabled(fromPortId, toPortId, disabled)
+    // graphRevision 由 onUpdate 回调自动递增
+  }
+
+  /**
+   * 切换边的禁用状态
+   * @returns 新的禁用状态
+   */
+  function toggleEdgeDisabled(fromPortId: string, toPortId: string): boolean {
+    return currentGraph.value.toggleEdgeDisabled(fromPortId, toPortId)
+    // graphRevision 由 onUpdate 回调自动递增
+  }
+
+  /**
+   * 检查边是否被禁用
+   */
+  function isEdgeDisabled(fromPortId: string, toPortId: string): boolean {
+    return currentGraph.value.isEdgeDisabled(fromPortId, toPortId)
+  }
+
+  /**
    * 通知节点已变更（用于触发视图更新）
    * 当节点属性（如 label、context）被修改时调用
    */
@@ -416,6 +447,13 @@ export const useGraphStore = defineStore('graph', () => {
    */
   function clearSelection(): void {
     removeSelectedNodes(getSelectedNodes.value)
+  }
+
+  /**
+   * 清空边的选择
+   */
+  function clearEdgeSelection(): void {
+    removeSelectedEdges(getSelectedEdges.value)
   }
 
   /**
@@ -805,6 +843,11 @@ export const useGraphStore = defineStore('graph', () => {
     checkNodeEdgesCompatibility,
     isEdgeIncompatible,
 
+    // 边禁用状态
+    setEdgeDisabled,
+    toggleEdgeDisabled,
+    isEdgeDisabled,
+
     // 边数据传递
     getEdgeDataTransfer,
     hasEdgeDataTransfer,
@@ -817,6 +860,7 @@ export const useGraphStore = defineStore('graph', () => {
     selectNode,
     deselectNode,
     clearSelection,
+    clearEdgeSelection,
     isNodeSelected,
     selectNodesByIds,
   }

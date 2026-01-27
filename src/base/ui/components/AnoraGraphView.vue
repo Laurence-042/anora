@@ -28,6 +28,7 @@ const graphStore = useGraphStore()
 const emit = defineEmits<{
   connect: [connection: Connection]
   nodeDoubleClick: [nodeId: string, node: SubGraphNode | null]
+  edgeDoubleClick: [edgeId: string]
   paneClick: []
   nodeDragStart: [nodes: Array<{ id: string; position: { x: number; y: number } }>]
   nodeDragStop: [nodes: Array<{ id: string; position: { x: number; y: number } }>]
@@ -83,6 +84,11 @@ function onNodeDoubleClick({ node }: { node: Node }): void {
   const anoraNode = graphStore.currentGraph.getNode(node.id)
   const subGraphNode = anoraNode instanceof SubGraphNode ? anoraNode : null
   emit('nodeDoubleClick', node.id, subGraphNode)
+}
+
+function onEdgeDoubleClick({ edge }: { edge: Edge }): void {
+  if (readonly.value) return
+  emit('edgeDoubleClick', edge.id)
 }
 
 function onPaneClick(): void {
@@ -192,6 +198,7 @@ defineExpose({
       fit-view-on-init
       @connect="onConnect"
       @node-double-click="onNodeDoubleClick"
+      @edge-double-click="onEdgeDoubleClick"
       @pane-click="onPaneClick"
       @node-context-menu="onNodeContextMenu"
       @pane-context-menu="onPaneContextMenu"

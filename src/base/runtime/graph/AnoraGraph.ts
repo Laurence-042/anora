@@ -35,6 +35,9 @@ export class AnoraGraph {
   /** 不兼容的边（类型不匹配的连接）: fromPortId -> Set<toPortId> */
   private incompatibleEdges: Map<string, Set<string>> = new Map()
 
+  /** 禁用的边：edgeId (fromPortId->toPortId) */
+  private disabledEdges: Set<string> = new Set()
+
   // ==================== 不兼容边管理 ====================
 
   /**
@@ -353,6 +356,58 @@ export class AnoraGraph {
     return this.incompatibleEdges.get(fromPortId)?.has(toPortId) ?? false
   }
 
+  // ==================== 边禁用状态管理 ====================
+
+  /**
+   * 生成边的唯一 ID
+   */
+  private getEdgeId(fromPortId: string, toPortId: string): string {
+    return `${fromPortId}->${toPortId}`
+  }
+
+  /**
+   * 设置边的禁用状态
+   */
+  setEdgeDisabled(fromPortId: string, toPortId: string, disabled: boolean): void {
+    const edgeId = this.getEdgeId(fromPortId, toPortId)
+    if (disabled) {
+      this.disabledEdges.add(edgeId)
+    } else {
+      this.disabledEdges.delete(edgeId)
+    }
+    this.notifyUpdate()
+  }
+
+  /**
+   * 切换边的禁用状态
+   * @returns 新的禁用状态
+   */
+  toggleEdgeDisabled(fromPortId: string, toPortId: string): boolean {
+    const edgeId = this.getEdgeId(fromPortId, toPortId)
+    const newDisabled = !this.disabledEdges.has(edgeId)
+    if (newDisabled) {
+      this.disabledEdges.add(edgeId)
+    } else {
+      this.disabledEdges.delete(edgeId)
+    }
+    this.notifyUpdate()
+    return newDisabled
+  }
+
+  /**
+   * 检查边是否被禁用
+   */
+  isEdgeDisabled(fromPortId: string, toPortId: string): boolean {
+    return this.disabledEdges.has(this.getEdgeId(fromPortId, toPortId))
+  }
+
+  /**
+   * 获取所有禁用的边 ID
+   */
+  getDisabledEdges(): Set<string> {
+    return new Set(this.disabledEdges)
+  }
+
   // ==================== O(1) 查询 ====================
 
   /**
@@ -494,10 +549,17 @@ export class AnoraGraph {
     nodePositions?: Map<string, { x: number; y: number }>,
     nodeSizes?: Map<string, { width: number; height: number }>,
   ): SerializedGraph {
-    const serializedEdges: SerializedEdge[] = this.edges.map((edge) => ({
-      fromPortId: edge.fromPortId,
-      toPortId: edge.toPortId,
-    }))
+    const serializedEdges: SerializedEdge[] = this.edges.map((edge) => {
+      const edgeData: SerializedEdge = {
+        fromPortId: edge.fromPortId,
+        toPortId: edge.toPortId,
+      }
+      // 只有禁用的边才添加 disabled 字段
+      if (this.isEdgeDisabled(edge.fromPortId, edge.toPortId)) {
+        edgeData.disabled = true
+      }
+      return edgeData
+    })
 
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -551,6 +613,10 @@ export class AnoraGraph {
     // 恢复边
     for (const edgeData of data.edges) {
       graph.addEdge(edgeData.fromPortId, edgeData.toPortId)
+      // 恢复禁用状态
+      if (edgeData.disabled) {
+        graph.setEdgeDisabled(edgeData.fromPortId, edgeData.toPortId, true)
+      }
     }
 
     return { graph, nodePositions, nodeSizes }
@@ -574,6 +640,10 @@ export class AnoraGraph {
     // 恢复边
     for (const edgeData of data.edges) {
       this.addEdge(edgeData.fromPortId, edgeData.toPortId)
+      // 恢复禁用状态
+      if (edgeData.disabled) {
+        this.setEdgeDisabled(edgeData.fromPortId, edgeData.toPortId, true)
+      }
     }
   }
 
@@ -600,6 +670,7 @@ export class AnoraGraph {
     this.nodes.clear()
     this.edges = []
     this.incompatibleEdges.clear()
+    this.disabledEdges.clear()
     this.portToNode.clear()
     this.outPortConnections.clear()
     this.inPortConnections.clear()

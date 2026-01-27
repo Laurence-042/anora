@@ -174,6 +174,8 @@ export interface SerializedNode {
 export interface SerializedEdge {
   fromPortId: string
   toPortId: string
+  /** 边是否被禁用（禁用的边不参与数据传播） */
+  disabled?: boolean
 }
 
 /**
