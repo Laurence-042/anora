@@ -96,7 +96,7 @@ export function useReplayIPC(options: {
   // seek by time or index
   unsubscribers.push(
     on('replay.seek', async (msg) => {
-      const data = (msg as IPCMessage<SeekData>).data ?? {}
+      const data = (msg as IPCMessage<SeekData>).payload ?? {}
       const timeMs = typeof data.timeMs === 'number' ? data.timeMs : undefined
       const eventIndex = typeof data.eventIndex === 'number' ? data.eventIndex : undefined
 
@@ -119,7 +119,7 @@ export function useReplayIPC(options: {
   // seek to keyframe
   unsubscribers.push(
     on('replay.seekToKeyframe', async (msg) => {
-      const data = (msg as IPCMessage<KeyframeData>).data ?? {}
+      const data = (msg as IPCMessage<KeyframeData>).payload ?? {}
       const kfIndex = typeof data.keyframeIndex === 'number' ? data.keyframeIndex : -1
       const before = !!data.before
 
@@ -138,7 +138,7 @@ export function useReplayIPC(options: {
   // set speed
   unsubscribers.push(
     on('replay.setSpeed', async (msg) => {
-      const data = (msg as IPCMessage<{ speed: number }>).data
+      const data = (msg as IPCMessage<{ speed: number }>).payload
       const speed = typeof data?.speed === 'number' ? data.speed : 1.0
 
       controller.setPlaybackSpeed(speed)
@@ -155,7 +155,7 @@ export function useReplayIPC(options: {
 
   unsubscribers.push(
     on('replay.playFor', async (msg) => {
-      const data = (msg as IPCMessage<PlayForData>).data ?? {}
+      const data = (msg as IPCMessage<PlayForData>).payload ?? {}
       const durationMs = typeof data.durationMs === 'number' ? data.durationMs : 0
 
       if (!controller.isLoaded.value) {
@@ -213,7 +213,7 @@ export function useReplayIPC(options: {
 
   unsubscribers.push(
     on('replay.playToKeyframe', async (msg) => {
-      const data = (msg as IPCMessage<PlayToKeyframeData>).data ?? {}
+      const data = (msg as IPCMessage<PlayToKeyframeData>).payload ?? {}
       const keyframeIndex = typeof data.keyframeIndex === 'number' ? data.keyframeIndex : -1
 
       if (!controller.isLoaded.value) {
@@ -292,7 +292,7 @@ export function useReplayIPC(options: {
   if (options.loadRecording) {
     unsubscribers.push(
       on('replay.importRecording', async (msg) => {
-        const data = (msg as IPCMessage<DemoRecording>).data
+        const data = (msg as IPCMessage<DemoRecording>).payload
 
         if (!data) {
           postMessage('replay.importRecording.error', { error: 'no-data' })

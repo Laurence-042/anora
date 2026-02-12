@@ -206,7 +206,7 @@ export type IPCMessageType =
  */
 export interface IPCMessage<T = unknown> {
   type: IPCMessageType
-  data?: T
+  payload?: T
 }
 
 // ==================== 定义类型 ====================

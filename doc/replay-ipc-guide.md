@@ -1,4 +1,4 @@
-# ANORA 回放模式 IPC 控制指南
+﻿# ANORA 回放模式 IPC 控制指南
 
 本文档说明如何通过 IPC 消息从外部程序控制 ANORA 的回放（Replay）模式。
 
@@ -125,7 +125,7 @@ $WebView.post_message(msg)
 // JavaScript
 window.addEventListener('message', (event) => {
   if (event.data.type === 'replay.state') {
-    console.log('状态:', event.data.data.state)
+    console.log('状态:', event.data.payload.state)
   }
 })
 ```
@@ -135,7 +135,7 @@ window.addEventListener('message', (event) => {
 func _on_ipc_message(message: String):
     var data = JSON.parse_string(message)
     if data.type == "replay.state":
-        print("状态: ", data.data.state)
+        print("状态: ", data.payload.state)
 ```
 
 ---
@@ -167,7 +167,7 @@ func _on_ipc_message(message: String):
 ```json
 {
   "type": "ipc:ready",
-  "data": {
+  "payload": {
     "timestamp": 1706000000000
   }
 }
@@ -180,7 +180,7 @@ func _on_ipc_message(message: String):
 ```javascript
 window.addEventListener('message', (event) => {
   if (event.data.type === 'ipc:ready') {
-    console.log('ANORA IPC is ready at:', event.data.data.timestamp)
+    console.log('ANORA IPC is ready at:', event.data.payload.timestamp)
     // 现在可以安全地发送命令
     sendCommand('replay.importRecording', recordingData)
   }
@@ -195,7 +195,7 @@ var anora_ready = false
 func _on_ipc_message(message: String):
     var data = JSON.parse_string(message)
     if data.type == "ipc:ready":
-        print("ANORA IPC is ready at: ", data.data.timestamp)
+        print("ANORA IPC is ready at: ", data.payload.timestamp)
         anora_ready = true
         # 现在可以安全地发送命令
         load_recording(tutorial_data)
@@ -292,7 +292,7 @@ interface TimestampedEvent {
 ```typescript
 interface IPCMessage {
   type: string // 命令类型，如 'replay.play'
-  data?: unknown // 命令参数（可选）
+  payload?: unknown // 命令参数（可选）
 }
 ```
 
@@ -307,7 +307,7 @@ interface IPCMessage {
 ```json
 {
   "type": "replay.seek",
-  "data": { "timeMs": 5000 }
+  "payload": { "timeMs": 5000 }
 }
 ```
 
@@ -316,7 +316,7 @@ interface IPCMessage {
 ```typescript
 interface IPCResponse {
   type: string // 响应类型，如 'replay.state'
-  data: unknown // 响应数据
+  payload: unknown // 响应数据
 }
 ```
 
@@ -325,7 +325,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.state",
-  "data": { "state": "Running" }
+  "payload": { "state": "Running" }
 }
 ```
 
@@ -446,7 +446,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.setSpeed",
-  "data": { "speed": 2.0 }
+  "payload": { "speed": 2.0 }
 }
 ```
 
@@ -455,7 +455,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.speedSet",
-  "data": { "speed": 2.0 }
+  "payload": { "speed": 2.0 }
 }
 ```
 
@@ -474,7 +474,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seek",
-  "data": { "timeMs": 5000 }
+  "payload": { "timeMs": 5000 }
 }
 ```
 
@@ -483,7 +483,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seek",
-  "data": { "eventIndex": 42 }
+  "payload": { "eventIndex": 42 }
 }
 ```
 
@@ -492,7 +492,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seeked",
-  "data": {
+  "payload": {
     "timeMs": 5000,
     "eventIndex": 42
   }
@@ -512,7 +512,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "data": { "keyframeIndex": 3 }
+  "payload": { "keyframeIndex": 3 }
 }
 ```
 
@@ -521,7 +521,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "data": { "keyframeIndex": 3, "before": true }
+  "payload": { "keyframeIndex": 3, "before": true }
 }
 ```
 
@@ -530,7 +530,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.seekToKeyframe",
-  "data": {
+  "payload": {
     "keyframeIndex": 3
   }
 }
@@ -555,7 +555,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playToKeyframe",
-  "data": { "keyframeIndex": 5 }
+  "payload": { "keyframeIndex": 5 }
 }
 ```
 
@@ -564,7 +564,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playToKeyframe.started",
-  "data": { "keyframeIndex": 5, "targetTime": 2500 }
+  "payload": { "keyframeIndex": 5, "targetTime": 2500 }
 }
 ```
 
@@ -573,7 +573,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playToKeyframe.completed",
-  "data": { "keyframeIndex": 5 }
+  "payload": { "keyframeIndex": 5 }
 }
 ```
 
@@ -599,7 +599,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playFor",
-  "data": { "durationMs": 3000 }
+  "payload": { "durationMs": 3000 }
 }
 ```
 
@@ -608,7 +608,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playFor.started",
-  "data": { "durationMs": 3000, "timerId": 1 }
+  "payload": { "durationMs": 3000, "timerId": 1 }
 }
 ```
 
@@ -617,7 +617,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playFor.completed",
-  "data": {
+  "payload": {
     "durationMs": 3000
   }
 }
@@ -630,7 +630,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.playFor",
-  "data": { "durationMs": -1 }
+  "payload": { "durationMs": -1 }
 }
 ```
 
@@ -650,12 +650,12 @@ interface IPCResponse {
 
 **请求：**
 
-`data` 字段直接传入解析后的 DemoRecording 对象（不是 JSON 字符串）：
+`payload` 字段直接传入解析后的 DemoRecording 对象（不是 JSON 字符串）：
 
 ```json
 {
   "type": "replay.importRecording",
-  "data": {
+  "payload": {
     "version": "2.0.0",
     "metadata": { "createdAt": "...", "duration": 15000, "totalEvents": 234 },
     "initialGraph": { ... },
@@ -677,7 +677,7 @@ interface IPCResponse {
 ```json
 {
   "type": "replay.importRecording.error",
-  "data": {
+  "payload": {
     "error": "no-data"
   }
 }
@@ -745,14 +745,14 @@ func pause_demo():
 func seek_to_time(time_ms: int):
     var msg = JSON.stringify({
         "type": "replay.seek",
-        "data": {"timeMs": time_ms}
+        "payload": {"timeMs": time_ms}
     })
     webview.post_message(msg)
 
 func load_recording(recording_data: Dictionary):
     var msg = JSON.stringify({
         "type": "replay.importRecording",
-        "data": recording_data
+        "payload": recording_data
     })
     webview.post_message(msg)
 
@@ -760,11 +760,11 @@ func _on_ipc_message(message: String):
     var data = JSON.parse_string(message)
     match data.type:
         "replay.state":
-            print("Replay state changed: ", data.data.state)
+            print("Replay state changed: ", data.payload.state)
         "replay.seeked":
-            print("Seeked to: ", data.data.timeMs, "ms")
+            print("Seeked to: ", data.payload.timeMs, "ms")
         "replay.error":
-            print("Error: ", data.data.error)
+            print("Error: ", data.payload.error)
 ```
 
 **使用示例：**
@@ -820,13 +820,13 @@ func show_tutorial():
         if (event.origin !== 'http://localhost:5173') return
 
         const msg = event.data
-        console.log('Received from ANORA:', msg.type, msg.data)
+        console.log('Received from ANORA:', msg.type, msg.payload)
 
         // 处理响应
         if (msg.type === 'replay.state') {
-          console.log('State:', msg.data.state)
+          console.log('State:', msg.payload.state)
         } else if (msg.type === 'replay.error') {
-          alert('Error: ' + msg.data.error)
+          alert('Error: ' + msg.payload.error)
         }
       })
 
@@ -861,7 +861,7 @@ func show_tutorial():
 | 错误消息                 | 原因                             | 解决方案                                   |
 | ------------------------ | -------------------------------- | ------------------------------------------ |
 | `not-loaded`             | 录制文件未加载                   | 先调用 `replay.importRecording` 加载       |
-| `no-data`                | `replay.importRecording` 无数据  | 确保 `data` 字段包含有效的录制数据         |
+| `no-data`                | `replay.importRecording` 无数据  | 确保 `payload` 字段包含有效的录制数据      |
 | `invalid-data`           | `replay.seek` 参数缺失或类型错误 | 提供 `timeMs` 或 `eventIndex` 之一（数字） |
 | `invalid-keyframe-index` | 指定的关键帧索引无效             | 确保 `keyframeIndex` 为非负整数            |
 
@@ -870,7 +870,7 @@ func show_tutorial():
 ```json
 {
   "type": "replay.error",
-  "data": {
+  "payload": {
     "command": "replay.seek",
     "error": "Invalid seek target: must provide timeMs or eventIndex"
   }
@@ -897,7 +897,7 @@ function sendCommandWithTimeout(type, data, timeoutMs = 5000) {
       if (event.data.type === `${type}.response`) {
         clearTimeout(timer)
         window.removeEventListener('message', handler)
-        resolve(event.data.data)
+        resolve(event.data.payload)
       }
     }
 
@@ -919,7 +919,7 @@ let currentState = 'Idle'
 
 window.addEventListener('message', (event) => {
   if (event.data.type === 'replay.state') {
-    currentState = event.data.data.state
+    currentState = event.data.payload.state
     updateUI(currentState)
   }
 })
@@ -962,7 +962,7 @@ function waitForMessage(type) {
     const handler = (event) => {
       if (event.data.type === type) {
         window.removeEventListener('message', handler)
-        resolve(event.data.data)
+        resolve(event.data.payload)
       }
     }
     window.addEventListener('message', handler)
@@ -1007,5 +1007,5 @@ broadcastCommand('replay.seek', { timeMs: 5000 })
 ## 更新日志
 
 - **2024-01** - 初始版本，支持 7 种基础命令
-- **2024-12** - 更新消息格式，统一使用 `data` 字段替代 `payload`
+- **2024-12** - 更新消息格式，统一使用 `payload` 字段
 - **待定** - 计划支持自定义事件订阅、批量命令执行
