@@ -36,7 +36,7 @@ class WindowPostMessageChannel implements IPCChannel {
     this.handler = async (event: MessageEvent) => {
       console.log(`[IPC:${this.name}] received:`, JSON.stringify(event.data))
       const data = event.data as IPCMessage
-      if (!data || !data.type || !('payload' in data || 'type' in data)) {
+      if (!data || !data.type) {
         console.warn(`[IPC:${this.name}] ignored invalid message (no type):`, event.data)
         return
       }

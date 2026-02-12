@@ -289,8 +289,8 @@ onUnmounted(() => {
 
     <!-- 底部控制栏 -->
     <div v-if="controller.isLoaded.value" class="replay-controls">
-      <!-- 进度条 -->
-      <div class="progress-section">
+      <!-- 第一行：进度条（全宽） -->
+      <div class="progress-row">
         <div class="time-display">{{ formatTime(smoothProgress) }}</div>
         <div class="progress-wrapper">
           <input
@@ -318,50 +318,53 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 播放控制 -->
-      <div class="playback-controls">
-        <button class="control-btn" @click="restart" :title="t('demo.restart')">
-          <span class="icon">⏮</span>
-        </button>
+      <!-- 第二行：播放控制 + 状态 -->
+      <div class="controls-row">
+        <!-- 播放控制 -->
+        <div class="playback-controls">
+          <button class="control-btn" @click="restart" :title="t('demo.restart')">
+            <span class="icon">⏮</span>
+          </button>
 
-        <button
-          class="control-btn play-btn"
-          @click="togglePlayPause"
-          :title="controller.isPlaying.value ? t('demo.pause') : t('demo.play')"
-        >
-          <span class="icon">{{ controller.isPlaying.value ? '⏸' : '▶' }}</span>
-        </button>
+          <button
+            class="control-btn play-btn"
+            @click="togglePlayPause"
+            :title="controller.isPlaying.value ? t('demo.pause') : t('demo.play')"
+          >
+            <span class="icon">{{ controller.isPlaying.value ? '⏸' : '▶' }}</span>
+          </button>
 
-        <button
-          class="control-btn"
-          @click="stepForward"
-          :disabled="controller.isPlaying.value || controller.isCompleted.value"
-          :title="t('demo.stepForward')"
-        >
-          <span class="icon">⏭</span>
-        </button>
+          <button
+            class="control-btn"
+            @click="stepForward"
+            :disabled="controller.isPlaying.value || controller.isCompleted.value"
+            :title="t('demo.stepForward')"
+          >
+            <span class="icon">⏭</span>
+          </button>
 
-        <!-- 速度选择 -->
-        <select
-          class="speed-select"
-          :value="controller.playbackSpeed.value"
-          @change="setSpeed(Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option v-for="speed in speedOptions" :key="speed" :value="speed">{{ speed }}x</option>
-        </select>
-      </div>
+          <!-- 速度选择 -->
+          <select
+            class="speed-select"
+            :value="controller.playbackSpeed.value"
+            @change="setSpeed(Number(($event.target as HTMLSelectElement).value))"
+          >
+            <option v-for="speed in speedOptions" :key="speed" :value="speed">{{ speed }}x</option>
+          </select>
+        </div>
 
-      <!-- 状态指示 -->
-      <div class="status-section">
-        <span v-if="controller.isPlaying.value" class="status playing"
-          >▶ {{ t('demo.playing') }}</span
-        >
-        <span v-else-if="controller.isPaused.value" class="status paused"
-          >⏸ {{ t('demo.paused') }}</span
-        >
-        <span v-else-if="controller.isCompleted.value" class="status completed"
-          >✓ {{ t('demo.completed') }}</span
-        >
+        <!-- 状态指示 -->
+        <div class="status-section">
+          <span v-if="controller.isPlaying.value" class="status playing"
+            >▶ {{ t('demo.playing') }}</span
+          >
+          <span v-else-if="controller.isPaused.value" class="status paused"
+            >⏸ {{ t('demo.paused') }}</span
+          >
+          <span v-else-if="controller.isCompleted.value" class="status completed"
+            >✓ {{ t('demo.completed') }}</span
+          >
+        </div>
       </div>
     </div>
 
@@ -511,18 +514,25 @@ onUnmounted(() => {
 
 .replay-controls {
   display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 12px 24px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px 10px;
   background: var(--vf-toolbar-bg, #1a1a2e);
   border-top: 1px solid var(--vf-border, #3a3a5c);
 }
 
-.progress-section {
-  flex: 1;
+.progress-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  width: 100%;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .progress-wrapper {
@@ -590,16 +600,18 @@ onUnmounted(() => {
   font-size: 12px;
   color: #94a3b8;
   font-family: monospace;
-  min-width: 60px;
+  min-width: 50px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .progress-text {
   font-size: 11px;
   color: #6b7280;
   font-family: monospace;
-  min-width: 40px;
+  min-width: 36px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .playback-controls {
